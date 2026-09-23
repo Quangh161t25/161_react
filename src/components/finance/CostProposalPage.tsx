@@ -5,7 +5,6 @@ import {
   Tag,
   Bookmark,
   LayoutGrid,
-  LayoutTemplate,
   Download,
   Plus,
   SquarePen,
@@ -18,7 +17,6 @@ import {
   ChevronRight,
   ChevronsRight,
   SlidersHorizontal,
-  ArrowUp,
   Funnel,
   List,
   RefreshCw,
@@ -30,10 +28,35 @@ import { CostProposalDetailDrawer } from './CostProposalDetailDrawer';
 import { CostProposalFormDrawer } from './CostProposalFormDrawer';
 import { googleSheetsService } from '../../services/googleSheetsService';
 import { useAuth } from '../../context/AuthContext';
+import {
+  ColumnCustomizerPopover,
+  ColumnItem,
+  TableDensity,
+} from '../common/ColumnCustomizerPopover';
 
 interface CostProposalPageProps {
   onBack: () => void;
 }
+
+export const DEFAULT_PROPOSAL_COLUMNS: ColumnItem[] = [
+  { id: 'code', label: 'Số phiếu', visible: true, locked: true },
+  { id: 'proposalDate', label: 'Ngày đề xuất', visible: true },
+  { id: 'dueDate', label: 'Ngày cần chi', visible: true },
+  { id: 'proposer', label: 'Người đề xuất', visible: true },
+  { id: 'department', label: 'Phòng ban', visible: true },
+  { id: 'title', label: 'Tiêu đề', visible: true },
+  { id: 'reason', label: 'Lý do', visible: true },
+  { id: 'amount', label: 'Tổng tiền', visible: true },
+  { id: 'account', label: 'Tài khoản đề nghị chi', visible: true },
+  { id: 'beneficiary', label: 'Đối tượng thụ hưởng', visible: true },
+  { id: 'isOverBudget', label: 'Vượt kế hoạch', visible: true },
+  { id: 'overBudgetReason', label: 'Lý do vượt kế hoạch', visible: true },
+  { id: 'note', label: 'Ghi chú', visible: true },
+  { id: 'approvalSteps', label: 'Số bậc duyệt', visible: true },
+  { id: 'approvalStatus', label: 'Trạng thái duyệt', visible: true },
+  { id: 'status', label: 'Trạng thái', visible: true },
+  { id: 'updatedAt', label: 'Cập nhật', visible: true },
+];
 
 export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) => {
   const { currentUser } = useAuth();
@@ -48,6 +71,55 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Column Customizer & Density State
+  const [tableColumns, setTableColumns] = useState<ColumnItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('erp_proposal_columns');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((p: ColumnItem) => p.id));
+          const missing = DEFAULT_PROPOSAL_COLUMNS.filter((d) => !existingIds.has(d.id));
+          return [...parsed, ...missing];
+        }
+      }
+    } catch {}
+    return DEFAULT_PROPOSAL_COLUMNS;
+  });
+
+  const [tableDensity, setTableDensity] = useState<TableDensity>(() => {
+    try {
+      const saved = localStorage.getItem('erp_proposal_density');
+      if (saved === 'compact' || saved === 'normal' || saved === 'relaxed') {
+        return saved;
+      }
+    } catch {}
+    return 'normal';
+  });
+
+  const handleSaveColumns = (newCols: ColumnItem[]) => {
+    setTableColumns(newCols);
+    try {
+      localStorage.setItem('erp_proposal_columns', JSON.stringify(newCols));
+    } catch {}
+  };
+
+  const handleSaveDensity = (newDensity: TableDensity) => {
+    setTableDensity(newDensity);
+    try {
+      localStorage.setItem('erp_proposal_density', newDensity);
+    } catch {}
+  };
+
+  const handleResetColumns = () => {
+    setTableColumns(DEFAULT_PROPOSAL_COLUMNS);
+    setTableDensity('normal');
+    try {
+      localStorage.removeItem('erp_proposal_columns');
+      localStorage.removeItem('erp_proposal_density');
+    } catch {}
+  };
 
   // Drawer states
   const [selectedProposalForDetail, setSelectedProposalForDetail] = useState<CostProposal | null>(null);
@@ -121,7 +193,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
     }
   };
 
-  const handleToggleSelect = (id: string, e?: React.MouseEvent) => {
+  const handleToggleSelect = (id: string, e?: React.SyntheticEvent) => {
     if (e) e.stopPropagation();
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -162,31 +234,25 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
           ...selectedProposalForDetail,
           ...formData,
           updatedAt: new Date().toLocaleDateString('vi-VN'),
-        });
+        } as CostProposal);
       }
 
       setIsFormDrawerOpen(false);
       setEditingProposal(null);
 
-      // Trigger background sync to Google Sheet
+      // Sync to sheet
       setIsSyncing(true);
       const ok = await googleSheetsService.syncAllToSheet(updatedList);
       setIsSyncing(false);
       if (ok) {
         showToast(`Đã cập nhật ${editingProposal.code} và đồng bộ lên Google Sheet!`);
       } else {
-        showToast('Đã lưu nội bộ. Lỗi khi đồng bộ lên Google Sheet.', true);
+        showToast('Đã lưu đề xuất nội bộ.', true);
       }
     } else {
       // Create new
-      const today = new Date();
-      const dd = String(today.getDate()).padStart(2, '0');
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const yyyy = today.getFullYear();
-      const dateStr = `${dd}/${mm}/${yyyy}`;
-
       const maxNum = proposals.reduce((max, p) => {
-        const match = p.code.match(/DX\d+-(\d+)/);
+        const match = p.code.match(/DX-(\d+)/);
         if (match) {
           const num = parseInt(match[1], 10);
           return num > max ? num : max;
@@ -194,79 +260,81 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
         return max;
       }, 0);
       const nextNum = maxNum + 1;
-      const newCode = `DX2609-${String(nextNum).padStart(4, '0')}`;
+      const newCode = `DX-${String(nextNum).padStart(3, '0')}`;
 
-      const created: CostProposal = {
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, '0');
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const yyyy = today.getFullYear();
+      const dateStr = `${dd}/${mm}/${yyyy}`;
+
+      const newProposal: CostProposal = {
         id: String(Date.now()),
         code: newCode,
-        proposalDate: formData.proposalDate || dateStr,
+        title: formData.title || 'Chi phí mới',
+        proposer: formData.proposer || currentUser?.name || 'Nguyễn Văn A',
+        department: formData.department || 'Phòng Kỹ thuật',
+        proposalDate: dateStr,
         dueDate: formData.dueDate || dateStr,
-        proposer: formData.proposer || currentUser.name || 'Lê Minh Công',
-        department: formData.department || currentUser.department || 'Ban Giám Đốc',
-        title: formData.title || '',
-        reason: formData.reason || '',
-        amount: formData.amount || 0,
-        account: formData.account || 'Vietcombank - Tài khoản chính',
+        account: formData.account || '642 - Chi phí quản lý doanh nghiệp',
         beneficiary: formData.beneficiary || '',
+        amount: formData.amount || 0,
         isOverBudget: formData.isOverBudget || false,
         overBudgetReason: formData.overBudgetReason || '',
         note: formData.note || '',
-        approvalSteps: 1,
-        approvalStatus: formData.approvalStatus || 'pending',
-        status: formData.status || 'draft',
+        approvalSteps: 2,
+        approvalStatus: 'draft',
+        status: 'active',
+        createdAt: dateStr,
         updatedAt: dateStr,
-        createdAt: `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')} - ${dateStr}`,
+        reason: formData.reason || '',
         lineItems: formData.lineItems || [],
       };
 
-      const updatedList = [created, ...proposals];
+      const updatedList = [newProposal, ...proposals];
       setProposals(updatedList);
       googleSheetsService.saveToCache(updatedList);
 
       setIsFormDrawerOpen(false);
-      setEditingProposal(null);
 
-      // Trigger background sync to Google Sheet
+      // Sync to sheet
       setIsSyncing(true);
       const ok = await googleSheetsService.syncAllToSheet(updatedList);
       setIsSyncing(false);
       if (ok) {
-        showToast(`Đã thêm đề xuất ${newCode} và đồng bộ lên Google Sheet thành công!`);
+        showToast(`Đã tạo ${newCode} và đồng bộ lên Google Sheet!`);
       } else {
-        showToast('Đã lưu đề xuất nội bộ.', true);
+        showToast('Đã lưu đề xuất vào bộ nhớ tạm.', true);
       }
     }
   };
 
-  // Delete proposal with live Google Sheets sync
+  // Delete proposal
   const handleDeleteProposal = async (id: string) => {
-    const target = proposals.find((p) => p.id === id);
+    const deleted = proposals.find((p) => p.id === id);
     const updatedList = proposals.filter((p) => p.id !== id);
     setProposals(updatedList);
     googleSheetsService.saveToCache(updatedList);
-
     if (selectedProposalForDetail?.id === id) {
       setSelectedProposalForDetail(null);
     }
+    setSelectedIds((prev) => prev.filter((item) => item !== id));
 
     setIsSyncing(true);
     const ok = await googleSheetsService.syncAllToSheet(updatedList);
     setIsSyncing(false);
     if (ok) {
-      showToast(`Đã xóa ${target?.code || 'đề xuất'} và cập nhật lên Google Sheet!`);
+      showToast(`Đã xóa ${deleted?.code || 'đề xuất'} và đồng bộ Google Sheet!`);
+    } else {
+      showToast('Đã xóa đề xuất khỏi bộ nhớ.', true);
     }
   };
 
-  // Copy proposal with live Google Sheets sync
-  const handleCopyProposal = async (original: CostProposal) => {
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const yyyy = today.getFullYear();
-    const dateStr = `${dd}/${mm}/${yyyy}`;
 
+  // Duplicate / Copy Proposal
+  const handleCopyProposal = async (item: CostProposal) => {
     const maxNum = proposals.reduce((max, p) => {
-      const match = p.code.match(/DX\d+-(\d+)/);
+      const match = p.code.match(/DX-(\d+)/);
       if (match) {
         const num = parseInt(match[1], 10);
         return num > max ? num : max;
@@ -274,25 +342,28 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
       return max;
     }, 0);
     const nextNum = maxNum + 1;
-    const newCode = `DX2609-${String(nextNum).padStart(4, '0')}`;
+    const newCode = `DX-${String(nextNum).padStart(3, '0')}`;
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    const dateStr = `${dd}/${mm}/${yyyy}`;
 
-    const copied: CostProposal = {
-      ...original,
+    const cloned: CostProposal = {
+      ...item,
       id: String(Date.now()),
       code: newCode,
-      title: `${original.title} (Bản sao)`,
+      title: `${item.title} (Bản sao)`,
+      approvalStatus: 'draft',
       proposalDate: dateStr,
       dueDate: dateStr,
-      approvalStatus: 'draft',
-      status: 'draft',
+      createdAt: dateStr,
       updatedAt: dateStr,
-      createdAt: `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')} - ${dateStr}`,
     };
 
-    const updatedList = [copied, ...proposals];
+    const updatedList = [cloned, ...proposals];
     setProposals(updatedList);
     googleSheetsService.saveToCache(updatedList);
-    setSelectedProposalForDetail(copied);
 
     setIsSyncing(true);
     const ok = await googleSheetsService.syncAllToSheet(updatedList);
@@ -392,6 +463,132 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
             <span className="whitespace-nowrap">Nháp</span>
           </span>
         );
+    }
+  };
+
+  const headerPaddingClass =
+    tableDensity === 'compact' ? 'py-1.5' : tableDensity === 'relaxed' ? 'py-3.5' : 'py-2.5';
+  const cellPaddingClass =
+    tableDensity === 'compact'
+      ? 'py-1.5 px-4'
+      : tableDensity === 'relaxed'
+      ? 'py-4 px-4'
+      : 'py-3 px-4';
+
+  const renderProposalCell = (colId: string, item: CostProposal) => {
+    switch (colId) {
+      case 'proposalDate':
+        return <td key={colId} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40`}>{item.proposalDate}</td>;
+      case 'dueDate':
+        return <td key={colId} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40`}>{item.dueDate}</td>;
+      case 'proposer':
+        return (
+          <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>
+            <div className="inline-flex items-center gap-1 max-w-full">
+              <span className="truncate text-foreground font-medium">{item.proposer}</span>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                title="Mở Nhân viên"
+                className="shrink-0 p-0.5 rounded text-primary hover:bg-primary/10"
+              >
+                <Link2 className="w-3 h-3" />
+              </button>
+            </div>
+          </td>
+        );
+      case 'department':
+        return (
+          <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>
+            <div className="inline-flex items-center gap-1 max-w-full">
+              <span className="truncate text-foreground">{item.department}</span>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                title="Mở Phòng ban"
+                className="shrink-0 p-0.5 rounded text-primary hover:bg-primary/10"
+              >
+                <Link2 className="w-3 h-3" />
+              </button>
+            </div>
+          </td>
+        );
+      case 'title':
+        return (
+          <td key={colId} className={`${cellPaddingClass} text-foreground truncate max-w-[260px] border-r border-border/40`} title={item.title}>
+            {item.title}
+          </td>
+        );
+      case 'reason':
+        return (
+          <td key={colId} className={`${cellPaddingClass} text-foreground line-clamp-2 max-w-[280px] border-r border-border/40`} title={item.reason}>
+            {item.reason}
+          </td>
+        );
+      case 'amount':
+        return (
+          <td key={colId} className={`${cellPaddingClass} font-semibold tabular-nums text-foreground border-r border-border/40`}>
+            {formatCurrency(item.amount)}
+          </td>
+        );
+      case 'account':
+        return (
+          <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>
+            <div className="inline-flex items-center gap-1 max-w-full">
+              <span className="truncate text-foreground">{item.account}</span>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                title="Mở Tài khoản"
+                className="shrink-0 p-0.5 rounded text-primary hover:bg-primary/10"
+              >
+                <Link2 className="w-3 h-3" />
+              </button>
+            </div>
+          </td>
+        );
+      case 'beneficiary':
+        return (
+          <td key={colId} className={`${cellPaddingClass} text-muted-foreground truncate max-w-[260px] border-r border-border/40`}>
+            {item.beneficiary || '—'}
+          </td>
+        );
+      case 'isOverBudget':
+        return <td key={colId} className={`${cellPaddingClass} text-foreground border-r border-border/40`}>{item.isOverBudget ? 'Có' : 'Không'}</td>;
+      case 'overBudgetReason':
+        return (
+          <td key={colId} className={`${cellPaddingClass} text-muted-foreground line-clamp-2 max-w-[260px] border-r border-border/40`}>
+            {item.overBudgetReason || '—'}
+          </td>
+        );
+      case 'note':
+        return (
+          <td key={colId} className={`${cellPaddingClass} text-muted-foreground line-clamp-2 max-w-[260px] border-r border-border/40`}>
+            {item.note || '—'}
+          </td>
+        );
+      case 'approvalSteps':
+        return <td key={colId} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40`}>{item.approvalSteps}</td>;
+      case 'approvalStatus':
+        return <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>{renderApprovalBadge(item.approvalStatus)}</td>;
+      case 'status':
+        return (
+          <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>
+            <span
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium border rounded-full ${
+                item.status === 'active'
+                  ? 'bg-primary/10 text-primary border-primary/20'
+                  : 'bg-muted text-muted-foreground border-border'
+              }`}
+            >
+              {item.status === 'active' ? 'Hoạt động' : 'Đã huỷ'}
+            </span>
+          </td>
+        );
+      case 'updatedAt':
+        return <td key={colId} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40`}>{item.updatedAt}</td>;
+      default:
+        return <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>—</td>;
     }
   };
 
@@ -578,6 +775,17 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                     <Bookmark className="w-3.5 h-3.5" />
                   </button>
 
+                  {/* Column Customizer Popover */}
+                  <ColumnCustomizerPopover
+                    columns={tableColumns}
+                    onChangeColumns={handleSaveColumns}
+                    density={tableDensity}
+                    onChangeDensity={handleSaveDensity}
+                    onReset={handleResetColumns}
+                    align="right"
+                  />
+
+                  {/* Grid / Table Toggle */}
                   <button
                     type="button"
                     onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
@@ -588,11 +796,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                         : 'bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground'
                     }`}
                   >
-                    {viewMode === 'table' ? (
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                    ) : (
-                      <LayoutTemplate className="w-3.5 h-3.5" />
-                    )}
+                    <LayoutGrid className="w-3.5 h-3.5" />
                   </button>
 
                   <button
@@ -623,31 +827,10 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                 <div className="hidden md:block flex-1 min-h-0 relative overflow-hidden">
                   <div className="h-full overflow-auto custom-scrollbar">
                     <table className="text-left border-separate border-spacing-0 w-full text-xs">
-                      <colgroup>
-                        <col style={{ width: '44px' }} />
-                        <col style={{ width: '160px' }} />
-                        <col style={{ width: '140px' }} />
-                        <col style={{ width: '140px' }} />
-                        <col style={{ width: '220px' }} />
-                        <col style={{ width: '220px' }} />
-                        <col style={{ width: '260px' }} />
-                        <col style={{ width: '280px' }} />
-                        <col style={{ width: '150px' }} />
-                        <col style={{ width: '220px' }} />
-                        <col style={{ width: '260px' }} />
-                        <col style={{ width: '120px' }} />
-                        <col style={{ width: '260px' }} />
-                        <col style={{ width: '260px' }} />
-                        <col style={{ width: '110px' }} />
-                        <col style={{ width: '160px' }} />
-                        <col style={{ width: '140px' }} />
-                        <col style={{ width: '140px' }} />
-                        <col style={{ width: '76px' }} />
-                      </colgroup>
                       <thead className="sticky top-0 z-[10] bg-muted">
                         <tr className="border-b border-border bg-muted">
-                          {/* Checkbox */}
-                          <th className="sticky left-0 z-[12] px-3 bg-muted border-b border-r border-border text-center py-1.5 w-11">
+                          {/* 1. Sticky Checkbox */}
+                          <th className={`sticky left-0 z-[12] px-3 bg-muted border-b border-r border-border text-center ${headerPaddingClass} w-11`}>
                             <input
                               type="checkbox"
                               checked={isAllSelected}
@@ -655,397 +838,250 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                               className="w-4 h-4 rounded border-border text-primary accent-primary cursor-pointer"
                             />
                           </th>
-                          {/* Số phiếu */}
-                          <th className="sticky left-11 z-[12] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 py-1.5">
+
+                          {/* 2. Sticky Số phiếu */}
+                          <th className={`sticky left-11 z-[12] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} min-w-[150px]`}>
                             <div className="flex items-center justify-between gap-1">
                               <span>Số phiếu</span>
                               <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
                             </div>
                           </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span>Ngày đề xuất</span>
-                              <ArrowUp className="w-3 h-3 text-muted-foreground/40" />
-                            </div>
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span>Ngày cần chi</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
-                            </div>
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span>Người đề xuất</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
-                            </div>
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span>Phòng ban</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
-                            </div>
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span>Tiêu đề</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
-                            </div>
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span>Lý do</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
-                            </div>
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span>Tổng tiền</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
-                            </div>
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span>Tài khoản đề nghị chi</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
-                            </div>
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            <div className="flex items-center justify-between gap-1">
-                              <span>Đối tượng thụ hưởng</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
-                            </div>
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            Vượt kế hoạch
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            Lý do vượt kế hoạch
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            Ghi chú
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            Số bậc duyệt
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            Trạng thái duyệt
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            Trạng thái
-                          </th>
-                          <th className="font-semibold text-foreground border-b border-border whitespace-nowrap px-4 py-1.5">
-                            Cập nhật
-                          </th>
+
+                          {/* Dynamic Columns */}
+                          {tableColumns
+                            .filter((c) => c.visible && c.id !== 'code')
+                            .map((col) => (
+                              <th
+                                key={col.id}
+                                className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass}`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span>{col.label}</span>
+                                  <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
+                                </div>
+                              </th>
+                            ))}
+
                           {/* Sticky Thao tác */}
-                          <th className="sticky right-0 z-[12] px-3 bg-muted border-b border-l border-border text-center font-semibold text-foreground">
+                          <th className={`sticky right-0 z-[12] px-3 bg-muted border-b border-l border-border text-center font-semibold text-foreground ${headerPaddingClass} w-20`}>
                             Thao tác
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredProposals.map((item) => {
-                          const isSelected = selectedIds.includes(item.id);
-                          const isActiveDetail = selectedProposalForDetail?.id === item.id;
-
-                          return (
-                            <tr
-                              key={item.id}
-                              onClick={() => setSelectedProposalForDetail(item)}
-                              aria-current={isActiveDetail}
-                              className={`group cursor-pointer transition-colors ${
-                                isActiveDetail
-                                  ? 'bg-primary/[0.07] hover:bg-primary/[0.1]'
-                                  : isSelected
-                                  ? 'bg-primary/5 hover:bg-accent'
-                                  : 'bg-card even:bg-muted/15 hover:bg-accent'
-                              } [&>td]:border-b [&>td]:border-border`}
+                        {filteredProposals.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={tableColumns.filter((c) => c.visible).length + 2}
+                              className="py-12 text-center text-muted-foreground"
                             >
-                              {/* Checkbox */}
-                              <td
-                                className={`sticky left-0 z-[2] px-3 py-1.5 border-r border-border text-center ${
+                              Không tìm thấy đề xuất chi phí nào phù hợp
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredProposals.map((item) => {
+                            const isSelected = selectedIds.includes(item.id);
+                            const isActiveDetail = selectedProposalForDetail?.id === item.id;
+
+                            return (
+                              <tr
+                                key={item.id}
+                                onClick={() => setSelectedProposalForDetail(item)}
+                                aria-current={isActiveDetail}
+                                className={`group cursor-pointer transition-colors ${
                                   isActiveDetail
-                                    ? 'bg-accent shadow-[inset_3px_0_0_var(--color-primary)]'
-                                    : 'bg-inherit'
-                                }`}
-                                onClick={(e) => e.stopPropagation()}
+                                    ? 'bg-primary/[0.07] hover:bg-primary/[0.1]'
+                                    : isSelected
+                                    ? 'bg-primary/5 hover:bg-accent'
+                                    : 'bg-card even:bg-muted/15 hover:bg-accent'
+                                } [&>td]:border-b [&>td]:border-border`}
                               >
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => handleToggleSelect(item.id)}
-                                  className="w-4 h-4 rounded border-border text-primary accent-primary cursor-pointer"
-                                />
-                              </td>
-                              {/* Số phiếu */}
-                              <td className="sticky left-11 z-[2] px-4 py-1.5 border-r border-border/50 bg-inherit font-semibold text-foreground">
-                                <div className="flex items-center gap-2">
-                                  <FileText className="w-3.5 h-3.5 text-primary/70 shrink-0" />
-                                  <span className="truncate text-sm">{item.code}</span>
-                                </div>
-                              </td>
-                              <td className="px-4 py-1.5 tabular-nums text-foreground">{item.proposalDate}</td>
-                              <td className="px-4 py-1.5 tabular-nums text-foreground">{item.dueDate}</td>
-                              {/* Người đề xuất */}
-                              <td className="px-4 py-1.5">
-                                <div className="inline-flex items-center gap-1 max-w-full">
-                                  <span className="truncate text-foreground">{item.proposer}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="Mở Nhân viên"
-                                    className="shrink-0 p-0.5 rounded text-primary hover:bg-primary/10"
-                                  >
-                                    <Link2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </td>
-                              {/* Phòng ban */}
-                              <td className="px-4 py-1.5">
-                                <div className="inline-flex items-center gap-1 max-w-full">
-                                  <span className="truncate text-foreground">{item.department}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="Mở Phòng ban"
-                                    className="shrink-0 p-0.5 rounded text-primary hover:bg-primary/10"
-                                  >
-                                    <Link2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </td>
-                              {/* Tiêu đề */}
-                              <td className="px-4 py-1.5 text-foreground truncate max-w-[260px]" title={item.title}>
-                                {item.title}
-                              </td>
-                              {/* Lý do */}
-                              <td className="px-4 py-1.5 text-foreground line-clamp-2 max-w-[280px]" title={item.reason}>
-                                {item.reason}
-                              </td>
-                              {/* Tổng tiền */}
-                              <td className="px-4 py-1.5 font-medium tabular-nums text-foreground">
-                                {formatCurrency(item.amount)}
-                              </td>
-                              {/* Tài khoản */}
-                              <td className="px-4 py-1.5">
-                                <div className="inline-flex items-center gap-1 max-w-full">
-                                  <span className="truncate text-foreground">{item.account}</span>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => e.stopPropagation()}
-                                    title="Mở Tài khoản"
-                                    className="shrink-0 p-0.5 rounded text-primary hover:bg-primary/10"
-                                  >
-                                    <Link2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              </td>
-                              {/* Đối tượng thụ hưởng */}
-                              <td className="px-4 py-1.5 text-muted-foreground truncate max-w-[260px]">
-                                {item.beneficiary || '—'}
-                              </td>
-                              {/* Vượt kế hoạch */}
-                              <td className="px-4 py-1.5 text-foreground">{item.isOverBudget ? 'Có' : 'Không'}</td>
-                              <td className="px-4 py-1.5 text-muted-foreground line-clamp-2 max-w-[260px]">
-                                {item.overBudgetReason || '—'}
-                              </td>
-                              <td className="px-4 py-1.5 text-muted-foreground line-clamp-2 max-w-[260px]">
-                                {item.note || '—'}
-                              </td>
-                              <td className="px-4 py-1.5 tabular-nums text-foreground">{item.approvalSteps}</td>
-                              <td className="px-4 py-1.5">{renderApprovalBadge(item.approvalStatus)}</td>
-                              <td className="px-4 py-1.5">
-                                <span
-                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium border rounded-full ${
-                                    item.status === 'active'
-                                      ? 'bg-primary/10 text-primary border-primary/20'
-                                      : 'bg-muted text-muted-foreground border-border'
+                                {/* Checkbox */}
+                                <td
+                                  className={`sticky left-0 z-[2] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${
+                                    isActiveDetail
+                                      ? 'bg-accent shadow-[inset_3px_0_0_var(--color-primary)]'
+                                      : 'bg-inherit'
                                   }`}
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  {item.status === 'active' ? 'Hoạt động' : 'Đã huỷ'}
-                                </span>
-                              </td>
-                              <td className="px-4 py-1.5 tabular-nums text-foreground">{item.updatedAt}</td>
-                              {/* Sticky Thao tác */}
-                              <td className="sticky right-0 z-[2] px-2 py-1.5 border-l border-border/50 text-center bg-inherit">
-                                <div className="flex items-center justify-center gap-0.5">
-                                  <button
-                                    type="button"
-                                    title="Sửa"
-                                    onClick={(e) => handleOpenEditDrawer(item, e)}
-                                    className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
-                                  >
-                                    <SquarePen className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    title="Thao tác thêm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCopyProposal(item);
-                                    }}
-                                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                                  >
-                                    <EllipsisVertical className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => handleToggleSelect(item.id)}
+                                    className="w-4 h-4 rounded border-border text-primary accent-primary cursor-pointer"
+                                  />
+                                </td>
+
+                                {/* Số phiếu */}
+                                <td className={`sticky left-11 z-[2] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/50 bg-inherit font-semibold text-foreground`}>
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="w-3.5 h-3.5 text-primary/70 shrink-0" />
+                                    <span className="truncate text-sm">{item.code}</span>
+                                  </div>
+                                </td>
+
+                                {/* Dynamic Columns */}
+                                {tableColumns
+                                  .filter((c) => c.visible && c.id !== 'code')
+                                  .map((col) => renderProposalCell(col.id, item))}
+
+                                {/* Sticky Thao tác */}
+                                <td className={`sticky right-0 z-[2] px-2 ${cellPaddingClass.split(' ')[0]} border-l border-border/50 text-center bg-inherit`}>
+                                  <div className="flex items-center justify-center gap-0.5">
+                                    <button
+                                      type="button"
+                                      title="Sửa"
+                                      onClick={(e) => handleOpenEditDrawer(item, e)}
+                                      className="p-1.5 rounded-md text-primary hover:bg-primary/10 transition-colors"
+                                    >
+                                      <SquarePen className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="Thao tác thêm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCopyProposal(item);
+                                      }}
+                                      className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                                    >
+                                      <EllipsisVertical className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
                       </tbody>
                     </table>
                   </div>
                 </div>
               ) : null}
 
-              {/* Mobile / Card Grid View */}
-              <div
-                className={`${
-                  viewMode === 'grid' ? 'block' : 'md:hidden'
-                } flex-1 min-h-0 space-y-3 overflow-y-auto pb-3 px-3 pt-1 custom-scrollbar`}
-              >
-                {filteredProposals.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setSelectedProposalForDetail(item)}
-                    className="relative bg-card rounded-xl border border-border shadow-sm transition-all active:scale-[0.98] pt-3 px-3 pb-1.5 cursor-pointer hover:border-primary/40"
-                  >
-                    <div className="flex items-start gap-3.5">
-                      <div className="h-14 w-14 shrink-0 rounded-xl border border-primary/20 bg-primary/15 flex items-center justify-center text-primary">
-                        <FileText className="w-6 h-6" />
+              {/* Mobile Card View */}
+              {(viewMode === 'grid' || true) && (
+                <div className="md:hidden flex-1 overflow-auto p-3 space-y-2.5">
+                  {filteredProposals.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setSelectedProposalForDetail(item)}
+                      className="p-3.5 rounded-xl border border-border bg-card shadow-xs active:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-xs text-primary">{item.code}</span>
+                            <span className="text-[11px] text-muted-foreground">{item.proposalDate}</span>
+                          </div>
+                          <h4 className="font-medium text-xs text-foreground truncate mt-0.5">{item.title}</h4>
+                        </div>
+                        {renderApprovalBadge(item.approvalStatus)}
                       </div>
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h4 className="truncate text-base font-semibold text-foreground">
-                            {item.code}
-                          </h4>
+                      <div className="mt-2.5 pt-2 border-t border-border/40 flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">{item.proposer}</span>
+                        <span className="font-semibold text-foreground">{formatCurrency(item.amount)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Grid View Desktop */}
+              {viewMode === 'grid' && (
+                <div className="hidden md:block flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredProposals.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => setSelectedProposalForDetail(item)}
+                        className="p-4 rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <span className="font-semibold text-xs text-primary">{item.code}</span>
+                            <h3 className="font-semibold text-sm text-foreground truncate mt-0.5">
+                              {item.title}
+                            </h3>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {item.proposer} · {item.department}
+                            </p>
+                          </div>
                           {renderApprovalBadge(item.approvalStatus)}
                         </div>
-                        <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/30 px-3 py-2 text-xs">
-                          <div>
-                            <p className="mb-0.5 text-muted-foreground text-[10px] uppercase font-medium">
-                              Người đề xuất
-                            </p>
-                            <p className="truncate font-medium text-foreground">
-                              {item.proposer}
-                            </p>
+
+                        <div className="space-y-1.5 pt-2 border-t border-border/60 text-xs text-muted-foreground">
+                          <div className="flex items-center justify-between">
+                            <span>Ngày cần chi:</span>
+                            <span className="text-foreground">{item.dueDate}</span>
                           </div>
-                          <div>
-                            <p className="mb-0.5 text-muted-foreground text-[10px] uppercase font-medium">
-                              Tổng tiền
-                            </p>
-                            <p className="font-semibold text-foreground tabular-nums">
-                              {formatCurrency(item.amount)}
-                            </p>
+                          <div className="flex items-center justify-between">
+                            <span>Tổng tiền:</span>
+                            <span className="font-semibold text-foreground">{formatCurrency(item.amount)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Tài khoản:</span>
+                            <span className="truncate max-w-[140px] text-foreground">{item.account}</span>
                           </div>
                         </div>
+
+                        <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/40">
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenEditDrawer(item, e)}
+                            className="px-2.5 py-1 text-xs rounded-lg border border-border hover:bg-muted text-primary flex items-center gap-1 font-medium transition-colors"
+                          >
+                            <SquarePen className="w-3 h-3" />
+                            Sửa
+                          </button>
+                        </div>
                       </div>
-                    </div>
-
-                    <div
-                      className="mt-3 flex min-h-9 items-center justify-between gap-2 border-t border-border pt-2 pb-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <label className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(item.id)}
-                          onChange={() => handleToggleSelect(item.id)}
-                          className="h-4 w-4 cursor-pointer rounded border-border text-primary accent-primary"
-                        />
-                      </label>
-                      <div className="flex shrink-0 items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={(e) => handleOpenEditDrawer(item, e)}
-                          title="Sửa"
-                          className="h-9 w-9 inline-flex items-center justify-center rounded-lg transition-all active:scale-95 text-primary hover:bg-primary/10"
-                        >
-                          <SquarePen className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopyProposal(item);
-                          }}
-                          title="Thao tác thêm"
-                          className="h-9 w-9 inline-flex items-center justify-center rounded-lg transition-all active:scale-95 text-muted-foreground hover:text-foreground hover:bg-muted"
-                        >
-                          <EllipsisVertical className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Bottom Pagination Bar */}
-              <div className="border-t border-border bg-card md:bg-muted/10 px-3 sm:px-4 py-1.5 items-center justify-between gap-2 shrink-0 flex">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
-                  <span className="tabular-nums">
-                    <span className="font-medium text-foreground">
-                      1–{filteredProposals.length}
-                    </span>
-                    <span className="text-muted-foreground">/Tổng:</span>
-                    <span className="font-semibold text-foreground">
-                      {filteredProposals.length}
-                    </span>
-                  </span>
-
-                  <div className="flex items-center border-l border-border pl-2">
-                    <div className="items-center gap-1 inline-flex">
-                      <button
-                        type="button"
-                        aria-label="Số bản ghi mỗi trang"
-                        className="inline-flex items-center gap-0.5 tabular-nums font-medium border border-border rounded bg-card text-foreground hover:bg-muted/60 h-6 px-2 text-xs"
-                      >
-                        50
-                        <ChevronDown className="w-3 h-3 text-muted-foreground ml-1" />
-                      </button>
-                      <span className="text-muted-foreground text-xs whitespace-nowrap hidden sm:inline">
-                        / trang
-                      </span>
-                    </div>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                <div className="flex items-center gap-0.5">
+              {/* Table / Grid Footer Pagination */}
+              <div className="p-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground shrink-0 bg-card">
+                <div>
+                  Hiển thị <span className="font-semibold text-foreground">{filteredProposals.length}</span> / {proposals.length} đề xuất
+                  {selectedIds.length > 0 && (
+                    <span className="ml-2 font-medium text-primary">
+                      (Đã chọn {selectedIds.length})
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
                     disabled
-                    className="inline-flex items-center justify-center border bg-background h-6 w-6 p-0 border-border rounded text-muted-foreground opacity-50 cursor-not-allowed"
+                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
                   >
                     <ChevronsLeft className="w-3.5 h-3.5" />
                   </button>
                   <button
                     type="button"
                     disabled
-                    className="inline-flex items-center justify-center border bg-background h-6 w-6 p-0 border-border rounded text-muted-foreground opacity-50 cursor-not-allowed"
+                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
-                  <div className="flex items-center gap-0.5 px-1">
-                    <span className="h-6 min-w-[24px] flex items-center justify-center rounded bg-primary text-primary-foreground text-xs font-bold px-1 tabular-nums">
-                      1
-                    </span>
-                    <span className="text-muted-foreground text-xs">/</span>
-                    <span className="text-xs font-medium text-muted-foreground tabular-nums">
-                      1
-                    </span>
-                  </div>
+                  <span className="px-2.5 py-1 bg-primary text-primary-foreground font-semibold rounded-lg text-xs">
+                    1
+                  </span>
                   <button
                     type="button"
                     disabled
-                    className="inline-flex items-center justify-center border bg-background h-6 w-6 p-0 border-border rounded text-muted-foreground opacity-50 cursor-not-allowed"
+                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                   <button
                     type="button"
                     disabled
-                    className="inline-flex items-center justify-center border bg-background h-6 w-6 p-0 border-border rounded text-muted-foreground opacity-50 cursor-not-allowed"
+                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
                   >
                     <ChevronsRight className="w-3.5 h-3.5" />
                   </button>
@@ -1056,26 +1092,26 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
         </div>
       </div>
 
-      {/* Slide-over Detail Drawer */}
+      {/* Proposal Detail Drawer */}
       {selectedProposalForDetail && (
         <CostProposalDetailDrawer
           proposal={selectedProposalForDetail}
           currentIndex={currentDetailIndex}
           totalCount={filteredProposals.length}
           onClose={() => setSelectedProposalForDetail(null)}
-          onPrev={handleDrawerPrev}
-          onNext={handleDrawerNext}
-          onEdit={(prop) => {
+          onEdit={(p: CostProposal) => {
             setSelectedProposalForDetail(null);
-            handleOpenEditDrawer(prop);
+            handleOpenEditDrawer(p);
           }}
-          onDelete={handleDeleteProposal}
-          onCopy={handleCopyProposal}
-          onSubmitForApproval={handleSubmitForApproval}
+          onDelete={(id: string) => handleDeleteProposal(id)}
+          onCopy={(p: CostProposal) => handleCopyProposal(p)}
+          onSubmitForApproval={(id: string) => handleSubmitForApproval(id)}
+          onNext={handleDrawerNext}
+          onPrev={handleDrawerPrev}
         />
       )}
 
-      {/* Slide-over Form Drawer (Create & Edit) */}
+      {/* Proposal Form Drawer */}
       <CostProposalFormDrawer
         isOpen={isFormDrawerOpen}
         initialData={editingProposal}
@@ -1086,7 +1122,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
         onSubmit={handleFormSubmit}
       />
 
-      {/* Live Google Sheet Toast Notifications */}
+      {/* Toast Notifications */}
       {syncToastMessage && (
         <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-card border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-3 duration-300">
           <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
