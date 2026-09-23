@@ -49,6 +49,57 @@ export const employeeService = {
     }
   },
 
+  // Append a single new employee row to Google Sheet
+  async appendToSheet(employee: Employee): Promise<boolean> {
+    try {
+      const res = await fetch('/api/sheets/append-employee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee }),
+      });
+      const data = await res.json();
+      return !!data.success;
+    } catch (err) {
+      console.error('Failed to append employee to Google Sheet:', err);
+      return false;
+    }
+  },
+
+  // Update a single employee row directly in Google Sheet
+  async updateInSheet(employee: Employee): Promise<boolean> {
+    try {
+      const res = await fetch('/api/sheets/update-employee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employee }),
+      });
+      const data = await res.json();
+      return !!data.success;
+    } catch (err) {
+      console.error('Failed to update employee in Google Sheet:', err);
+      return false;
+    }
+  },
+
+  // Delete specific rows from Google Sheet by identifiers (code, username, or name)
+  async deleteFromSheet(identifiers: string[] | string): Promise<boolean> {
+    const codes = Array.isArray(identifiers) ? identifiers : [identifiers];
+    if (codes.length === 0) return true;
+    try {
+      const res = await fetch('/api/sheets/delete-employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codes }),
+      });
+      const data = await res.json();
+      return !!data.success;
+    } catch (err) {
+      console.error('Failed to delete employees from Google Sheet:', err);
+      return false;
+    }
+  },
+
+  // Full 2-way sync / rewrite fallback
   async syncAllToSheet(employees: Employee[]): Promise<boolean> {
     this.saveToCache(employees);
     try {

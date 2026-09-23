@@ -318,6 +318,9 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
     if (!confirm(`Bạn có chắc chắn muốn xóa ${count} nhân viên đã chọn?`)) return;
 
     const idSet = new Set(selectedIds);
+    const toDelete = employees.filter((e) => idSet.has(e.id));
+    const identifiersToDelete = toDelete.map((e) => e.code || e.username || e.name);
+
     const updatedList = employees.filter((e) => !idSet.has(e.id));
     setEmployees(updatedList);
     employeeService.saveToCache(updatedList);
@@ -328,7 +331,8 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
     setSelectedIds([]);
 
     setIsSyncing(true);
-    const ok = await employeeService.syncAllToSheet(updatedList);
+    // Delete ONLY selected rows from Google Sheet
+    const ok = await employeeService.deleteFromSheet(identifiersToDelete);
     setIsSyncing(false);
     if (ok) {
       showToast(`Đã xóa thành công ${count} nhân viên và đồng bộ Google Sheet!`);
@@ -341,35 +345,31 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
   const handleFormSubmit = async (formData: Partial<Employee>) => {
     if (editingEmployee) {
       // Update existing
+      const updatedEmployee = {
+        ...editingEmployee,
+        ...formData,
+        updatedAt: new Date().toLocaleDateString('vi-VN'),
+      } as Employee;
+
       const updatedList = employees.map((e) =>
-        e.id === editingEmployee.id
-          ? {
-              ...e,
-              ...formData,
-              updatedAt: new Date().toLocaleDateString('vi-VN'),
-            }
-          : e
+        e.id === editingEmployee.id ? updatedEmployee : e
       );
       setEmployees(updatedList);
       employeeService.saveToCache(updatedList);
 
       if (selectedEmployeeForDetail?.id === editingEmployee.id) {
-        setSelectedEmployeeForDetail({
-          ...selectedEmployeeForDetail,
-          ...formData,
-          updatedAt: new Date().toLocaleDateString('vi-VN'),
-        } as Employee);
+        setSelectedEmployeeForDetail(updatedEmployee);
       }
 
       setIsFormDrawerOpen(false);
       setEditingEmployee(null);
 
-      // Sync to sheet
+      // Update ONLY this specific row on Google Sheet
       setIsSyncing(true);
-      const ok = await employeeService.syncAllToSheet(updatedList);
+      const ok = await employeeService.updateInSheet(updatedEmployee);
       setIsSyncing(false);
       if (ok) {
-        showToast(`Đã cập nhật ${editingEmployee.name} và đồng bộ lên Google Sheet!`);
+        showToast(`Đã cập nhật ${editingEmployee.name} trên Google Sheet!`);
       } else {
         showToast('Đã lưu thông tin nội bộ.', true);
       }
@@ -450,12 +450,12 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       setIsFormDrawerOpen(false);
       setEditingEmployee(null);
 
-      // Sync to sheet
+      // Append ONLY 1 new row to Google Sheet
       setIsSyncing(true);
-      const ok = await employeeService.syncAllToSheet(updatedList);
+      const ok = await employeeService.appendToSheet(created);
       setIsSyncing(false);
       if (ok) {
-        showToast(`Đã thêm nhân viên ${created.name} và đồng bộ lên Google Sheet!`);
+        showToast(`Đã thêm nhân viên ${created.name} vào Google Sheet!`);
       } else {
         showToast('Đã thêm nhân viên vào bộ nhớ tạm.', true);
       }
@@ -465,6 +465,10 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
   // Delete
   const handleDeleteEmployee = async (id: string) => {
     const deleted = employees.find((e) => e.id === id);
+    if (!deleted) return;
+    const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa nhân viên "${deleted.name}"?`);
+    if (!confirmDelete) return;
+
     const updatedList = employees.filter((e) => e.id !== id);
     setEmployees(updatedList);
     employeeService.saveToCache(updatedList);
@@ -474,7 +478,8 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
     setSelectedIds((prev) => prev.filter((i) => i !== id));
 
     setIsSyncing(true);
-    const ok = await employeeService.syncAllToSheet(updatedList);
+    // Delete ONLY this specific row from Google Sheet
+    const ok = await employeeService.deleteFromSheet([deleted.code || deleted.username || deleted.name]);
     setIsSyncing(false);
     if (ok) {
       showToast(`Đã xóa ${deleted?.name || 'nhân viên'} và đồng bộ Google Sheet!`);

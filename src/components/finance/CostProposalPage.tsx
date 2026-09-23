@@ -377,10 +377,13 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
     // Delete multiple selected proposals
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
-    const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} đề xuất đã chọn?`);
+    const count = selectedIds.length;
+    const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa ${count} đề xuất đã chọn?`);
     if (!confirmDelete) return;
 
-    const count = selectedIds.length;
+    const toDelete = proposals.filter((p) => selectedIds.includes(p.id));
+    const codesToDelete = toDelete.map((p) => p.code);
+
     const updatedList = proposals.filter((p) => !selectedIds.includes(p.id));
     setProposals(updatedList);
     googleSheetsService.saveToCache(updatedList);
@@ -390,7 +393,8 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
     setSelectedIds([]);
 
     setIsSyncing(true);
-    const ok = await googleSheetsService.syncAllToSheet(updatedList);
+    // Delete ONLY selected rows from Google Sheet
+    const ok = await googleSheetsService.deleteFromSheet(codesToDelete);
     setIsSyncing(false);
     if (ok) {
       showToast(`Đã xóa thành công ${count} đề xuất và đồng bộ Google Sheet!`);

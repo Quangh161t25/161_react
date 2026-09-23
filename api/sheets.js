@@ -2,8 +2,13 @@ import {
   fetchProposalsFromSheet,
   saveAllProposalsToSheet,
   appendProposalToSheet,
+  updateProposalInSheet,
+  deleteProposalsFromSheet,
   fetchEmployeesFromSheet,
   saveAllEmployeesToSheet,
+  appendEmployeeToSheet,
+  updateEmployeeInSheet,
+  deleteEmployeesFromSheet,
   fetchSystemFromSheet,
 } from '../server/sheetsService.mjs';
 
@@ -29,9 +34,31 @@ export default async function handler(req, res) {
       });
     }
 
+    // --- PROPOSALS ---
     if (action === 'proposals' && req.method === 'GET') {
       const proposals = await fetchProposalsFromSheet();
       return res.status(200).json({ success: true, data: proposals });
+    }
+
+    if ((action === 'proposals' || action === 'append-proposal') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const proposal = body.proposal || body;
+      await appendProposalToSheet(proposal);
+      return res.status(200).json({ success: true, proposal });
+    }
+
+    if ((action === 'proposals' && req.method === 'PUT') || (action === 'update-proposal' && req.method === 'POST')) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const proposal = body.proposal || body;
+      await updateProposalInSheet(proposal);
+      return res.status(200).json({ success: true, proposal });
+    }
+
+    if ((action === 'proposals' && req.method === 'DELETE') || (action === 'delete-proposals' && (req.method === 'POST' || req.method === 'DELETE'))) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const codes = body.codes || (body.code ? [body.code] : []);
+      const result = await deleteProposalsFromSheet(codes);
+      return res.status(200).json({ success: true, count: result.count });
     }
 
     if (action === 'save-all' && req.method === 'POST') {
@@ -41,16 +68,31 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, count: result.count });
     }
 
-    if (action === 'proposals' && req.method === 'POST') {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
-      const proposal = body.proposal || body;
-      await appendProposalToSheet(proposal);
-      return res.status(200).json({ success: true, proposal });
-    }
-
+    // --- EMPLOYEES ---
     if (action === 'employees' && req.method === 'GET') {
       const employees = await fetchEmployeesFromSheet();
       return res.status(200).json({ success: true, data: employees });
+    }
+
+    if ((action === 'employees' || action === 'append-employee') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const employee = body.employee || body;
+      await appendEmployeeToSheet(employee);
+      return res.status(200).json({ success: true, employee });
+    }
+
+    if ((action === 'employees' && req.method === 'PUT') || (action === 'update-employee' && req.method === 'POST')) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const employee = body.employee || body;
+      await updateEmployeeInSheet(employee);
+      return res.status(200).json({ success: true, employee });
+    }
+
+    if ((action === 'employees' && req.method === 'DELETE') || (action === 'delete-employees' && (req.method === 'POST' || req.method === 'DELETE'))) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const codes = body.codes || (body.code ? [body.code] : (body.identifiers || []));
+      const result = await deleteEmployeesFromSheet(codes);
+      return res.status(200).json({ success: true, count: result.count });
     }
 
     if (action === 'save-employees' && req.method === 'POST') {
@@ -60,6 +102,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, count: result.count });
     }
 
+    // --- SYSTEM ---
     if (action === 'system' && req.method === 'GET') {
       const systemModules = await fetchSystemFromSheet();
       return res.status(200).json({ success: true, data: systemModules });

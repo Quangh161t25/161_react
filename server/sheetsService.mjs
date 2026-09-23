@@ -55,6 +55,57 @@ export async function getAccessToken() {
 
 // ---------------------- COST PROPOSALS (DE XUAT CHI PHI) ----------------------
 
+export const PROPOSALS_HEADERS = [
+  'Mã đề xuất',
+  'Tiêu đề',
+  'Ngày đề xuất',
+  'Hạn thanh toán',
+  'Người đề xuất',
+  'Phòng ban',
+  'Tài khoản',
+  'Đối tượng thụ hưởng',
+  'Tổng tiền (VND)',
+  'Vượt kế hoạch',
+  'Lý do vượt',
+  'Trạng thái duyệt',
+  'Trạng thái',
+  'Lý do đề xuất',
+  'Chi tiết các dòng chi phí (JSON)',
+];
+
+export function proposalToRow(p) {
+  const approvalText =
+    p.approvalStatus === 'approved'
+      ? 'Đã duyệt'
+      : p.approvalStatus === 'rejected'
+      ? 'Từ chối'
+      : 'Chờ duyệt';
+  const statusText = p.status === 'approved' ? 'Đã duyệt' : 'Nháp';
+  const isOverText = p.isOverBudget ? 'Có' : 'Không';
+  const lineItemsJson =
+    typeof p.lineItems === 'string'
+      ? p.lineItems
+      : JSON.stringify(p.lineItems || []);
+
+  return [
+    p.code,
+    p.title,
+    p.proposalDate,
+    p.dueDate,
+    p.proposer,
+    p.department,
+    p.account,
+    p.beneficiary || '',
+    p.amount,
+    isOverText,
+    p.overBudgetReason || '',
+    approvalText,
+    statusText,
+    p.reason || '',
+    lineItemsJson,
+  ];
+}
+
 export async function fetchProposalsFromSheet() {
   const token = await getAccessToken();
   const res = await fetch(
@@ -117,58 +168,8 @@ export async function fetchProposalsFromSheet() {
 
 export async function saveAllProposalsToSheet(proposals) {
   const token = await getAccessToken();
-  const proposalsHeaders = [
-    'Mã đề xuất',
-    'Tiêu đề',
-    'Ngày đề xuất',
-    'Hạn thanh toán',
-    'Người đề xuất',
-    'Phòng ban',
-    'Tài khoản',
-    'Đối tượng thụ hưởng',
-    'Tổng tiền (VND)',
-    'Vượt kế hoạch',
-    'Lý do vượt',
-    'Trạng thái duyệt',
-    'Trạng thái',
-    'Lý do đề xuất',
-    'Chi tiết các dòng chi phí (JSON)',
-  ];
-
   const sortedForSheet = [...proposals].sort((a, b) => a.code.localeCompare(b.code));
-
-  const proposalsRows = sortedForSheet.map((p) => {
-    const approvalText =
-      p.approvalStatus === 'approved'
-        ? 'Đã duyệt'
-        : p.approvalStatus === 'rejected'
-        ? 'Từ chối'
-        : 'Chờ duyệt';
-    const statusText = p.status === 'approved' ? 'Đã duyệt' : 'Nháp';
-    const isOverText = p.isOverBudget ? 'Có' : 'Không';
-    const lineItemsJson =
-      typeof p.lineItems === 'string'
-        ? p.lineItems
-        : JSON.stringify(p.lineItems || []);
-
-    return [
-      p.code,
-      p.title,
-      p.proposalDate,
-      p.dueDate,
-      p.proposer,
-      p.department,
-      p.account,
-      p.beneficiary || '',
-      p.amount,
-      isOverText,
-      p.overBudgetReason || '',
-      approvalText,
-      statusText,
-      p.reason || '',
-      lineItemsJson,
-    ];
-  });
+  const proposalsRows = sortedForSheet.map((p) => proposalToRow(p));
 
   await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/DeXuatChiPhi!A1:O1000:clear`,
@@ -192,7 +193,7 @@ export async function saveAllProposalsToSheet(proposals) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        values: [proposalsHeaders, ...proposalsRows],
+        values: [PROPOSALS_HEADERS, ...proposalsRows],
       }),
     }
   );
@@ -220,36 +221,7 @@ export async function saveAllProposalsToSheet(proposals) {
 
 export async function appendProposalToSheet(proposal) {
   const token = await getAccessToken();
-  const approvalText =
-    proposal.approvalStatus === 'approved'
-      ? 'Đã duyệt'
-      : proposal.approvalStatus === 'rejected'
-      ? 'Từ chối'
-      : 'Chờ duyệt';
-  const statusText = proposal.status === 'approved' ? 'Đã duyệt' : 'Nháp';
-  const isOverText = proposal.isOverBudget ? 'Có' : 'Không';
-  const lineItemsJson =
-    typeof proposal.lineItems === 'string'
-      ? proposal.lineItems
-      : JSON.stringify(proposal.lineItems || []);
-
-  const row = [
-    proposal.code,
-    proposal.title,
-    proposal.proposalDate,
-    proposal.dueDate,
-    proposal.proposer,
-    proposal.department,
-    proposal.account,
-    proposal.beneficiary || '',
-    proposal.amount,
-    isOverText,
-    proposal.overBudgetReason || '',
-    approvalText,
-    statusText,
-    proposal.reason || '',
-    lineItemsJson,
-  ];
+  const row = proposalToRow(proposal);
 
   const res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/DeXuatChiPhi!A:O:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
@@ -269,6 +241,115 @@ export async function appendProposalToSheet(proposal) {
   }
 
   return { success: true };
+}
+
+export async function updateProposalInSheet(proposal) {
+  const token = await getAccessToken();
+  const dataRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/DeXuatChiPhi!A1:A`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await dataRes.json();
+  const rows = data.values || [];
+
+  let rowIndex = -1;
+  rows.forEach((r, idx) => {
+    if (idx === 0) return;
+    if (r[0] === proposal.code) {
+      rowIndex = idx + 1; // 1-based row number
+    }
+  });
+
+  const rowData = proposalToRow(proposal);
+
+  if (rowIndex > 0) {
+    const putRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/DeXuatChiPhi!A${rowIndex}:O${rowIndex}?valueInputOption=USER_ENTERED`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: [rowData] }),
+      }
+    );
+    if (!putRes.ok) {
+      const err = await putRes.text();
+      throw new Error(`Update proposal failed: ${err}`);
+    }
+  } else {
+    await appendProposalToSheet(proposal);
+  }
+
+  return { success: true };
+}
+
+export async function deleteProposalsFromSheet(codes) {
+  const codeList = Array.isArray(codes) ? codes : [codes];
+  if (codeList.length === 0) return { success: true, count: 0 };
+
+  const token = await getAccessToken();
+  const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const meta = await metaRes.json();
+  const deXuatSheet = (meta.sheets || []).find((s) => s.properties.title === 'DeXuatChiPhi');
+  if (!deXuatSheet) throw new Error('Sheet DeXuatChiPhi not found');
+  const sheetId = deXuatSheet.properties.sheetId;
+
+  const dataRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/DeXuatChiPhi!A1:A`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await dataRes.json();
+  const rows = data.values || [];
+
+  const indicesToDelete = [];
+  rows.forEach((r, idx) => {
+    if (idx === 0) return; // skip header
+    const code = r[0];
+    if (code && codeList.includes(code)) {
+      indicesToDelete.push(idx); // 0-based index
+    }
+  });
+
+  if (indicesToDelete.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Sort descending so deletion doesn't shift earlier indices
+  indicesToDelete.sort((a, b) => b - a);
+
+  const requests = indicesToDelete.map((rowIdx) => ({
+    deleteDimension: {
+      range: {
+        sheetId,
+        dimension: 'ROWS',
+        startIndex: rowIdx,
+        endIndex: rowIdx + 1,
+      },
+    },
+  }));
+
+  const batchRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ requests }),
+    }
+  );
+
+  if (!batchRes.ok) {
+    const err = await batchRes.text();
+    throw new Error(`Delete proposals failed: ${err}`);
+  }
+
+  return { success: true, count: indicesToDelete.length };
 }
 
 // ---------------------- EMPLOYEES (NHAN VIEN - 47 COLUMNS) ----------------------
@@ -390,45 +471,6 @@ export function employeeTo47Row(e) {
 }
 
 export function rowToEmployee(r, idx) {
-  // If row has old format (Mã NV at r[0])
-  if (r[0] && r[0].startsWith('emp-')) {
-    let status = 'working';
-    const rawStatus = (r[7] || '').toLowerCase();
-    if (rawStatus.includes('thử việc') || rawStatus === 'probation') status = 'probation';
-    else if (rawStatus.includes('nghỉ việc') || rawStatus === 'resigned') status = 'resigned';
-    else if (rawStatus.includes('tạm hoãn') || rawStatus === 'suspended') status = 'suspended';
-
-    return {
-      id: String(idx + 1),
-      code: r[0],
-      name: r[1] || '',
-      username: r[2] || '',
-      password: '••••••••',
-      phone: r[3] || '',
-      email: r[4] || '',
-      role: r[5] || 'Nhân viên',
-      department: r[6] || 'Phòng Kỹ thuật',
-      status,
-      gender: r[8] === 'Nữ' ? 'Nữ' : 'Nam',
-      dob: r[9] || '',
-      idCardNumber: r[10] || '',
-      currentAddress: r[11] || '',
-      bankAccount: r[12] || '',
-      bankName: r[13] || '',
-      taxCode: r[14] || '',
-      socialInsuranceNumber: r[15] || '',
-      startDate: r[16] || '',
-      officialDate: r[17] || '',
-      educationLevel: r[18] || 'Đại học',
-      major: r[19] || '',
-      createdAt: r[20] || '',
-      updatedAt: r[21] || '',
-      subDepartment: r[22] || '—',
-      rank: Number(r[23]) || 1,
-      avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(r[1] || 'User')}&background=1d4ed8&color=fff`,
-    };
-  }
-
   // 47-column format (has password at r[2])
   if (r.length >= 47) {
     let status = 'working';
@@ -605,7 +647,6 @@ export async function saveAllEmployeesToSheet(employees) {
   await ensureNhanVienTabExists();
   const token = await getAccessToken();
 
-  // Ascending order in Google Sheet (emp-001, emp-002, ..., emp-009)
   const sortedForSheet = [...employees].sort((a, b) => (a.code || '').localeCompare(b.code || ''));
   const rows = sortedForSheet.map((e) => employeeTo47Row(e));
 
@@ -643,7 +684,6 @@ export async function saveAllEmployeesToSheet(employees) {
     throw new Error(`Write failed: ${err}`);
   }
 
-  // Update local file cache
   try {
     const tsPath = path.resolve(process.cwd(), 'src/data/employees.ts');
     const sortedForUi = [...employees]
@@ -685,6 +725,131 @@ export async function appendEmployeeToSheet(employee) {
   }
 
   return { success: true };
+}
+
+export async function updateEmployeeInSheet(employee) {
+  await ensureNhanVienTabExists();
+  const token = await getAccessToken();
+  const dataRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AZ`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await dataRes.json();
+  const rows = data.values || [];
+
+  let rowIndex = -1;
+  rows.forEach((r, idx) => {
+    if (idx === 0) return;
+    const code = r[12] || r[11] || '';
+    const username = r[1] || '';
+    const name = r[0] || '';
+    if (
+      (employee.code && (code === employee.code || r[0] === employee.code)) ||
+      (employee.username && username === employee.username) ||
+      (employee.name && name === employee.name)
+    ) {
+      rowIndex = idx + 1; // 1-based row index
+    }
+  });
+
+  const rowData = employeeTo47Row(employee);
+
+  if (rowIndex > 0) {
+    const putRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A${rowIndex}:AU${rowIndex}?valueInputOption=USER_ENTERED`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: [rowData] }),
+      }
+    );
+    if (!putRes.ok) {
+      const err = await putRes.text();
+      throw new Error(`Update employee failed: ${err}`);
+    }
+  } else {
+    await appendEmployeeToSheet(employee);
+  }
+
+  return { success: true };
+}
+
+export async function deleteEmployeesFromSheet(identifiers) {
+  const idList = Array.isArray(identifiers) ? identifiers : [identifiers];
+  if (idList.length === 0) return { success: true, count: 0 };
+
+  await ensureNhanVienTabExists();
+  const token = await getAccessToken();
+  const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const meta = await metaRes.json();
+  const nhanVienSheet = (meta.sheets || []).find((s) => s.properties.title === 'NhanVien');
+  if (!nhanVienSheet) throw new Error('Sheet NhanVien not found');
+  const sheetId = nhanVienSheet.properties.sheetId;
+
+  const dataRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AZ`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await dataRes.json();
+  const rows = data.values || [];
+
+  const indicesToDelete = [];
+  rows.forEach((r, idx) => {
+    if (idx === 0) return; // skip header
+    const code = r[12] || r[11] || '';
+    const username = r[1] || '';
+    const name = r[0] || '';
+    if (
+      idList.includes(code) ||
+      idList.includes(username) ||
+      idList.includes(name) ||
+      (r[0] && r[0].startsWith('emp-') && idList.includes(r[0]))
+    ) {
+      indicesToDelete.push(idx); // 0-based index
+    }
+  });
+
+  if (indicesToDelete.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Sort descending so deleting later rows does not shift index of earlier rows
+  indicesToDelete.sort((a, b) => b - a);
+
+  const requests = indicesToDelete.map((rowIdx) => ({
+    deleteDimension: {
+      range: {
+        sheetId,
+        dimension: 'ROWS',
+        startIndex: rowIdx,
+        endIndex: rowIdx + 1,
+      },
+    },
+  }));
+
+  const batchRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ requests }),
+    }
+  );
+
+  if (!batchRes.ok) {
+    const err = await batchRes.text();
+    throw new Error(`Delete employees failed: ${err}`);
+  }
+
+  return { success: true, count: indicesToDelete.length };
 }
 
 // ---------------------- SYSTEM (HE THONG) ----------------------

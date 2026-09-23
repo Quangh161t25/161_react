@@ -54,10 +54,10 @@ export const googleSheetsService = {
     }
   },
 
-  // Append a single proposal to Google Sheet
+  // Append a single proposal row to Google Sheet
   async appendToSheet(proposal: CostProposal): Promise<boolean> {
     try {
-      const res = await fetch('/api/sheets/proposals', {
+      const res = await fetch('/api/sheets/append-proposal', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ proposal }),
@@ -70,7 +70,41 @@ export const googleSheetsService = {
     }
   },
 
-  // Sync entire proposals list to Google Sheet
+  // Update a single proposal row directly in Google Sheet
+  async updateInSheet(proposal: CostProposal): Promise<boolean> {
+    try {
+      const res = await fetch('/api/sheets/update-proposal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proposal }),
+      });
+      const data = await res.json();
+      return !!data.success;
+    } catch (err) {
+      console.error('Failed to update proposal in Google Sheet:', err);
+      return false;
+    }
+  },
+
+  // Delete specific rows from Google Sheet by proposal codes
+  async deleteFromSheet(codes: string[] | string): Promise<boolean> {
+    const codeList = Array.isArray(codes) ? codes : [codes];
+    if (codeList.length === 0) return true;
+    try {
+      const res = await fetch('/api/sheets/delete-proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codes: codeList }),
+      });
+      const data = await res.json();
+      return !!data.success;
+    } catch (err) {
+      console.error('Failed to delete proposals from Google Sheet:', err);
+      return false;
+    }
+  },
+
+  // Full 2-way sync / rewrite fallback
   async syncAllToSheet(proposals: CostProposal[]): Promise<boolean> {
     this.saveToCache(proposals);
     try {
