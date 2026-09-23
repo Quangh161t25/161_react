@@ -6,10 +6,19 @@ const SPREADSHEET_ID = '1Cx_84szeCGKoLhCSqumeCzKLCErXg1YStQeI_Lrq4nw';
 const SERVICE_ACCOUNT_PATH = path.resolve(process.cwd(), 'service-account.json');
 
 export async function getAccessToken() {
-  if (!fs.existsSync(SERVICE_ACCOUNT_PATH)) {
-    throw new Error('service-account.json not found');
+  let serviceAccount;
+  if (process.env.GOOGLE_SERVICE_ACCOUNT) {
+    try {
+      serviceAccount = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT);
+    } catch (e) {
+      throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT JSON environment variable');
+    }
+  } else if (fs.existsSync(SERVICE_ACCOUNT_PATH)) {
+    serviceAccount = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, 'utf8'));
+  } else {
+    throw new Error('service-account.json not found and GOOGLE_SERVICE_ACCOUNT env not set');
   }
-  const serviceAccount = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, 'utf8'));
+
   const now = Math.floor(Date.now() / 1000);
   const claim = {
     iss: serviceAccount.client_email,
