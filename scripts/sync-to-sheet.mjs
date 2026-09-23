@@ -238,7 +238,7 @@ const FINANCE_MODULES = [
 
 // ---------------------- 3. TRANG CHU (5 MODULES) ----------------------
 const DASHBOARD_MODULES = [
-  { code: 'TQ', title: 'Tổng quan', desc: 'Thống kê nhân sự hôm nay và màn hình Live TV.', href: '/tong-quan' },
+  { code: 'TQ', title: 'Tổng quan', desc: 'Bảng điều khiển và thống kê tổng hợp hiệu quả vận hành', href: '/tong-quan' },
   { code: 'TC', title: 'Tài chính', desc: 'Thu chi, công nợ và báo cáo tài chính.', href: '/tai-chinh' },
   { code: 'HT', title: 'Hệ thống', desc: 'Cấu hình, phân quyền và nhân sự.', href: '/he-thong' },
   { code: 'TTBQ', title: 'Thông tin bản quyền', desc: 'Quản lý sở hữu trí tuệ và thông tin nhà phát triển.', href: '/thong-tin-ban-quyen' },
@@ -256,10 +256,11 @@ const SYSTEM_MODULES = [
   { group: 'Bảo mật & Cấu hình', code: 'SL', title: 'Sao lưu dữ liệu', desc: 'Xuất dữ liệu ra Excel và tải bản sao lưu.', href: '/he-thong/sao-luu', guideHref: '' }
 ];
 
-// ---------------------- 5. NHAN VIEN (46 COLUMNS, 9 EMPLOYEES) ----------------------
-const EMPLOYEE_HEADERS_46 = [
+// ---------------------- 5. NHAN VIEN (47 COLUMNS, 9 EMPLOYEES) ----------------------
+const EMPLOYEE_HEADERS_47 = [
   'Họ và tên',
   'Tên đăng nhập',
+  'Mật khẩu',
   'SĐT',
   'Chức vụ',
   'Phòng ban',
@@ -311,6 +312,7 @@ const EMPLOYEES_RAW = [
     code: 'emp-001',
     name: 'Bùi Đức Thắng',
     username: 'thangbd',
+    password: 'Password@123',
     phone: '0929 012 345',
     email: 'thang.bui@company.vn',
     role: 'Trưởng Nhóm Trợ lý',
@@ -357,6 +359,7 @@ const EMPLOYEES_RAW = [
     code: 'emp-002',
     name: 'Nguyễn Thị Minh Hạnh',
     username: 'hanhntm',
+    password: 'Password@456',
     phone: '0988 123 456',
     email: 'hanh.nguyen@company.vn',
     role: 'Kế toán trưởng',
@@ -403,6 +406,7 @@ const EMPLOYEES_RAW = [
     code: 'emp-003',
     name: 'Trần Hoàng Nam',
     username: 'namth',
+    password: 'Password@789',
     phone: '0915 789 012',
     email: 'nam.tran@company.vn',
     role: 'Trưởng phòng Kinh doanh',
@@ -449,6 +453,7 @@ const EMPLOYEES_RAW = [
     code: 'emp-004',
     name: 'Lê Thu Trang',
     username: 'tranglt',
+    password: 'Password@321',
     phone: '0943 567 890',
     email: 'trang.le@company.vn',
     role: 'Chuyên viên Nhân sự',
@@ -495,6 +500,7 @@ const EMPLOYEES_RAW = [
     code: 'emp-005',
     name: 'Hoàng Quốc Việt',
     username: 'viethq',
+    password: 'Password@654',
     phone: '0962 334 455',
     email: 'viet.hoang@company.vn',
     role: 'Kỹ sư Phần mềm Senior',
@@ -541,6 +547,7 @@ const EMPLOYEES_RAW = [
     code: 'emp-006',
     name: 'Phạm Hồng Nhung',
     username: 'nhungph',
+    password: 'Password@987',
     phone: '0971 889 900',
     email: 'nhung.pham@company.vn',
     role: 'Chuyên viên Marketing',
@@ -587,6 +594,7 @@ const EMPLOYEES_RAW = [
     code: 'emp-007',
     name: 'Đặng Tuấn Anh',
     username: 'anhdt',
+    password: 'Password@2026',
     phone: '0936 112 244',
     email: 'anh.dang@company.vn',
     role: 'Trưởng phòng Kỹ thuật',
@@ -633,6 +641,7 @@ const EMPLOYEES_RAW = [
     code: 'emp-008',
     name: 'Vũ Hải Đăng',
     username: 'dangvh',
+    password: 'Password@2024',
     phone: '0902 334 556',
     email: 'dang.vu@company.vn',
     role: 'Nhân viên kinh doanh',
@@ -679,6 +688,7 @@ const EMPLOYEES_RAW = [
     code: 'emp-009',
     name: 'Nguyễn Văn Hoàng',
     username: 'hoangnv',
+    password: 'Password@2026!',
     phone: '0909 112 334',
     email: 'hoang.nguyen@company.vn',
     role: 'Chuyên viên Phân tích Dữ liệu',
@@ -723,10 +733,11 @@ const EMPLOYEES_RAW = [
   }
 ];
 
-function employeeTo46Row(e) {
+function employeeTo47Row(e) {
   return [
     e.name || '',
     e.username || '',
+    e.password || '123456',
     e.phone || '',
     e.role || '',
     e.department || '',
@@ -869,19 +880,19 @@ async function syncAll() {
   });
   console.log(`✓ Synced "HeThong" tab with ${systemRows.length} records (6 columns).`);
 
-  // 6. Populate "NhanVien" (46 columns, 9 rows)
-  const empRows = EMPLOYEES_RAW.map(e => employeeTo46Row(e));
+  // 6. Populate "NhanVien" (47 columns, 9 rows)
+  const empRows = EMPLOYEES_RAW.map(e => employeeTo47Row(e));
 
   await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AZ1000:clear`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   });
-  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AT${empRows.length + 1}?valueInputOption=USER_ENTERED`, {
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AU${empRows.length + 1}?valueInputOption=USER_ENTERED`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ values: [EMPLOYEE_HEADERS_46, ...empRows] })
+    body: JSON.stringify({ values: [EMPLOYEE_HEADERS_47, ...empRows] })
   });
-  console.log(`✓ Synced "NhanVien" tab with ${empRows.length} records (46 columns).`);
+  console.log(`✓ Synced "NhanVien" tab with ${empRows.length} records (47 columns including Mật khẩu).`);
 
   // Also update local mock data cache files
   const mockCostProposalsUi = [...COST_PROPOSALS].sort((a, b) => b.code.localeCompare(a.code)).map((p, idx) => ({

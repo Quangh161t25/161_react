@@ -47,4 +47,6 @@ export interface Employee {
   healthInsuranceNumber?: string;
   taxCode?: string;
   isActiveAccount?: boolean;
+  password?: string;
 }
+

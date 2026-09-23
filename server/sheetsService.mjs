@@ -271,11 +271,12 @@ export async function appendProposalToSheet(proposal) {
   return { success: true };
 }
 
-// ---------------------- EMPLOYEES (NHAN VIEN - 46 COLUMNS) ----------------------
+// ---------------------- EMPLOYEES (NHAN VIEN - 47 COLUMNS) ----------------------
 
-export const EMPLOYEE_HEADERS_46 = [
+export const EMPLOYEE_HEADERS_47 = [
   'Họ và tên',
   'Tên đăng nhập',
+  'Mật khẩu',
   'SĐT',
   'Chức vụ',
   'Phòng ban',
@@ -322,7 +323,7 @@ export const EMPLOYEE_HEADERS_46 = [
   'Tài khoản hoạt động',
 ];
 
-export function employeeTo46Row(e) {
+export function employeeTo47Row(e) {
   const statusText =
     e.status === 'working'
       ? 'Đang làm việc'
@@ -340,6 +341,7 @@ export function employeeTo46Row(e) {
   return [
     e.name || '',
     e.username || '',
+    e.password || '123456',
     e.phone || '',
     e.role || '',
     e.department || '',
@@ -387,7 +389,7 @@ export function employeeTo46Row(e) {
   ];
 }
 
-export function row46ToEmployee(r, idx) {
+export function rowToEmployee(r, idx) {
   // If row has old format (Mã NV at r[0])
   if (r[0] && r[0].startsWith('emp-')) {
     let status = 'working';
@@ -401,6 +403,7 @@ export function row46ToEmployee(r, idx) {
       code: r[0],
       name: r[1] || '',
       username: r[2] || '',
+      password: '••••••••',
       phone: r[3] || '',
       email: r[4] || '',
       role: r[5] || 'Nhân viên',
@@ -426,7 +429,68 @@ export function row46ToEmployee(r, idx) {
     };
   }
 
-  // New 46 columns format
+  // 47-column format (has password at r[2])
+  if (r.length >= 47) {
+    let status = 'working';
+    const rawStatus = (r[9] || '').toLowerCase();
+    if (rawStatus.includes('thử việc') || rawStatus === 'probation') status = 'probation';
+    else if (rawStatus.includes('nghỉ việc') || rawStatus === 'resigned') status = 'resigned';
+    else if (rawStatus.includes('tạm hoãn') || rawStatus === 'suspended') status = 'suspended';
+
+    const code = r[12] || `emp-${String(idx + 1).padStart(3, '0')}`;
+    const name = r[0] || '';
+
+    return {
+      id: String(idx + 1),
+      code,
+      name,
+      username: r[1] || '',
+      password: r[2] || '123456',
+      phone: r[3] || '',
+      role: r[4] || 'Nhân viên',
+      department: r[5] || 'Phòng Kỹ thuật',
+      subDepartment: r[6] || '—',
+      email: r[7] || '',
+      gender: r[8] === 'Nữ' ? 'Nữ' : 'Nam',
+      status,
+      createdAt: r[10] || '',
+      updatedAt: r[11] || '',
+      avatarUrl: r[13] || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=1d4ed8&color=fff`,
+      dob: r[14] || '',
+      maritalStatus: r[15] || 'Độc thân',
+      nationality: r[16] || 'Việt Nam',
+      ethnicity: r[17] || 'Kinh',
+      religion: r[18] || 'Không',
+      hometown: r[19] || '',
+      rank: Number(r[22]) || 1,
+      startDate: r[23] || '',
+      officialDate: r[24] || '',
+      resignationDate: r[25] || '',
+      resignationReason: r[26] || '',
+      idCardNumber: r[27] || '',
+      idCardDate: r[28] || '',
+      idCardPlace: r[29] || '',
+      permanentAddress: r[30] || '',
+      currentAddress: r[31] || '',
+      personalEmail: r[32] || '',
+      emergencyContactName: r[33] || '',
+      emergencyContactPhone: r[34] || '',
+      emergencyContactRelation: r[35] || '',
+      educationLevel: r[36] || 'Đại học',
+      major: r[37] || '',
+      school: r[38] || '',
+      bankAccount: r[39] || '',
+      bankAccountHolder: r[40] || (name ? name.toUpperCase() : ''),
+      bankName: r[41] || '',
+      bankBranch: r[42] || '',
+      socialInsuranceNumber: r[43] || '',
+      healthInsuranceNumber: r[44] || '',
+      taxCode: r[45] || '',
+      isActiveAccount: !(r[46] || '').toLowerCase().includes('khoá'),
+    };
+  }
+
+  // 46-column format (without password)
   let status = 'working';
   const rawStatus = (r[8] || '').toLowerCase();
   if (rawStatus.includes('thử việc') || rawStatus === 'probation') status = 'probation';
@@ -441,6 +505,7 @@ export function row46ToEmployee(r, idx) {
     code,
     name,
     username: r[1] || '',
+    password: '••••••••',
     phone: r[2] || '',
     role: r[3] || 'Nhân viên',
     department: r[4] || 'Phòng Kỹ thuật',
@@ -528,8 +593,8 @@ export async function fetchEmployeesFromSheet() {
   const rows = data.values || [];
 
   const employees = rows
-    .filter((r) => r && (r[0] || r[11]))
-    .map((r, idx) => row46ToEmployee(r, idx));
+    .filter((r) => r && (r[0] || r[11] || r[12]))
+    .map((r, idx) => rowToEmployee(r, idx));
 
   // Sort descending for UI display
   employees.sort((a, b) => (b.code || '').localeCompare(a.code || ''));
@@ -542,7 +607,7 @@ export async function saveAllEmployeesToSheet(employees) {
 
   // Ascending order in Google Sheet (emp-001, emp-002, ..., emp-009)
   const sortedForSheet = [...employees].sort((a, b) => (a.code || '').localeCompare(b.code || ''));
-  const rows = sortedForSheet.map((e) => employeeTo46Row(e));
+  const rows = sortedForSheet.map((e) => employeeTo47Row(e));
 
   // Clear existing
   await fetch(
@@ -558,7 +623,7 @@ export async function saveAllEmployeesToSheet(employees) {
 
   // Write new
   const writeRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AT${
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AU${
       rows.length + 1
     }?valueInputOption=USER_ENTERED`,
     {
@@ -568,7 +633,7 @@ export async function saveAllEmployeesToSheet(employees) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        values: [EMPLOYEE_HEADERS_46, ...rows],
+        values: [EMPLOYEE_HEADERS_47, ...rows],
       }),
     }
   );
@@ -600,10 +665,10 @@ export async function saveAllEmployeesToSheet(employees) {
 export async function appendEmployeeToSheet(employee) {
   await ensureNhanVienTabExists();
   const token = await getAccessToken();
-  const row = employeeTo46Row(employee);
+  const row = employeeTo47Row(employee);
 
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A:AT:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A:AU:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
     {
       method: 'POST',
       headers: {

@@ -245,6 +245,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         socialInsuranceNumber: formData.socialInsuranceNumber || '',
         healthInsuranceNumber: formData.healthInsuranceNumber || '',
         taxCode: formData.taxCode || '',
+        password: formData.password || '123456',
         isActiveAccount: formData.status !== 'resigned',
       };
 
@@ -309,6 +310,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
     const headers = [
       'Họ và tên',
       'Tên đăng nhập',
+      'Mật khẩu',
       'SĐT',
       'Chức vụ',
       'Phòng ban',
@@ -355,6 +357,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
     const rows = filteredEmployees.map((e) => [
       `"${e.name}"`,
       e.username || '',
+      `"${e.password || ''}"`,
       `"${e.phone}"`,
       `"${e.role}"`,
       `"${e.department}"`,
@@ -871,6 +874,11 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                           Tên đăng nhập
                         </th>
 
+                        {/* Mật khẩu */}
+                        <th className="px-4 py-2.5 border-b border-r border-border whitespace-nowrap min-w-[140px]">
+                          Mật khẩu
+                        </th>
+
                         {/* 3. SĐT */}
                         <th className="px-4 py-2.5 border-b border-r border-border whitespace-nowrap min-w-[150px]">
                           SĐT
@@ -1139,6 +1147,11 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                           {/* 2. Sticky Username */}
                           <td className="px-4 py-3 sticky left-[264px] z-[1] border-r border-border bg-card group-hover:bg-muted transition-colors">
                             <span className="text-muted-foreground font-mono">{emp.username || '—'}</span>
+                          </td>
+
+                          {/* Mật khẩu */}
+                          <td className="px-4 py-3 border-r border-border/40 font-mono text-muted-foreground">
+                            {emp.password ? emp.password : '••••••••'}
                           </td>
 
                           {/* 3. Phone */}

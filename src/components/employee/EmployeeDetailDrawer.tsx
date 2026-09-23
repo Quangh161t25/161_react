@@ -20,6 +20,9 @@ import {
   AlertCircle,
   Copy,
   Check,
+  Eye,
+  EyeOff,
+  KeyRound,
 } from 'lucide-react';
 import { Employee } from '../../types/employee';
 
@@ -47,6 +50,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
   const [activeTab, setActiveTab] = useState<'info' | 'job' | 'bank_insurance' | 'education'>('info');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleCopy = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
@@ -308,6 +312,56 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                 <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-1">
                   <span className="text-[11px] font-medium text-muted-foreground">Quê quán</span>
                   <p className="text-xs font-semibold text-foreground">{employee.hometown || '—'}</p>
+                </div>
+              </div>
+
+              {/* System Account & Password */}
+              <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
+                <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+                  <KeyRound className="w-4 h-4 text-primary" />
+                  Tài khoản hệ thống & Mật khẩu
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-[11px] text-muted-foreground block">Tên đăng nhập</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono font-semibold text-foreground">{employee.username || '—'}</span>
+                      {employee.username && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(employee.username!, 'username')}
+                          className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                          title="Sao chép tên đăng nhập"
+                        >
+                          {copiedField === 'username' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-muted-foreground block">Mật khẩu</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-mono font-semibold text-foreground">
+                        {showPassword ? (employee.password || '123456') : '••••••••'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                      >
+                        {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(employee.password || '123456', 'password')}
+                        className="p-1 rounded text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        title="Sao chép mật khẩu"
+                      >
+                        {copiedField === 'password' ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 

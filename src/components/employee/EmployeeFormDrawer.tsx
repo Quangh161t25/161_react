@@ -28,6 +28,8 @@ import {
   UserPlus,
   ChevronDown,
   AlertCircle,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Employee, EmployeeStatus, Gender } from '../../types/employee';
 
@@ -90,6 +92,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [code, setCode] = useState('');
   const [username, setUsername] = useState('');
   const [tempPassword, setTempPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [gender, setGender] = useState<Gender>('Nam');
   const [dob, setDob] = useState('');
   const [maritalStatus, setMaritalStatus] = useState('Độc thân');
@@ -148,7 +151,8 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setName(initialData.name || '');
       setCode(initialData.code || '');
       setUsername(initialData.username || '');
-      setTempPassword('');
+      setTempPassword(initialData.password || '123456');
+      setShowPassword(false);
       setGender(initialData.gender || 'Nam');
       setDob(toInputDate(initialData.dob));
       setMaritalStatus(initialData.maritalStatus || 'Độc thân');
@@ -334,6 +338,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       socialInsuranceNumber: socialInsuranceNumber.trim(),
       healthInsuranceNumber: healthInsuranceNumber.trim(),
       taxCode: taxCode.trim(),
+      password: tempPassword.trim() || initialData?.password || '123456',
       isActiveAccount: status !== 'resigned',
       avatarUrl:
         avatarUrl ||
@@ -1601,7 +1606,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                     </div>
                   </div>
 
-                  {/* Mật khẩu tạm */}
+                  {/* Mật khẩu */}
                   <div className="w-full">
                     <label
                       htmlFor="emp_mat_khau_tam"
@@ -1610,18 +1615,27 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                       <span className="text-muted-foreground shrink-0">
                         <KeyRound className="w-3 h-3" />
                       </span>
-                      Mật khẩu tạm
+                      Mật khẩu đăng nhập
                     </label>
                     <div className="relative">
                       <input
                         id="emp_mat_khau_tam"
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         name="mat_khau_tam"
                         value={tempPassword}
                         onChange={(e) => setTempPassword(e.target.value)}
-                        placeholder={isEdit ? 'Để trống nếu không đổi' : '••••••••'}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        placeholder={isEdit ? 'Nhập mật khẩu mới (hoặc giữ nguyên)' : 'Nhập mật khẩu (mặc định: 123456)'}
+                        className="flex h-10 w-full rounded-lg border border-border bg-background pl-3 pr-10 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic font-mono"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors cursor-pointer"
+                        title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
                 </div>
