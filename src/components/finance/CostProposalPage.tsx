@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
+  Trash2,
   ArrowLeft,
   Search,
   Tag,
@@ -373,7 +374,32 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
   };
 
   // Delete proposal
-  const handleDeleteProposal = async (id: string) => {
+    // Delete multiple selected proposals
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    const confirmDelete = window.confirm(`Bạn có chắc chắn muốn xóa ${selectedIds.length} đề xuất đã chọn?`);
+    if (!confirmDelete) return;
+
+    const count = selectedIds.length;
+    const updatedList = proposals.filter((p) => !selectedIds.includes(p.id));
+    setProposals(updatedList);
+    googleSheetsService.saveToCache(updatedList);
+    if (selectedProposalForDetail && selectedIds.includes(selectedProposalForDetail.id)) {
+      setSelectedProposalForDetail(null);
+    }
+    setSelectedIds([]);
+
+    setIsSyncing(true);
+    const ok = await googleSheetsService.syncAllToSheet(updatedList);
+    setIsSyncing(false);
+    if (ok) {
+      showToast(`Đã xóa thành công ${count} đề xuất và đồng bộ Google Sheet!`);
+    } else {
+      showToast(`Đã xóa ${count} đề xuất khỏi bộ nhớ.`, true);
+    }
+  };
+
+const handleDeleteProposal = async (id: string) => {
     const deleted = proposals.find((p) => p.id === id);
     const updatedList = proposals.filter((p) => p.id !== id);
     setProposals(updatedList);
@@ -827,6 +853,17 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
 
                 {/* Right Action Icons */}
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {selectedIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteSelected}
+                      className="h-8 px-3 flex items-center gap-1.5 rounded-lg bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive hover:text-white transition-all text-xs font-semibold shadow-sm active:scale-95 animate-in fade-in"
+                      title="Xóa tất cả các mục đã chọn"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Xóa ({selectedIds.length})</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={handleManualSync}
@@ -900,12 +937,12 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                 <div className="hidden md:block flex-1 min-h-0 relative overflow-hidden">
                   <div className="h-full overflow-auto custom-scrollbar">
                     <table className="text-left border-separate border-spacing-0 w-max min-w-full text-xs table-fixed">
-                      <thead className="sticky top-0 z-[10] bg-muted">
+                      <thead className="sticky top-0 z-[20] bg-muted">
                         <tr className="border-b border-border bg-muted">
                           {/* 1. Sticky Checkbox */}
                           <th
                             style={{ width: 44, minWidth: 44, maxWidth: 44 }}
-                            className={`sticky left-0 z-[12] px-3 bg-muted border-b border-r border-border text-center ${headerPaddingClass}`}
+                            className={`sticky left-0 z-[25] px-3 bg-muted border-b border-r border-border text-center ${headerPaddingClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
                           >
                             <input
                               type="checkbox"
@@ -918,7 +955,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                           {/* 2. Sticky Số phiếu */}
                           <th
                             style={{ width: codeWidth, minWidth: codeWidth, maxWidth: codeWidth }}
-                            className={`sticky left-[44px] z-[12] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none`}
+                            className={`sticky left-[44px] z-[25] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]`}
                           >
                             <div className="flex items-center justify-between gap-1">
                               <span className="truncate">Số phiếu</span>
@@ -968,7 +1005,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                           {/* Sticky Thao tác */}
                           <th
                             style={{ width: 76, minWidth: 76, maxWidth: 76 }}
-                            className={`sticky right-0 z-[12] px-3 bg-muted border-b border-l border-border text-center font-semibold text-foreground ${headerPaddingClass}`}
+                            className={`sticky right-0 z-[25] px-3 bg-muted border-b border-l border-border text-center font-semibold text-foreground ${headerPaddingClass} shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]`}
                           >
                             Thao tác
                           </th>
@@ -988,6 +1025,11 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                           filteredProposals.map((item) => {
                             const isSelected = selectedIds.includes(item.id);
                             const isActiveDetail = selectedProposalForDetail?.id === item.id;
+                            const stickyBgClass = isActiveDetail
+                              ? 'bg-accent shadow-[inset_3px_0_0_var(--color-primary)]'
+                              : isSelected
+                              ? 'bg-primary/10 group-hover:bg-primary/15'
+                              : 'bg-card group-hover:bg-muted/60';
 
                             return (
                               <tr
@@ -1005,11 +1047,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                                 {/* Checkbox */}
                                 <td
                                   style={{ width: 44, minWidth: 44, maxWidth: 44 }}
-                                  className={`sticky left-0 z-[2] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${
-                                    isActiveDetail
-                                      ? 'bg-accent shadow-[inset_3px_0_0_var(--color-primary)]'
-                                      : 'bg-inherit'
-                                  }`}
+                                  className={`sticky left-0 z-[10] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${stickyBgClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <input
@@ -1023,7 +1061,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                                 {/* Số phiếu */}
                                 <td
                                   style={{ width: codeWidth, minWidth: codeWidth, maxWidth: codeWidth }}
-                                  className={`sticky left-[44px] z-[2] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/50 bg-inherit font-semibold text-foreground`}
+                                  className={`sticky left-[44px] z-[10] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/50 font-semibold text-foreground ${stickyBgClass} shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]`}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     <FileText className="w-3.5 h-3.5 text-primary/70 shrink-0" />
@@ -1039,7 +1077,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                                 {/* Sticky Thao tác */}
                                 <td
                                   style={{ width: 76, minWidth: 76, maxWidth: 76 }}
-                                  className={`sticky right-0 z-[2] px-2 ${cellPaddingClass.split(' ')[0]} border-l border-border/50 text-center bg-inherit`}
+                                  className={`sticky right-0 z-[10] px-2 ${cellPaddingClass.split(' ')[0]} border-l border-border/50 text-center ${stickyBgClass} shadow-[-4px_0_8px_-2px_rgba(0,0,0,0.08)]`}
                                 >
                                   <div className="flex items-center justify-center gap-0.5">
                                     <button
@@ -1157,12 +1195,25 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
 
               {/* Table / Grid Footer Pagination */}
               <div className="p-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground shrink-0 bg-card">
-                <div>
-                  Hiển thị <span className="font-semibold text-foreground">{filteredProposals.length}</span> / {proposals.length} đề xuất
+                <div className="flex items-center gap-3">
+                  <span>
+                    Hiển thị <span className="font-semibold text-foreground">{filteredProposals.length}</span> / {proposals.length} đề xuất
+                  </span>
                   {selectedIds.length > 0 && (
-                    <span className="ml-2 font-medium text-primary">
-                      (Đã chọn {selectedIds.length})
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        Đã chọn {selectedIds.length}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleDeleteSelected}
+                        className="px-2.5 py-1 flex items-center gap-1.5 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive hover:text-white transition-all text-xs font-semibold"
+                        title="Xóa tất cả các mục đã chọn"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Xóa đã chọn</span>
+                      </button>
+                    </div>
                   )}
                 </div>
 

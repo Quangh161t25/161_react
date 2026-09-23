@@ -122,7 +122,6 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const existingMap = new Map(parsed.map((p: ColumnItem) => [p.id, p]));
-          // Merge missing defaults and preserve saved widths/visibility/order
           const merged: ColumnItem[] = [];
           parsed.forEach((p: ColumnItem) => {
             const def = DEFAULT_EMPLOYEE_COLUMNS.find((d) => d.id === p.id);
@@ -310,6 +309,32 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
+  };
+
+  // Bulk Delete
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    const count = selectedIds.length;
+    if (!confirm(`Bạn có chắc chắn muốn xóa ${count} nhân viên đã chọn?`)) return;
+
+    const idSet = new Set(selectedIds);
+    const updatedList = employees.filter((e) => !idSet.has(e.id));
+    setEmployees(updatedList);
+    employeeService.saveToCache(updatedList);
+
+    if (selectedEmployeeForDetail && idSet.has(selectedEmployeeForDetail.id)) {
+      setSelectedEmployeeForDetail(null);
+    }
+    setSelectedIds([]);
+
+    setIsSyncing(true);
+    const ok = await employeeService.syncAllToSheet(updatedList);
+    setIsSyncing(false);
+    if (ok) {
+      showToast(`Đã xóa thành công ${count} nhân viên và đồng bộ Google Sheet!`);
+    } else {
+      showToast(`Đã xóa ${count} nhân viên khỏi bộ nhớ.`, true);
+    }
   };
 
   // Create / Edit Submit
@@ -1136,6 +1161,19 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
 
                 {/* Right Actions */}
                 <div className="flex items-center gap-1.5 shrink-0 self-end md:self-auto">
+                  {/* Bulk Delete Button when items are selected */}
+                  {selectedIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteSelected}
+                      title={`Xóa ${selectedIds.length} nhân viên đã chọn`}
+                      className="h-8 px-2.5 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 animate-in fade-in zoom-in-95 duration-150"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Xóa ({selectedIds.length})</span>
+                    </button>
+                  )}
+
                   {/* Google Sheets Live Sync */}
                   <button
                     type="button"
@@ -1224,12 +1262,12 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                 <div className="flex-1 min-h-0 relative overflow-hidden">
                   <div className="h-full overflow-auto custom-scrollbar">
                     <table className="text-left border-separate border-spacing-0 w-max min-w-full text-xs table-fixed">
-                      <thead className="sticky top-0 z-[10] bg-muted">
+                      <thead className="sticky top-0 z-[20] bg-muted">
                         <tr className="border-b border-border bg-muted">
                           {/* 1. Sticky Checkbox */}
                           <th
                             style={{ width: 44, minWidth: 44, maxWidth: 44 }}
-                            className={`sticky left-0 z-[12] px-3 bg-muted border-b border-r border-border text-center ${headerPaddingClass}`}
+                            className={`sticky left-0 z-[25] px-3 bg-muted border-b border-r border-border text-center ${headerPaddingClass}`}
                           >
                             <input
                               type="checkbox"
@@ -1242,12 +1280,12 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                           {/* 2. Sticky Họ và tên */}
                           <th
                             style={{ width: nameWidth, minWidth: nameWidth, maxWidth: nameWidth }}
-                            className={`sticky left-[44px] z-[12] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none`}
+                            className={`sticky left-[44px] z-[25] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none`}
                           >
                             <div className="truncate">Họ và tên</div>
                             {/* Resizer Handle */}
                             <div
-                              className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-20 flex justify-center items-center group/resizer hover:bg-primary/20 ${
+                              className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-30 flex justify-center items-center group/resizer hover:bg-primary/20 ${
                                 resizingColId === 'name' ? 'bg-primary/30' : ''
                               }`}
                               onMouseDown={(e) => handleStartResize('name', e)}
@@ -1265,12 +1303,12 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                               minWidth: usernameWidth,
                               maxWidth: usernameWidth,
                             }}
-                            className={`sticky z-[12] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none`}
+                            className={`sticky z-[25] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
                           >
                             <div className="truncate">Tên đăng nhập</div>
                             {/* Resizer Handle */}
                             <div
-                              className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-20 flex justify-center items-center group/resizer hover:bg-primary/20 ${
+                              className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-30 flex justify-center items-center group/resizer hover:bg-primary/20 ${
                                 resizingColId === 'username' ? 'bg-primary/30' : ''
                               }`}
                               onMouseDown={(e) => handleStartResize('username', e)}
@@ -1289,7 +1327,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                                 <th
                                   key={col.id}
                                   style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
-                                  className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none`}
+                                  className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 bg-muted ${headerPaddingClass} relative group/th select-none`}
                                 >
                                   <div className="truncate pr-2">{col.label}</div>
                                   {/* Resizer Handle */}
@@ -1309,7 +1347,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                           {/* Sticky Thao tác Action Header */}
                           <th
                             style={{ width: 76, minWidth: 76, maxWidth: 76 }}
-                            className={`sticky right-0 z-[12] px-3 bg-muted border-b border-l border-border text-center font-semibold text-foreground ${headerPaddingClass}`}
+                            className={`sticky right-0 z-[25] px-3 bg-muted border-b border-l border-border text-center font-semibold text-foreground ${headerPaddingClass} shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
                           >
                             Thao tác
                           </th>
@@ -1320,7 +1358,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                           <tr>
                             <td
                               colSpan={tableColumns.filter((c) => c.visible).length + 2}
-                              className="py-12 text-center text-muted-foreground"
+                              className="py-12 text-center text-muted-foreground bg-card"
                             >
                               Không tìm thấy nhân viên nào phù hợp
                             </td>
@@ -1329,6 +1367,13 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                           filteredEmployees.map((emp) => {
                             const isSelected = selectedIds.includes(emp.id);
                             const isActiveDetail = selectedEmployeeForDetail?.id === emp.id;
+
+                            // Solid opaque background classes for sticky cells to prevent text bleeding
+                            const stickyBgClass = isActiveDetail
+                              ? 'bg-accent shadow-[inset_3px_0_0_var(--color-primary)]'
+                              : isSelected
+                              ? 'bg-primary/10 group-hover:bg-primary/15'
+                              : 'bg-card group-hover:bg-muted/60';
 
                             return (
                               <tr
@@ -1346,11 +1391,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                                 {/* 1. Sticky Checkbox */}
                                 <td
                                   style={{ width: 44, minWidth: 44, maxWidth: 44 }}
-                                  className={`sticky left-0 z-[2] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${
-                                    isActiveDetail
-                                      ? 'bg-accent shadow-[inset_3px_0_0_var(--color-primary)]'
-                                      : 'bg-inherit'
-                                  }`}
+                                  className={`sticky left-0 z-[10] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${stickyBgClass}`}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <input
@@ -1364,7 +1405,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                                 {/* 2. Sticky Họ và tên */}
                                 <td
                                   style={{ width: nameWidth, minWidth: nameWidth, maxWidth: nameWidth }}
-                                  className={`sticky left-[44px] z-[2] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/60 bg-inherit font-medium text-foreground`}
+                                  className={`sticky left-[44px] z-[10] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/60 font-medium text-foreground ${stickyBgClass}`}
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
                                     <img
@@ -1386,7 +1427,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                                     minWidth: usernameWidth,
                                     maxWidth: usernameWidth,
                                   }}
-                                  className={`sticky z-[2] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/60 bg-inherit font-mono text-primary`}
+                                  className={`sticky z-[10] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/60 font-mono text-primary ${stickyBgClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
                                 >
                                   <div className="flex items-center gap-1 min-w-0">
                                     <span className="truncate">{emp.username || '—'}</span>
@@ -1412,7 +1453,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                                 {/* Sticky Thao tác */}
                                 <td
                                   style={{ width: 76, minWidth: 76, maxWidth: 76 }}
-                                  className={`sticky right-0 z-[2] px-2 ${cellPaddingClass.split(' ')[0]} border-l border-border/50 text-center bg-inherit`}
+                                  className={`sticky right-0 z-[10] px-2 ${cellPaddingClass.split(' ')[0]} border-l border-border/50 text-center ${stickyBgClass} shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
                                 >
                                   <div className="flex items-center justify-center gap-1">
                                     <button
@@ -1543,12 +1584,24 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
 
               {/* Table / Grid Footer Pagination */}
               <div className="p-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground shrink-0 bg-card">
-                <div>
-                  Hiển thị <span className="font-semibold text-foreground">{filteredEmployees.length}</span> / {employees.length} nhân viên
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>
+                    Hiển thị <span className="font-semibold text-foreground">{filteredEmployees.length}</span> / {employees.length} nhân viên
+                  </span>
                   {selectedIds.length > 0 && (
-                    <span className="ml-2 font-medium text-primary">
-                      (Đã chọn {selectedIds.length})
-                    </span>
+                    <div className="inline-flex items-center gap-1.5">
+                      <span className="font-medium text-primary">
+                        (Đã chọn {selectedIds.length})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleDeleteSelected}
+                        className="px-2 py-0.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 text-xs font-medium inline-flex items-center gap-1 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Xóa {selectedIds.length} mục đã chọn
+                      </button>
+                    </div>
                   )}
                 </div>
 
