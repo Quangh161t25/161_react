@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -39,23 +39,23 @@ interface CostProposalPageProps {
 }
 
 export const DEFAULT_PROPOSAL_COLUMNS: ColumnItem[] = [
-  { id: 'code', label: 'Số phiếu', visible: true, locked: true },
-  { id: 'proposalDate', label: 'Ngày đề xuất', visible: true },
-  { id: 'dueDate', label: 'Ngày cần chi', visible: true },
-  { id: 'proposer', label: 'Người đề xuất', visible: true },
-  { id: 'department', label: 'Phòng ban', visible: true },
-  { id: 'title', label: 'Tiêu đề', visible: true },
-  { id: 'reason', label: 'Lý do', visible: true },
-  { id: 'amount', label: 'Tổng tiền', visible: true },
-  { id: 'account', label: 'Tài khoản đề nghị chi', visible: true },
-  { id: 'beneficiary', label: 'Đối tượng thụ hưởng', visible: true },
-  { id: 'isOverBudget', label: 'Vượt kế hoạch', visible: true },
-  { id: 'overBudgetReason', label: 'Lý do vượt kế hoạch', visible: true },
-  { id: 'note', label: 'Ghi chú', visible: true },
-  { id: 'approvalSteps', label: 'Số bậc duyệt', visible: true },
-  { id: 'approvalStatus', label: 'Trạng thái duyệt', visible: true },
-  { id: 'status', label: 'Trạng thái', visible: true },
-  { id: 'updatedAt', label: 'Cập nhật', visible: true },
+  { id: 'code', label: 'Số phiếu', visible: true, locked: true, width: 160 },
+  { id: 'proposalDate', label: 'Ngày đề xuất', visible: true, width: 140 },
+  { id: 'dueDate', label: 'Ngày cần chi', visible: true, width: 140 },
+  { id: 'proposer', label: 'Người đề xuất', visible: true, width: 200 },
+  { id: 'department', label: 'Phòng ban', visible: true, width: 200 },
+  { id: 'title', label: 'Tiêu đề', visible: true, width: 260 },
+  { id: 'reason', label: 'Lý do', visible: true, width: 280 },
+  { id: 'amount', label: 'Tổng tiền', visible: true, width: 160 },
+  { id: 'account', label: 'Tài khoản đề nghị chi', visible: true, width: 220 },
+  { id: 'beneficiary', label: 'Đối tượng thụ hưởng', visible: true, width: 240 },
+  { id: 'isOverBudget', label: 'Vượt kế hoạch', visible: true, width: 130 },
+  { id: 'overBudgetReason', label: 'Lý do vượt kế hoạch', visible: true, width: 240 },
+  { id: 'note', label: 'Ghi chú', visible: true, width: 240 },
+  { id: 'approvalSteps', label: 'Số bậc duyệt', visible: true, width: 120 },
+  { id: 'approvalStatus', label: 'Trạng thái duyệt', visible: true, width: 160 },
+  { id: 'status', label: 'Trạng thái', visible: true, width: 140 },
+  { id: 'updatedAt', label: 'Cập nhật', visible: true, width: 140 },
 ];
 
 export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) => {
@@ -72,6 +72,10 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
+  // Resizing state
+  const [resizingColId, setResizingColId] = useState<string | null>(null);
+  const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
+
   // Column Customizer & Density State
   const [tableColumns, setTableColumns] = useState<ColumnItem[]>(() => {
     try {
@@ -79,9 +83,24 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((p: ColumnItem) => p.id));
-          const missing = DEFAULT_PROPOSAL_COLUMNS.filter((d) => !existingIds.has(d.id));
-          return [...parsed, ...missing];
+          const existingMap = new Map(parsed.map((p: ColumnItem) => [p.id, p]));
+          const merged: ColumnItem[] = [];
+          parsed.forEach((p: ColumnItem) => {
+            const def = DEFAULT_PROPOSAL_COLUMNS.find((d) => d.id === p.id);
+            if (def) {
+              merged.push({
+                ...def,
+                ...p,
+                width: p.width || def.width || 160,
+              });
+            }
+          });
+          DEFAULT_PROPOSAL_COLUMNS.forEach((def) => {
+            if (!existingMap.has(def.id)) {
+              merged.push(def);
+            }
+          });
+          return merged;
         }
       }
     } catch {}
@@ -120,6 +139,50 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
       localStorage.removeItem('erp_proposal_density');
     } catch {}
   };
+
+  // Interactive Column Resizing from Table Header
+  const handleStartResize = useCallback(
+    (columnId: string, startEvent: React.MouseEvent) => {
+      startEvent.preventDefault();
+      startEvent.stopPropagation();
+      const col = tableColumns.find((c) => c.id === columnId);
+      const currentWidth = col?.width || 160;
+
+      setResizingColId(columnId);
+      resizingRef.current = {
+        colId: columnId,
+        startX: startEvent.clientX,
+        startWidth: currentWidth,
+      };
+
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!resizingRef.current) return;
+        const delta = moveEvent.clientX - resizingRef.current.startX;
+        const nextWidth = Math.max(60, Math.min(1200, resizingRef.current.startWidth + delta));
+
+        setTableColumns((prev) =>
+          prev.map((c) => (c.id === resizingRef.current?.colId ? { ...c, width: nextWidth } : c))
+        );
+      };
+
+      const handleMouseUp = () => {
+        setResizingColId(null);
+        resizingRef.current = null;
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+        setTableColumns((current) => {
+          try {
+            localStorage.setItem('erp_proposal_columns', JSON.stringify(current));
+          } catch {}
+          return current;
+        });
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    },
+    [tableColumns]
+  );
 
   // Drawer states
   const [selectedProposalForDetail, setSelectedProposalForDetail] = useState<CostProposal | null>(null);
@@ -330,7 +393,6 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
     }
   };
 
-
   // Duplicate / Copy Proposal
   const handleCopyProposal = async (item: CostProposal) => {
     const maxNum = proposals.reduce((max, p) => {
@@ -475,15 +537,26 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
       ? 'py-4 px-4'
       : 'py-3 px-4';
 
-  const renderProposalCell = (colId: string, item: CostProposal) => {
+  const codeCol = tableColumns.find((c) => c.id === 'code');
+  const codeWidth = codeCol?.width || 160;
+
+  const renderProposalCell = (col: ColumnItem, item: CostProposal) => {
+    const colId = col.id;
+    const colWidth = col.width || 160;
+    const colStyle: React.CSSProperties = {
+      width: colWidth,
+      minWidth: colWidth,
+      maxWidth: colWidth,
+    };
+
     switch (colId) {
       case 'proposalDate':
-        return <td key={colId} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40`}>{item.proposalDate}</td>;
+        return <td key={colId} style={colStyle} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40 truncate`}>{item.proposalDate}</td>;
       case 'dueDate':
-        return <td key={colId} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40`}>{item.dueDate}</td>;
+        return <td key={colId} style={colStyle} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40 truncate`}>{item.dueDate}</td>;
       case 'proposer':
         return (
-          <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
             <div className="inline-flex items-center gap-1 max-w-full">
               <span className="truncate text-foreground font-medium">{item.proposer}</span>
               <button
@@ -499,7 +572,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
         );
       case 'department':
         return (
-          <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
             <div className="inline-flex items-center gap-1 max-w-full">
               <span className="truncate text-foreground">{item.department}</span>
               <button
@@ -515,25 +588,25 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
         );
       case 'title':
         return (
-          <td key={colId} className={`${cellPaddingClass} text-foreground truncate max-w-[260px] border-r border-border/40`} title={item.title}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-foreground truncate border-r border-border/40`} title={item.title}>
             {item.title}
           </td>
         );
       case 'reason':
         return (
-          <td key={colId} className={`${cellPaddingClass} text-foreground line-clamp-2 max-w-[280px] border-r border-border/40`} title={item.reason}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-foreground truncate border-r border-border/40`} title={item.reason}>
             {item.reason}
           </td>
         );
       case 'amount':
         return (
-          <td key={colId} className={`${cellPaddingClass} font-semibold tabular-nums text-foreground border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} font-semibold tabular-nums text-foreground border-r border-border/40 truncate`}>
             {formatCurrency(item.amount)}
           </td>
         );
       case 'account':
         return (
-          <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
             <div className="inline-flex items-center gap-1 max-w-full">
               <span className="truncate text-foreground">{item.account}</span>
               <button
@@ -549,31 +622,31 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
         );
       case 'beneficiary':
         return (
-          <td key={colId} className={`${cellPaddingClass} text-muted-foreground truncate max-w-[260px] border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-muted-foreground truncate border-r border-border/40`}>
             {item.beneficiary || '—'}
           </td>
         );
       case 'isOverBudget':
-        return <td key={colId} className={`${cellPaddingClass} text-foreground border-r border-border/40`}>{item.isOverBudget ? 'Có' : 'Không'}</td>;
+        return <td key={colId} style={colStyle} className={`${cellPaddingClass} text-foreground border-r border-border/40 truncate`}>{item.isOverBudget ? 'Có' : 'Không'}</td>;
       case 'overBudgetReason':
         return (
-          <td key={colId} className={`${cellPaddingClass} text-muted-foreground line-clamp-2 max-w-[260px] border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-muted-foreground truncate border-r border-border/40`}>
             {item.overBudgetReason || '—'}
           </td>
         );
       case 'note':
         return (
-          <td key={colId} className={`${cellPaddingClass} text-muted-foreground line-clamp-2 max-w-[260px] border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-muted-foreground truncate border-r border-border/40`}>
             {item.note || '—'}
           </td>
         );
       case 'approvalSteps':
-        return <td key={colId} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40`}>{item.approvalSteps}</td>;
+        return <td key={colId} style={colStyle} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40 truncate`}>{item.approvalSteps}</td>;
       case 'approvalStatus':
-        return <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>{renderApprovalBadge(item.approvalStatus)}</td>;
+        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>{renderApprovalBadge(item.approvalStatus)}</td>;
       case 'status':
         return (
-          <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
             <span
               className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium border rounded-full ${
                 item.status === 'active'
@@ -586,9 +659,9 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
           </td>
         );
       case 'updatedAt':
-        return <td key={colId} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40`}>{item.updatedAt}</td>;
+        return <td key={colId} style={colStyle} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40 truncate`}>{item.updatedAt}</td>;
       default:
-        return <td key={colId} className={`${cellPaddingClass} border-r border-border/40`}>—</td>;
+        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>—</td>;
     }
   };
 
@@ -826,11 +899,14 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                 /* Desktop Table View */
                 <div className="hidden md:block flex-1 min-h-0 relative overflow-hidden">
                   <div className="h-full overflow-auto custom-scrollbar">
-                    <table className="text-left border-separate border-spacing-0 w-full text-xs">
+                    <table className="text-left border-separate border-spacing-0 w-max min-w-full text-xs table-fixed">
                       <thead className="sticky top-0 z-[10] bg-muted">
                         <tr className="border-b border-border bg-muted">
                           {/* 1. Sticky Checkbox */}
-                          <th className={`sticky left-0 z-[12] px-3 bg-muted border-b border-r border-border text-center ${headerPaddingClass} w-11`}>
+                          <th
+                            style={{ width: 44, minWidth: 44, maxWidth: 44 }}
+                            className={`sticky left-0 z-[12] px-3 bg-muted border-b border-r border-border text-center ${headerPaddingClass}`}
+                          >
                             <input
                               type="checkbox"
                               checked={isAllSelected}
@@ -840,30 +916,60 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                           </th>
 
                           {/* 2. Sticky Số phiếu */}
-                          <th className={`sticky left-11 z-[12] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} min-w-[150px]`}>
+                          <th
+                            style={{ width: codeWidth, minWidth: codeWidth, maxWidth: codeWidth }}
+                            className={`sticky left-[44px] z-[12] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none`}
+                          >
                             <div className="flex items-center justify-between gap-1">
-                              <span>Số phiếu</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
+                              <span className="truncate">Số phiếu</span>
+                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                            </div>
+                            {/* Resizer Handle */}
+                            <div
+                              className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-20 flex justify-center items-center group/resizer hover:bg-primary/20 ${
+                                resizingColId === 'code' ? 'bg-primary/30' : ''
+                              }`}
+                              onMouseDown={(e) => handleStartResize('code', e)}
+                              title="Kéo để chỉnh kích thước cột Số phiếu"
+                            >
+                              <div className="w-[2px] h-3.5 bg-border group-hover/resizer:bg-primary group-hover/resizer:h-full transition-all" />
                             </div>
                           </th>
 
                           {/* Dynamic Columns */}
                           {tableColumns
                             .filter((c) => c.visible && c.id !== 'code')
-                            .map((col) => (
-                              <th
-                                key={col.id}
-                                className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass}`}
-                              >
-                                <div className="flex items-center justify-between gap-1">
-                                  <span>{col.label}</span>
-                                  <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60" />
-                                </div>
-                              </th>
-                            ))}
+                            .map((col) => {
+                              const colWidth = col.width || 160;
+                              return (
+                                <th
+                                  key={col.id}
+                                  style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
+                                  className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none`}
+                                >
+                                  <div className="flex items-center justify-between gap-1 pr-1">
+                                    <span className="truncate">{col.label}</span>
+                                    <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                                  </div>
+                                  {/* Resizer Handle */}
+                                  <div
+                                    className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-20 flex justify-center items-center group/resizer hover:bg-primary/20 ${
+                                      resizingColId === col.id ? 'bg-primary/30' : ''
+                                    }`}
+                                    onMouseDown={(e) => handleStartResize(col.id, e)}
+                                    title={`Kéo để chỉnh kích thước cột ${col.label}`}
+                                  >
+                                    <div className="w-[2px] h-3.5 bg-border group-hover/resizer:bg-primary group-hover/resizer:h-full transition-all" />
+                                  </div>
+                                </th>
+                              );
+                            })}
 
                           {/* Sticky Thao tác */}
-                          <th className={`sticky right-0 z-[12] px-3 bg-muted border-b border-l border-border text-center font-semibold text-foreground ${headerPaddingClass} w-20`}>
+                          <th
+                            style={{ width: 76, minWidth: 76, maxWidth: 76 }}
+                            className={`sticky right-0 z-[12] px-3 bg-muted border-b border-l border-border text-center font-semibold text-foreground ${headerPaddingClass}`}
+                          >
                             Thao tác
                           </th>
                         </tr>
@@ -898,6 +1004,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                               >
                                 {/* Checkbox */}
                                 <td
+                                  style={{ width: 44, minWidth: 44, maxWidth: 44 }}
                                   className={`sticky left-0 z-[2] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${
                                     isActiveDetail
                                       ? 'bg-accent shadow-[inset_3px_0_0_var(--color-primary)]'
@@ -914,8 +1021,11 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                                 </td>
 
                                 {/* Số phiếu */}
-                                <td className={`sticky left-11 z-[2] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/50 bg-inherit font-semibold text-foreground`}>
-                                  <div className="flex items-center gap-2">
+                                <td
+                                  style={{ width: codeWidth, minWidth: codeWidth, maxWidth: codeWidth }}
+                                  className={`sticky left-[44px] z-[2] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/50 bg-inherit font-semibold text-foreground`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
                                     <FileText className="w-3.5 h-3.5 text-primary/70 shrink-0" />
                                     <span className="truncate text-sm">{item.code}</span>
                                   </div>
@@ -924,10 +1034,13 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                                 {/* Dynamic Columns */}
                                 {tableColumns
                                   .filter((c) => c.visible && c.id !== 'code')
-                                  .map((col) => renderProposalCell(col.id, item))}
+                                  .map((col) => renderProposalCell(col, item))}
 
                                 {/* Sticky Thao tác */}
-                                <td className={`sticky right-0 z-[2] px-2 ${cellPaddingClass.split(' ')[0]} border-l border-border/50 text-center bg-inherit`}>
+                                <td
+                                  style={{ width: 76, minWidth: 76, maxWidth: 76 }}
+                                  className={`sticky right-0 z-[2] px-2 ${cellPaddingClass.split(' ')[0]} border-l border-border/50 text-center bg-inherit`}
+                                >
                                   <div className="flex items-center justify-center gap-0.5">
                                     <button
                                       type="button"
