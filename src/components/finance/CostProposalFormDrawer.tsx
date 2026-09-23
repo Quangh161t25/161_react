@@ -798,7 +798,7 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
 
                               {/* Thành tiền */}
                               <td className="px-2 py-2.5 align-middle tabular-nums text-foreground font-semibold text-right">
-                                {formatCurrency(item.amount)}
+                                {formatCurrency(item.amount ?? item.total ?? ((item.quantity || 0) * (item.unitPrice || 0)))}
                               </td>
 
                               {/* Ghi chú */}

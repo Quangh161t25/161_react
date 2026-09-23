@@ -1,13 +1,15 @@
 export type ApprovalStatus = 'approved' | 'pending' | 'rejected' | 'draft';
-export type ProposalStatus = 'active' | 'cancelled';
+export type ProposalStatus = 'active' | 'cancelled' | 'draft' | 'approved';
 
 export interface ProposalLineItem {
-  id: string;
-  category: string;
-  description: string;
+  id?: string;
+  name?: string;
+  category?: string;
+  description?: string;
   quantity: number;
   unitPrice: number;
-  amount: number;
+  total?: number;
+  amount?: number;
   note?: string;
 }
 
@@ -26,11 +28,10 @@ export interface CostProposal {
   isOverBudget: boolean;
   overBudgetReason?: string;
   note?: string;
-  approvalSteps: number;
+  approvalSteps?: number;
   approvalStatus: ApprovalStatus;
   status: ProposalStatus;
   updatedAt: string;
   createdAt?: string;
   lineItems?: ProposalLineItem[];
 }
-

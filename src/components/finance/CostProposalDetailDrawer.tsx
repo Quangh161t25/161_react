@@ -541,19 +541,19 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                         proposal.lineItems.map((item) => (
                           <tr key={item.id} className="group hover:bg-muted/40 transition-colors">
                             <td className="px-4 py-2.5 font-medium text-foreground bg-card group-hover:bg-muted/40">
-                              {item.category}
+                              {item.category || 'Chi phí hoạt động'}
                             </td>
                             <td className="px-4 py-2.5 text-foreground bg-card group-hover:bg-muted/40">
-                              {item.description}
+                              {item.description || item.name || 'Chi tiết chi phí'}
                             </td>
                             <td className="px-4 py-2.5 tabular-nums text-right text-foreground bg-card group-hover:bg-muted/40">
                               {item.quantity}
                             </td>
                             <td className="px-4 py-2.5 tabular-nums text-right text-foreground bg-card group-hover:bg-muted/40">
-                              {formatCurrency(item.unitPrice)}
+                              {formatCurrency(item.unitPrice || 0)}
                             </td>
                             <td className="px-4 py-2.5 tabular-nums text-right font-semibold text-foreground bg-card group-hover:bg-muted/40">
-                              {formatCurrency(item.amount)}
+                              {formatCurrency(item.amount ?? item.total ?? ((item.quantity || 0) * (item.unitPrice || 0)))}
                             </td>
                           </tr>
                         ))

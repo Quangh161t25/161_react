@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { CURRENT_USER, NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../data/navigation';
 import { FINANCE_SECTIONS } from '../../data/finance';
+import { SYSTEM_SECTIONS } from '../../data/system';
 
 interface HeaderProps {
   isCollapsed: boolean;
@@ -97,6 +98,53 @@ export const Header: React.FC<HeaderProps> = ({
         isCurrent: true,
         isHome: false,
       });
+      return crumbs;
+    }
+
+    if (activePath === '/he-thong') {
+      crumbs.push({
+        label: 'Hệ thống',
+        href: '/he-thong',
+        isCurrent: true,
+        isHome: false,
+      });
+      return crumbs;
+    }
+
+    if (activePath.startsWith('/he-thong/')) {
+      crumbs.push({
+        label: 'Hệ thống',
+        href: '/he-thong',
+        isCurrent: false,
+        isHome: false,
+      });
+
+      const allSystemItems = SYSTEM_SECTIONS.flatMap((s) => s.items);
+      const isGuide = activePath.endsWith('/huong-dan');
+      const baseHref = activePath.replace(/\/huong-dan$/, '');
+      const subItem = allSystemItems.find((i) => i.href === baseHref);
+
+      if (isGuide && subItem) {
+        crumbs.push({
+          label: subItem.title,
+          href: subItem.href,
+          isCurrent: false,
+          isHome: false,
+        });
+        crumbs.push({
+          label: 'Hướng dẫn',
+          href: activePath,
+          isCurrent: true,
+          isHome: false,
+        });
+      } else {
+        crumbs.push({
+          label: subItem ? subItem.title : 'Chi tiết',
+          href: activePath,
+          isCurrent: true,
+          isHome: false,
+        });
+      }
       return crumbs;
     }
 

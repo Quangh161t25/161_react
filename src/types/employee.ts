@@ -1,0 +1,50 @@
+export type EmployeeStatus = 'working' | 'probation' | 'resigned' | 'suspended';
+export type Gender = 'Nam' | 'Nữ' | 'Khác';
+
+export interface Employee {
+  id: string;
+  code: string; // e.g., 'emp-001', 'emp-029'
+  name: string;
+  username?: string;
+  phone: string;
+  email: string;
+  role: string;
+  department: string;
+  subDepartment?: string;
+  gender: Gender;
+  status: EmployeeStatus;
+  createdAt: string;
+  updatedAt: string;
+  avatarUrl?: string;
+  dob?: string;
+  maritalStatus?: string;
+  nationality?: string;
+  ethnicity?: string;
+  religion?: string;
+  hometown?: string;
+  rank?: number | string;
+  startDate?: string;
+  officialDate?: string;
+  resignationDate?: string;
+  resignationReason?: string;
+  idCardNumber?: string;
+  idCardDate?: string;
+  idCardPlace?: string;
+  permanentAddress?: string;
+  currentAddress?: string;
+  personalEmail?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  emergencyContactRelation?: string;
+  educationLevel?: string;
+  major?: string;
+  school?: string;
+  bankAccount?: string;
+  bankAccountHolder?: string;
+  bankName?: string;
+  bankBranch?: string;
+  socialInsuranceNumber?: string;
+  healthInsuranceNumber?: string;
+  taxCode?: string;
+  isActiveAccount?: boolean;
+}

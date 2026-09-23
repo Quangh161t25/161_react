@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sheet:push": "node ./scripts/sync-to-sheet.mjs",
+    "sheet:pull": "node ./scripts/sync-from-sheet.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",

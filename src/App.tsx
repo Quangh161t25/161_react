@@ -4,11 +4,14 @@ import { MainLayout } from './components/layout/MainLayout';
 import { DashboardHome } from './components/dashboard/DashboardHome';
 import { FinancePage } from './components/finance/FinancePage';
 import { CostProposalPage } from './components/finance/CostProposalPage';
+import { SystemPage } from './components/system/SystemPage';
+import { EmployeePage } from './components/employee/EmployeePage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { GenericPage } from './components/pages/GenericPage';
 import { DASHBOARD_MODULES, NAV_ITEMS, BOTTOM_NAV_ITEMS } from './data/navigation';
 import { FINANCE_SECTIONS } from './data/finance';
+import { SYSTEM_SECTIONS } from './data/system';
 
 const AppContent: React.FC = () => {
   const [currentPath, setCurrentPath] = useState<string>('/');
@@ -40,12 +43,50 @@ const AppContent: React.FC = () => {
       return <CostProposalPage onBack={() => setCurrentPath('/tai-chinh')} />;
     }
 
-    // 4. Trang Cài đặt
+    // 4. Phân hệ Hệ thống (Hub)
+    if (currentPath === '/he-thong') {
+      return <SystemPage onNavigate={(path) => setCurrentPath(path)} />;
+    }
+
+    // 5. Trang chi tiết: Nhân viên
+    if (currentPath === '/he-thong/nhan-vien') {
+      return <EmployeePage onBack={() => setCurrentPath('/he-thong')} />;
+    }
+
+    // 6. Các trang con khác của Hệ thống
+    if (currentPath.startsWith('/he-thong/')) {
+      const allSystemItems = SYSTEM_SECTIONS.flatMap((s) => s.items);
+      const isGuide = currentPath.endsWith('/huong-dan');
+      const baseHref = currentPath.replace(/\/huong-dan$/, '');
+      const matchedSystemItem = allSystemItems.find((i) => i.href === baseHref);
+
+      const title = isGuide
+        ? `Hướng dẫn: ${matchedSystemItem ? matchedSystemItem.title : 'Hệ thống'}`
+        : matchedSystemItem
+        ? matchedSystemItem.title
+        : 'Chi tiết hệ thống';
+
+      const description = isGuide
+        ? `Tài liệu hướng dẫn sử dụng và quy trình nghiệp vụ cho ${matchedSystemItem ? matchedSystemItem.title : 'chức năng'}.`
+        : matchedSystemItem
+        ? matchedSystemItem.description
+        : 'Quản lý thông tin chi tiết của phân hệ hệ thống.';
+
+      return (
+        <GenericPage
+          title={title}
+          description={description}
+          onBack={() => setCurrentPath('/he-thong')}
+        />
+      );
+    }
+
+    // 5. Trang Cài đặt
     if (currentPath === '/cai-dat') {
       return <SettingsPage onBack={() => setCurrentPath('/')} />;
     }
 
-    // 5. Các trang con khác của Tài chính (ví dụ: /tai-chinh/thu-chi, /tai-chinh/ke-hoach-chi-phi, ...)
+    // 6. Các trang con khác của Tài chính (ví dụ: /tai-chinh/thu-chi, /tai-chinh/ke-hoach-chi-phi, ...)
     if (currentPath.startsWith('/tai-chinh/')) {
       const allFinanceItems = FINANCE_SECTIONS.flatMap((s) => s.items);
       const matchedFinanceItem = allFinanceItems.find((i) => i.href === currentPath);
@@ -63,7 +104,7 @@ const AppContent: React.FC = () => {
       );
     }
 
-    // 6. Các phân hệ khác (Tổng quan, Hệ thống, Thông tin bản quyền, Hồ sơ, ...)
+    // 7. Các phân hệ khác (Tổng quan, Thông tin bản quyền, Hồ sơ, ...)
     const allItems = [...DASHBOARD_MODULES, ...NAV_ITEMS, ...BOTTOM_NAV_ITEMS];
     const match = allItems.find((item) => item.href === currentPath);
 

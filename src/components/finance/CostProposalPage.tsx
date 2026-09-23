@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -21,28 +21,68 @@ import {
   ArrowUp,
   Funnel,
   List,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
-import { MOCK_COST_PROPOSALS } from '../../data/cost-proposals';
 import { CostProposal, ApprovalStatus } from '../../types/cost-proposal';
 import { CostProposalDetailDrawer } from './CostProposalDetailDrawer';
 import { CostProposalFormDrawer } from './CostProposalFormDrawer';
+import { googleSheetsService } from '../../services/googleSheetsService';
 
 interface CostProposalPageProps {
   onBack: () => void;
 }
 
 export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) => {
-  const [proposals, setProposals] = useState<CostProposal[]>(MOCK_COST_PROPOSALS);
+  const [proposals, setProposals] = useState<CostProposal[]>(() =>
+    googleSheetsService.getInitialProposals()
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Drawer states
   const [selectedProposalForDetail, setSelectedProposalForDetail] = useState<CostProposal | null>(null);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [editingProposal, setEditingProposal] = useState<CostProposal | null>(null);
+
+  const showToast = (message: string, isErr = false) => {
+    if (isErr) {
+      setSyncError(message);
+      setTimeout(() => setSyncError(null), 4000);
+    } else {
+      setSyncToastMessage(message);
+      setTimeout(() => setSyncToastMessage(null), 3500);
+    }
+  };
+
+  // Initial load from Google Sheets on mount
+  useEffect(() => {
+    let isMounted = true;
+    const loadFromSheet = async () => {
+      setIsSyncing(true);
+      try {
+        const liveData = await googleSheetsService.fetchFromSheet();
+        if (isMounted && liveData && liveData.length > 0) {
+          setProposals(liveData);
+        }
+      } catch (e) {
+        console.warn('Initial sheet load failed:', e);
+      } finally {
+        if (isMounted) setIsSyncing(false);
+      }
+    };
+    loadFromSheet();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Filtered list
   const filteredProposals = useMemo(() => {
@@ -99,8 +139,8 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
     setIsFormDrawerOpen(true);
   };
 
-  // Save / Submit Create or Edit
-  const handleFormSubmit = (formData: Partial<CostProposal>) => {
+  // Save / Submit Create or Edit with live Google Sheets sync
+  const handleFormSubmit = async (formData: Partial<CostProposal>) => {
     if (editingProposal) {
       // Update existing
       const updatedList = proposals.map((p) =>
@@ -113,12 +153,27 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
           : p
       );
       setProposals(updatedList);
+      googleSheetsService.saveToCache(updatedList);
+
       if (selectedProposalForDetail?.id === editingProposal.id) {
         setSelectedProposalForDetail({
           ...selectedProposalForDetail,
           ...formData,
           updatedAt: new Date().toLocaleDateString('vi-VN'),
         });
+      }
+
+      setIsFormDrawerOpen(false);
+      setEditingProposal(null);
+
+      // Trigger background sync to Google Sheet
+      setIsSyncing(true);
+      const ok = await googleSheetsService.syncAllToSheet(updatedList);
+      setIsSyncing(false);
+      if (ok) {
+        showToast(`Đã cập nhật ${editingProposal.code} và đồng bộ lên Google Sheet!`);
+      } else {
+        showToast('Đã lưu nội bộ. Lỗi khi đồng bộ lên Google Sheet.', true);
       }
     } else {
       // Create new
@@ -127,7 +182,17 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const yyyy = today.getFullYear();
       const dateStr = `${dd}/${mm}/${yyyy}`;
-      const newCode = `DX2609-000${proposals.length + 1}`;
+
+      const maxNum = proposals.reduce((max, p) => {
+        const match = p.code.match(/DX\d+-(\d+)/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          return num > max ? num : max;
+        }
+        return max;
+      }, 0);
+      const nextNum = maxNum + 1;
+      const newCode = `DX2609-${String(nextNum).padStart(4, '0')}`;
 
       const created: CostProposal = {
         id: String(Date.now()),
@@ -140,40 +205,74 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
         reason: formData.reason || '',
         amount: formData.amount || 0,
         account: formData.account || 'Vietcombank - Tài khoản chính',
-        beneficiary: formData.beneficiary,
-        isOverBudget: false,
-        note: formData.note,
+        beneficiary: formData.beneficiary || '',
+        isOverBudget: formData.isOverBudget || false,
+        overBudgetReason: formData.overBudgetReason || '',
+        note: formData.note || '',
         approvalSteps: 1,
-        approvalStatus: 'pending',
-        status: formData.status || 'active',
+        approvalStatus: formData.approvalStatus || 'pending',
+        status: formData.status || 'draft',
         updatedAt: dateStr,
         createdAt: `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')} - ${dateStr}`,
-        lineItems: formData.lineItems,
+        lineItems: formData.lineItems || [],
       };
 
-      setProposals([created, ...proposals]);
-    }
+      const updatedList = [created, ...proposals];
+      setProposals(updatedList);
+      googleSheetsService.saveToCache(updatedList);
 
-    setIsFormDrawerOpen(false);
-    setEditingProposal(null);
+      setIsFormDrawerOpen(false);
+      setEditingProposal(null);
+
+      // Trigger background sync to Google Sheet
+      setIsSyncing(true);
+      const ok = await googleSheetsService.syncAllToSheet(updatedList);
+      setIsSyncing(false);
+      if (ok) {
+        showToast(`Đã thêm đề xuất ${newCode} và đồng bộ lên Google Sheet thành công!`);
+      } else {
+        showToast('Đã lưu đề xuất nội bộ.', true);
+      }
+    }
   };
 
-  // Delete proposal
-  const handleDeleteProposal = (id: string) => {
-    setProposals(proposals.filter((p) => p.id !== id));
+  // Delete proposal with live Google Sheets sync
+  const handleDeleteProposal = async (id: string) => {
+    const target = proposals.find((p) => p.id === id);
+    const updatedList = proposals.filter((p) => p.id !== id);
+    setProposals(updatedList);
+    googleSheetsService.saveToCache(updatedList);
+
     if (selectedProposalForDetail?.id === id) {
       setSelectedProposalForDetail(null);
     }
+
+    setIsSyncing(true);
+    const ok = await googleSheetsService.syncAllToSheet(updatedList);
+    setIsSyncing(false);
+    if (ok) {
+      showToast(`Đã xóa ${target?.code || 'đề xuất'} và cập nhật lên Google Sheet!`);
+    }
   };
 
-  // Copy proposal
-  const handleCopyProposal = (original: CostProposal) => {
+  // Copy proposal with live Google Sheets sync
+  const handleCopyProposal = async (original: CostProposal) => {
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, '0');
     const mm = String(today.getMonth() + 1).padStart(2, '0');
     const yyyy = today.getFullYear();
     const dateStr = `${dd}/${mm}/${yyyy}`;
-    const newCode = `DX2609-000${proposals.length + 1}`;
+
+    const maxNum = proposals.reduce((max, p) => {
+      const match = p.code.match(/DX\d+-(\d+)/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        return num > max ? num : max;
+      }
+      return max;
+    }, 0);
+    const nextNum = maxNum + 1;
+    const newCode = `DX2609-${String(nextNum).padStart(4, '0')}`;
 
     const copied: CostProposal = {
       ...original,
@@ -183,26 +282,62 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
       proposalDate: dateStr,
       dueDate: dateStr,
       approvalStatus: 'draft',
-      status: 'active',
+      status: 'draft',
       updatedAt: dateStr,
       createdAt: `${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')} - ${dateStr}`,
     };
 
-    setProposals([copied, ...proposals]);
+    const updatedList = [copied, ...proposals];
+    setProposals(updatedList);
+    googleSheetsService.saveToCache(updatedList);
     setSelectedProposalForDetail(copied);
+
+    setIsSyncing(true);
+    const ok = await googleSheetsService.syncAllToSheet(updatedList);
+    setIsSyncing(false);
+    if (ok) {
+      showToast(`Đã nhân bản ${newCode} và đồng bộ lên Google Sheet!`);
+    }
   };
 
-  // Submit for approval
-  const handleSubmitForApproval = (id: string) => {
-    const updated = proposals.map((p) =>
+  // Submit for approval with live Google Sheets sync
+  const handleSubmitForApproval = async (id: string) => {
+    const updatedList = proposals.map((p) =>
       p.id === id ? { ...p, approvalStatus: 'pending' as ApprovalStatus } : p
     );
-    setProposals(updated);
+    setProposals(updatedList);
+    googleSheetsService.saveToCache(updatedList);
+
     if (selectedProposalForDetail?.id === id) {
       setSelectedProposalForDetail({
         ...selectedProposalForDetail,
         approvalStatus: 'pending',
       });
+    }
+
+    setIsSyncing(true);
+    const ok = await googleSheetsService.syncAllToSheet(updatedList);
+    setIsSyncing(false);
+    if (ok) {
+      showToast('Đã gửi phê duyệt và cập nhật lên Google Sheet!');
+    }
+  };
+
+  // Manual Sync trigger from Google Sheet
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      const data = await googleSheetsService.fetchFromSheet();
+      if (data && data.length > 0) {
+        setProposals(data);
+        showToast(`Đã đồng bộ ${data.length} đề xuất từ Google Sheet!`);
+      } else {
+        showToast('Google Sheet đã được đồng bộ mới nhất!');
+      }
+    } catch {
+      showToast('Không thể kết nối với Google Sheet.', true);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -420,6 +555,19 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
 
                 {/* Right Action Icons */}
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleManualSync}
+                    disabled={isSyncing}
+                    title="Đồng bộ 2 chiều với Google Sheet: H161 react"
+                    className="h-8 px-2 flex items-center gap-1.5 border rounded-lg transition-all bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
+                    <span className="hidden md:inline">
+                      {isSyncing ? 'Đang đồng bộ...' : 'Google Sheet'}
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     title="Ghim mục"
@@ -935,6 +1083,25 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
         }}
         onSubmit={handleFormSubmit}
       />
+
+      {/* Live Google Sheet Toast Notifications */}
+      {syncToastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-card border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+          <span className="text-xs font-semibold text-foreground">
+            {syncToastMessage}
+          </span>
+        </div>
+      )}
+
+      {syncError && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-2.5 bg-card border border-destructive/40 text-destructive rounded-xl shadow-2xl animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+          <span className="text-xs font-semibold text-foreground">
+            {syncError}
+          </span>
+        </div>
+      )}
     </div>
   );
 };
