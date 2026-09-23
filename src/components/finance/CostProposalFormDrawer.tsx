@@ -20,6 +20,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { CostProposal, ProposalLineItem } from '../../types/cost-proposal';
+import { useAuth } from '../../context/AuthContext';
 
 interface CostProposalFormDrawerProps {
   initialData?: CostProposal | null;
@@ -84,6 +85,7 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
   onClose,
   onSubmit,
 }) => {
+  const { currentUser } = useAuth();
   const [widthMode, setWidthMode] = useState<DrawerWidthMode>('normal');
 
   // Form Fields
@@ -169,8 +171,8 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
 
       setProposalDate(todayIso);
       setDueDate(todayIso);
-      setProposer('Lê Minh Công');
-      setDepartment('Ban Giám Đốc');
+      setProposer(currentUser.name || 'Lê Minh Công');
+      setDepartment(currentUser.department || 'Ban Giám Đốc');
       setTitle('');
       setReason('');
       setAccount('Vietcombank - Tài khoản chính');

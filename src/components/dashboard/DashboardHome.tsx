@@ -1,5 +1,6 @@
 import React from 'react';
-import { DASHBOARD_MODULES, CURRENT_USER } from '../../data/navigation';
+import { DASHBOARD_MODULES } from '../../data/navigation';
+import { useAuth } from '../../context/AuthContext';
 import { ModuleCard } from './ModuleCard';
 
 interface DashboardHomeProps {
@@ -7,6 +8,8 @@ interface DashboardHomeProps {
 }
 
 export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
+  const { currentUser } = useAuth();
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Chào buổi sáng';
@@ -22,7 +25,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
           <div className="mb-6">
             <h1 className="text-lg md:text-xl font-semibold text-foreground tracking-tight">
               {getGreeting()},{' '}
-              <span className="text-primary">{CURRENT_USER.name}</span> 👋
+              <span className="text-primary font-bold">{currentUser.name}</span> 👋
             </h1>
           </div>
 

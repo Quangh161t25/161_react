@@ -29,12 +29,14 @@ import { CostProposal, ApprovalStatus } from '../../types/cost-proposal';
 import { CostProposalDetailDrawer } from './CostProposalDetailDrawer';
 import { CostProposalFormDrawer } from './CostProposalFormDrawer';
 import { googleSheetsService } from '../../services/googleSheetsService';
+import { useAuth } from '../../context/AuthContext';
 
 interface CostProposalPageProps {
   onBack: () => void;
 }
 
 export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) => {
+  const { currentUser } = useAuth();
   const [proposals, setProposals] = useState<CostProposal[]>(() =>
     googleSheetsService.getInitialProposals()
   );
@@ -199,8 +201,8 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
         code: newCode,
         proposalDate: formData.proposalDate || dateStr,
         dueDate: formData.dueDate || dateStr,
-        proposer: formData.proposer || 'Lê Minh Công',
-        department: formData.department || 'Ban Giám Đốc',
+        proposer: formData.proposer || currentUser.name || 'Lê Minh Công',
+        department: formData.department || currentUser.department || 'Ban Giám Đốc',
         title: formData.title || '',
         reason: formData.reason || '',
         amount: formData.amount || 0,

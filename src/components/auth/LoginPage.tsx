@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface LoginPageProps {
   onLoginSuccess: (username: string) => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+  const { login } = useAuth();
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
@@ -16,7 +18,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
@@ -32,11 +34,18 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
     setIsLoading(true);
 
-    // Simulate fast auth request
-    setTimeout(() => {
+    try {
+      const result = await login(username, password);
+      if (result.success) {
+        onLoginSuccess(result.user?.username || username);
+      } else {
+        setErrorMessage(result.error || 'Đăng nhập không thành công. Vui lòng kiểm tra lại!');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Có lỗi xảy ra trong quá trình đăng nhập.');
+    } finally {
       setIsLoading(false);
-      onLoginSuccess(username);
-    }, 400);
+    }
   };
 
   const handleForgotPassword = (e: React.FormEvent) => {
@@ -187,6 +196,35 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 </>
               )}
             </button>
+
+            {/* Quick Demo Accounts */}
+            <div className="pt-2">
+              <p className="text-[11px] text-muted-foreground text-center mb-2 font-medium">
+                Hoặc chọn nhanh tài khoản nhân viên:
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {[
+                  { u: 'admin', p: 'admin123', label: 'Admin (Lê Minh Công)' },
+                  { u: 'hoangnv', p: 'Password@2026!', label: 'Nguyễn Văn Hoàng' },
+                  { u: 'dangvh', p: 'Password@2024', label: 'Vũ Hải Đăng' },
+                  { u: 'quangnm', p: '123456', label: 'Nguyễn Mạnh Quang' },
+                  { u: 'thang.bd', p: '123456', label: 'Bùi Đức Thắng' },
+                ].map((acc) => (
+                  <button
+                    key={acc.u}
+                    type="button"
+                    onClick={() => {
+                      setUsername(acc.u);
+                      setPassword(acc.p);
+                      setErrorMessage(null);
+                    }}
+                    className="text-[11px] px-2.5 py-1 rounded-md bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground border border-border transition-colors cursor-pointer"
+                  >
+                    {acc.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </form>
         </div>
 

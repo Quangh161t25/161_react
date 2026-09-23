@@ -12,7 +12,8 @@ import {
   Key,
   LogOut,
 } from 'lucide-react';
-import { CURRENT_USER, NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../data/navigation';
+import { NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../data/navigation';
+import { useAuth } from '../../context/AuthContext';
 import { FINANCE_SECTIONS } from '../../data/finance';
 import { SYSTEM_SECTIONS } from '../../data/system';
 
@@ -29,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   activePath,
   onNavigate,
 }) => {
+  const { currentUser, logout } = useAuth();
   const [time, setTime] = useState<Date>(new Date());
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -304,24 +306,24 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             aria-label="Menu người dùng"
             aria-expanded={userMenuOpen}
-            className="min-h-[44px] flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-lg hover:bg-muted border border-transparent hover:border-border transition-colors group"
+            className="min-h-[44px] flex items-center gap-2.5 pl-1 pr-2 py-1 rounded-lg hover:bg-muted border border-transparent hover:border-border transition-colors group cursor-pointer"
           >
             <div className="relative shrink-0">
               <img
                 alt="Avatar"
                 className="h-7 w-7 rounded-lg ring-1 ring-border shadow-sm object-cover"
-                src={CURRENT_USER.avatarUrl}
+                src={currentUser.avatarUrl}
               />
-              {CURRENT_USER.isOnline && (
+              {currentUser.isOnline && (
                 <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-[1.5px] border-card rounded-full" />
               )}
             </div>
             <div className="hidden md:block text-left min-w-0 max-w-[11rem]">
               <p className="text-xs font-semibold text-foreground leading-tight truncate">
-                {CURRENT_USER.name}
+                {currentUser.name}
               </p>
               <p className="text-[10px] font-normal text-muted-foreground leading-tight truncate">
-                {CURRENT_USER.title}
+                {currentUser.title || currentUser.role}
               </p>
             </div>
             <ChevronDown
@@ -345,13 +347,13 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* Mobile-only user info header */}
                 <div className="px-3 py-2.5 border-b border-border md:hidden">
                   <p className="text-xs font-semibold text-foreground truncate">
-                    {CURRENT_USER.name}
+                    {currentUser.name}
                   </p>
                   <p className="text-xs text-primary font-medium mt-0.5 truncate">
-                    {CURRENT_USER.title}
+                    {currentUser.title || currentUser.role}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    admin
+                    {currentUser.username || 'admin'}
                   </p>
                 </div>
 
@@ -407,6 +409,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={() => {
                       setUserMenuOpen(false);
                       if (window.confirm('Bạn có chắc chắn muốn đăng xuất không?')) {
+                        logout();
                         onNavigate('/dang-nhap');
                       }
                     }}
