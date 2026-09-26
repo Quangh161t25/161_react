@@ -114,6 +114,9 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
   };
 
   const getDrawerWidthStyle = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      return '100vw';
+    }
     switch (widthMode) {
       case 'narrow':
         return 'min(540px, 100vw)';
@@ -213,11 +216,11 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
 
           {/* Right Header Actions */}
           <div className="flex items-center gap-1 shrink-0">
-            {/* Width Switcher */}
+            {/* Width Switcher (Tablet/Desktop) */}
             <div
               role="group"
               aria-label="Bề rộng ngăn bên"
-              className="flex items-center gap-0.5 shrink-0 rounded-xl border border-border p-0.5"
+              className="hidden sm:flex items-center gap-0.5 shrink-0 rounded-xl border border-border p-0.5"
             >
               <button
                 type="button"
@@ -364,17 +367,17 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
             </div>
 
             {/* 2. Quick Action Buttons Grid */}
-            <div className="gap-3 p-3.5 min-w-0 grid grid-cols-4 bg-card rounded-xl border border-border shadow-xs">
+            <div className="gap-2 sm:gap-3 p-2.5 sm:p-3.5 min-w-0 grid grid-cols-4 bg-card rounded-xl border border-border shadow-xs">
               {/* Trạng thái */}
               <button
                 type="button"
                 onClick={() => onEdit(employee)}
-                className="flex flex-col items-center gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                className="flex flex-col items-center gap-1 sm:gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center transition-[transform,colors,background-color,border-color] duration-150 shadow-xs border bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-primary-foreground">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-[transform,colors,background-color,border-color] duration-150 shadow-xs border bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-primary-foreground">
                   <Briefcase className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-medium text-center transition-colors break-words w-full px-1 leading-tight text-primary">
+                <span className="text-[11px] sm:text-xs font-medium text-center transition-colors truncate w-full px-0.5 leading-tight text-primary">
                   Trạng thái
                 </span>
               </button>
@@ -383,12 +386,12 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="flex flex-col items-center gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                className="flex flex-col items-center gap-1 sm:gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center transition-[transform,colors,background-color,border-color] duration-150 shadow-xs border bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-[transform,colors,background-color,border-color] duration-150 shadow-xs border bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground">
                   <Printer className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-medium text-center transition-colors break-words w-full px-1 leading-tight text-muted-foreground">
+                <span className="text-[11px] sm:text-xs font-medium text-center transition-colors truncate w-full px-0.5 leading-tight text-muted-foreground">
                   In
                 </span>
               </button>
@@ -402,12 +405,12 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                     window.location.href = `mailto:${targetEmail}`;
                   }
                 }}
-                className="flex flex-col items-center gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                className="flex flex-col items-center gap-1 sm:gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center transition-[transform,colors,background-color,border-color] duration-150 shadow-xs border bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-[transform,colors,background-color,border-color] duration-150 shadow-xs border bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground">
                   <Mail className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-medium text-center transition-colors break-words w-full px-1 leading-tight text-muted-foreground">
+                <span className="text-[11px] sm:text-xs font-medium text-center transition-colors truncate w-full px-0.5 leading-tight text-muted-foreground">
                   Gửi Email
                 </span>
               </button>
@@ -420,12 +423,12 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                     window.location.href = `tel:${employee.phone}`;
                   }
                 }}
-                className="flex flex-col items-center gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
+                className="flex flex-col items-center gap-1 sm:gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center transition-[transform,colors,background-color,border-color] duration-150 shadow-xs border bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-[transform,colors,background-color,border-color] duration-150 shadow-xs border bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground">
                   <Phone className="w-4 h-4" />
                 </div>
-                <span className="text-xs font-medium text-center transition-colors break-words w-full px-1 leading-tight text-muted-foreground">
+                <span className="text-[11px] sm:text-xs font-medium text-center transition-colors truncate w-full px-0.5 leading-tight text-muted-foreground">
                   Gọi điện
                 </span>
               </button>

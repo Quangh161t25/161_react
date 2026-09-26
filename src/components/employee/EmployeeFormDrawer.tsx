@@ -41,7 +41,7 @@ interface EmployeeFormDrawerProps {
   onSubmit: (formData: Partial<Employee>) => void;
 }
 
-type WidthMode = 'narrow' | 'normal' | 'wide';
+type WidthMode = 'narrow' | 'normal' | 'wide' | 'fullscreen';
 
 // Helper date conversions for <input type="date">
 const toInputDate = (dateStr?: string): string => {
@@ -334,11 +334,16 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   };
 
   const getWidthStyle = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      return '100vw';
+    }
     switch (widthMode) {
       case 'narrow':
         return 'min(540px, 100vw)';
       case 'wide':
         return 'min(1024px, 100vw)';
+      case 'fullscreen':
+        return '100vw';
       case 'normal':
       default:
         return 'min(768px, -6rem + 100vw)';
@@ -396,10 +401,11 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
 
           {/* Width Controls & Close */}
           <div className="flex items-center gap-1 shrink-0">
+            {/* Width Switcher (Tablet/Desktop) */}
             <div
               role="group"
               aria-label="Bề rộng ngăn bên"
-              className="flex items-center gap-0.5 shrink-0 rounded-xl border border-border p-0.5"
+              className="hidden sm:flex items-center gap-0.5 shrink-0 rounded-xl border border-border p-0.5"
             >
               <button
                 type="button"
