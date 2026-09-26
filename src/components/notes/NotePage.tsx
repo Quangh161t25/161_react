@@ -554,8 +554,10 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     const colAlign = col.align || 'left';
     const alignClass = colAlign === 'center' ? 'text-center' : colAlign === 'right' ? 'text-right' : 'text-left';
     const wrapMode = col.wrap || 'truncate';
-    const textWrapClass =
-      wrapMode === 'wrap' ? 'whitespace-normal break-words' : 'truncate';
+    const isWrap = wrapMode === 'wrap';
+    const textWrapClass = isWrap
+      ? 'whitespace-normal break-words leading-relaxed'
+      : 'whitespace-nowrap truncate overflow-hidden text-ellipsis block w-full max-w-full';
 
     const offsetInfo = columnOffsets.get(colId);
     const isPinned = !!offsetInfo?.isPinned;
@@ -573,13 +575,13 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       ...(isPinned ? { left: `${pinnedLeft}px` } : {}),
     };
 
-    const tdBaseClass = `${cellPaddingClass} border-r border-border ${alignClass} ${stickyTdClass}`;
+    const tdBaseClass = `${cellPaddingClass} border-r border-border ${alignClass} ${stickyTdClass} overflow-hidden max-w-0`;
 
     switch (colId) {
       case 'title':
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} text-foreground`}>
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden">
               {note.isPinned && (
                 <button
                   type="button"
@@ -597,7 +599,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                   className="w-7 h-7 rounded-lg object-cover border border-border shrink-0"
                 />
               )}
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 overflow-hidden">
                 <span className={`font-semibold hover:text-primary transition-colors cursor-pointer ${textWrapClass}`}>
                   {note.title}
                 </span>
@@ -615,9 +617,9 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         const cleanContent = (note.content || '').replace(/<[^>]*>?/gm, '').replace(/^[#>\-\*]+\s*/gm, '').trim();
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} text-foreground/80`}>
-            <span className={textWrapClass} title={cleanContent}>
+            <div className={`w-full min-w-0 ${textWrapClass}`} title={cleanContent}>
               {cleanContent || '—'}
-            </span>
+            </div>
           </td>
         );
 
@@ -638,11 +640,11 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       case 'tags':
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} ${textWrapClass}`}>
-            <div className="flex flex-wrap items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1 overflow-hidden">
               {(note.tags || []).map((t, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground border border-border"
+                  className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground border border-border shrink-0"
                 >
                   #{t}
                 </span>
@@ -653,25 +655,29 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
 
       case 'noteDate':
         return (
-          <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>
-            {note.noteDate ? formatDate(note.noteDate) : '—'}
+          <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground`}>
+            <div className={`w-full min-w-0 ${textWrapClass}`}>
+              {note.noteDate ? formatDate(note.noteDate) : '—'}
+            </div>
           </td>
         );
 
       case 'noteTime':
         return (
-          <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums font-mono text-muted-foreground ${textWrapClass}`}>
-            {note.noteTime ? formatTime(note.noteTime) : '—'}
+          <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums font-mono text-muted-foreground`}>
+            <div className={`w-full min-w-0 ${textWrapClass}`}>
+              {note.noteTime ? formatTime(note.noteTime) : '—'}
+            </div>
           </td>
         );
 
       case 'location':
         return (
-          <td key={colId} style={tdStyle} className={`${tdBaseClass} ${textWrapClass}`}>
+          <td key={colId} style={tdStyle} className={tdBaseClass}>
             {note.location ? (
-              <div className="flex items-center gap-1.5 text-xs text-foreground">
+              <div className="flex items-center gap-1.5 text-xs text-foreground min-w-0 overflow-hidden">
                 <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span className="truncate">{note.location}</span>
+                <span className={textWrapClass}>{note.location}</span>
               </div>
             ) : (
               <span className="text-muted-foreground">—</span>
@@ -695,29 +701,37 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
 
       case 'author':
         return (
-          <td key={colId} style={tdStyle} className={`${tdBaseClass} font-medium text-foreground ${textWrapClass}`}>
-            {note.author || 'Lê Minh Công'}
+          <td key={colId} style={tdStyle} className={`${tdBaseClass} font-medium text-foreground`}>
+            <div className={`w-full min-w-0 ${textWrapClass}`}>
+              {note.author || 'Lê Minh Công'}
+            </div>
           </td>
         );
 
       case 'summary':
         return (
-          <td key={colId} style={tdStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>
-            {note.summary || '—'}
+          <td key={colId} style={tdStyle} className={`${tdBaseClass} text-muted-foreground`}>
+            <div className={`w-full min-w-0 ${textWrapClass}`} title={note.summary}>
+              {note.summary || '—'}
+            </div>
           </td>
         );
 
       case 'createdAt':
         return (
-          <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>
-            {note.createdAt ? formatDate(note.createdAt) : '—'}
+          <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground`}>
+            <div className={`w-full min-w-0 ${textWrapClass}`}>
+              {note.createdAt ? formatDate(note.createdAt) : '—'}
+            </div>
           </td>
         );
 
       case 'updatedAt':
         return (
-          <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>
-            {note.updatedAt ? formatDate(note.updatedAt) : '—'}
+          <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground`}>
+            <div className={`w-full min-w-0 ${textWrapClass}`}>
+              {note.updatedAt ? formatDate(note.updatedAt) : '—'}
+            </div>
           </td>
         );
 
