@@ -12,6 +12,7 @@ interface SettingsContextType {
   resetDefaults: () => void;
   formatCurrency: (amount: number) => string;
   formatDate: (date: Date | string) => string;
+  formatTime: (time: Date | string | undefined | null) => string;
   formatDateTime: (date: Date | string) => string;
 }
 
@@ -152,23 +153,37 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return `${year}-${month}-${day}`;
   };
 
+  // Helper: Format Time according to settings
+  const formatTime = (timeInput?: Date | string | null): string => {
+    if (!timeInput) return '';
+    let hours = 0;
+    let minutes = 0;
+    if (typeof timeInput === 'string') {
+      const match = timeInput.match(/^(\d{1,2}):(\d{2})/);
+      if (!match) return timeInput;
+      hours = parseInt(match[1], 10);
+      minutes = parseInt(match[2], 10);
+    } else {
+      hours = timeInput.getHours();
+      minutes = timeInput.getMinutes();
+    }
+    const minStr = String(minutes).padStart(2, '0');
+    if (settings.timeFormat === '24h') {
+      return `${String(hours).padStart(2, '0')}:${minStr}`;
+    } else {
+      const ampm = hours >= 12 ? 'CH' : 'SA';
+      const h12 = hours % 12 || 12;
+      return `${String(h12).padStart(2, '0')}:${minStr} ${ampm}`;
+    }
+  };
+
   // Helper: Format DateTime according to settings
   const formatDateTime = (dateInput: Date | string): string => {
     const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
     if (isNaN(d.getTime())) return '';
     const formattedDate = formatDate(d);
-
-    let hours = d.getHours();
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-
-    if (settings.timeFormat === '24h') {
-      return `${formattedDate} ${String(hours).padStart(2, '0')}:${minutes}`;
-    } else {
-      const ampm = hours >= 12 ? 'CH' : 'SA';
-      hours = hours % 12;
-      hours = hours ? hours : 12;
-      return `${formattedDate} ${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
-    }
+    const formattedTime = formatTime(d);
+    return `${formattedDate} ${formattedTime}`;
   };
 
   return (
@@ -179,6 +194,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         resetDefaults,
         formatCurrency,
         formatDate,
+        formatTime,
         formatDateTime,
       }}
     >

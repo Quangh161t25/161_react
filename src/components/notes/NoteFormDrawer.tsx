@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
   MapPin,
   Calendar,
-  Clock,
   Tag,
   FolderOpen,
   Pin,
@@ -35,6 +34,7 @@ import {
 } from 'lucide-react';
 import { Note, NoteCategory, NoteStatus, NoteAttachment } from '../../types/note';
 import { NOTE_CATEGORIES, NOTE_COLOR_THEMES, PRESET_TAGS } from '../../data/notes';
+import { TimePickerInput } from '../common/TimePickerInput';
 
 interface NoteFormDrawerProps {
   isOpen: boolean;
@@ -861,15 +861,11 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Giờ sự kiện / thực hiện
                   </label>
-                  <div className="relative">
-                    <Clock className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="time"
-                      value={noteTime}
-                      onChange={(e) => setNoteTime(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
+                  <TimePickerInput
+                    value={noteTime}
+                    onChange={(val) => setNoteTime(val)}
+                    placeholder="Chọn hoặc nhập giờ..."
+                  />
                 </div>
               </div>
 

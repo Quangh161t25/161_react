@@ -29,6 +29,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { Note } from '../../types/note';
+import { useSettings } from '../../context/SettingsContext';
 
 interface NoteDetailDrawerProps {
   isOpen?: boolean;
@@ -62,6 +63,7 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
   onDelete,
   onTogglePin,
 }) => {
+  const { formatDate, formatTime } = useSettings();
   const [widthMode, setWidthMode] = useState<DrawerWidthMode>('normal');
   const [prevWidthMode, setPrevWidthMode] = useState<DrawerWidthMode>('normal');
   const [activityTab, setActivityTab] = useState<ActivityTab>('history');
@@ -125,7 +127,7 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
       `Mã tài liệu: ${note.code || '—'}`,
       `Danh mục: ${note.category || '—'}`,
       `Người tạo: ${note.author || '—'}`,
-      `Ngày giờ: ${note.noteTime ? `${note.noteTime} - ` : ''}${note.noteDate || note.createdAt}`,
+      `Ngày giờ: ${note.noteTime ? `${formatTime(note.noteTime)} - ` : ''}${note.noteDate ? formatDate(note.noteDate) : (note.createdAt ? formatDate(note.createdAt) : '')}`,
       `Địa điểm: ${note.location || '—'}`,
       `Thẻ tags: ${note.tags?.join(', ') || '—'}`,
       `\nTóm tắt:`,
@@ -335,8 +337,8 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                     <h4 className="text-xs font-bold text-foreground">{note.author}</h4>
                     <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
                       <Calendar className="w-3 h-3" />
-                      {note.noteTime ? `${note.noteTime} · ` : ''}
-                      {note.noteDate || note.createdAt}
+                      {note.noteTime ? `${formatTime(note.noteTime)} · ` : ''}
+                      {note.noteDate ? formatDate(note.noteDate) : (note.createdAt ? formatDate(note.createdAt) : '')}
                     </p>
                   </div>
                 </div>

@@ -38,6 +38,7 @@ import {
   ColumnItem,
   TableDensity,
 } from '../common/ColumnCustomizerPopover';
+import { useSettings } from '../../context/SettingsContext';
 
 interface NotePageProps {
   onBack: () => void;
@@ -61,6 +62,7 @@ export const DEFAULT_NOTE_COLUMNS: ColumnItem[] = [
 ];
 
 export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
+  const { formatDate, formatTime } = useSettings();
   const [notes, setNotes] = useState<Note[]>(() => noteService.getInitialNotes());
   const [activeTopTab, setActiveTopTab] = useState<'list' | 'stats'>('list');
   const [searchQuery, setSearchQuery] = useState('');
@@ -652,14 +654,14 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       case 'noteDate':
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>
-            {note.noteDate || '—'}
+            {note.noteDate ? formatDate(note.noteDate) : '—'}
           </td>
         );
 
       case 'noteTime':
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums font-mono text-muted-foreground ${textWrapClass}`}>
-            {note.noteTime || '—'}
+            {note.noteTime ? formatTime(note.noteTime) : '—'}
           </td>
         );
 
@@ -708,14 +710,14 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       case 'createdAt':
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>
-            {note.createdAt || '—'}
+            {note.createdAt ? formatDate(note.createdAt) : '—'}
           </td>
         );
 
       case 'updatedAt':
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>
-            {note.updatedAt || '—'}
+            {note.updatedAt ? formatDate(note.updatedAt) : '—'}
           </td>
         );
 
@@ -1397,7 +1399,8 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                             <div className="flex items-center justify-between text-muted-foreground text-[11px]">
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-3 h-3 text-primary" />
-                                {note.noteDate || note.createdAt || '—'}
+                                {note.noteTime ? `${formatTime(note.noteTime)} · ` : ''}
+                                {note.noteDate ? formatDate(note.noteDate) : (note.createdAt ? formatDate(note.createdAt) : '—')}
                               </span>
                               {note.location && (
                                 <span className="flex items-center gap-1 truncate max-w-[120px]">
