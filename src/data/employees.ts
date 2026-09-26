@@ -1,5 +1,28 @@
 import { Employee } from '../types/employee';
 
+export const VIETNAM_BANKS = [
+  'Vietcombank (Ngân hàng Ngoại thương)',
+  'Techcombank (Ngân hàng Kỹ thương)',
+  'MB Bank (Ngân hàng Quân đội)',
+  'BIDV (Ngân hàng Đầu tư và Phát triển)',
+  'VietinBank (Ngân hàng Công thương)',
+  'Agribank (Ngân hàng Nông nghiệp & PTNT)',
+  'VPBank (Ngân hàng Việt Nam Thịnh vượng)',
+  'ACB (Ngân hàng Á Châu)',
+  'TPBank (Ngân hàng Tiên Phong)',
+  'VIB (Ngân hàng Quốc tế)',
+  'Sacombank (Ngân hàng Sài Gòn Thương Tín)',
+  'HDBank (Ngân hàng Phát triển TP.HCM)',
+  'SHB (Ngân hàng Sài Gòn - Hà Nội)',
+  'OCB (Ngân hàng Phương Đông)',
+  'MSB (Ngân hàng Hàng Hải)',
+  'SeABank (Ngân hàng Đông Nam Á)',
+  'LPBank (Ngân hàng Bưu điện Liên Việt)',
+  'Timo Digital Bank',
+  'Cake by VPBank',
+  'Khác...',
+];
+
 export const MOCK_EMPLOYEES: Employee[] = [
   {
     "id": "6",
@@ -188,6 +211,38 @@ export const MOCK_EMPLOYEES: Employee[] = [
     "bankAccountHolder": "DANG TUAN ANH",
     "bankName": "Vietcombank",
     "bankBranch": "Chi nhánh Thăng Long",
+    "bankAccounts": [
+      {
+        "id": "ba-1",
+        "bankName": "Vietcombank (Ngân hàng Ngoại thương)",
+        "accountNumber": "112233445566",
+        "accountHolder": "DANG TUAN ANH",
+        "branch": "Chi nhánh Thăng Long",
+        "isPrimary": true
+      },
+      {
+        "id": "ba-2",
+        "bankName": "Techcombank (Ngân hàng Kỹ thương)",
+        "accountNumber": "19033445566001",
+        "accountHolder": "DANG TUAN ANH",
+        "branch": "Chi nhánh Hà Nội",
+        "isPrimary": false
+      },
+      {
+        "id": "ba-3",
+        "bankName": "MB Bank (Ngân hàng Quân đội)",
+        "accountNumber": "08899887766",
+        "accountHolder": "DANG TUAN ANH",
+        "branch": "Chi nhánh Cầu Giấy",
+        "isPrimary": false
+      }
+    ],
+    "hobbies": "Đọc sách công nghệ, chạy bộ buổi sáng, cà phê phin, đánh cờ vua",
+    "dislikes": "Ồn ào khi tập trung làm việc, đồ ngọt nhiều đường",
+    "notes": "Nhân sự nòng cốt kỹ thuật, lead team R&D phát triển module ERP.",
+    "facebook": "tuananh.dang87",
+    "zalo": "0936112244",
+    "linkedin": "tuananh-dang-tech",
     "socialInsuranceNumber": "167890123",
     "healthInsuranceNumber": "DN40167890123",
     "taxCode": "8192837465",
@@ -236,6 +291,22 @@ export const MOCK_EMPLOYEES: Employee[] = [
     "bankAccountHolder": "PHAM HONG NHUNG",
     "bankName": "Techcombank",
     "bankBranch": "Chi nhánh Đống Đa",
+    "bankAccounts": [
+      {
+        "id": "ba-nhung-1",
+        "bankName": "Techcombank (Ngân hàng Kỹ thương)",
+        "accountNumber": "98712345678",
+        "accountHolder": "PHAM HONG NHUNG",
+        "branch": "Chi nhánh Đống Đa",
+        "isPrimary": true
+      }
+    ],
+    "hobbies": "Nhiếp ảnh, du lịch trải nghiệm, làm đồ thủ công handmade",
+    "dislikes": "Đi trễ giờ, món ăn cay nóng",
+    "notes": "Nhân viên nhiệt tình, có năng khiếu sáng tạo nội dung truyền thông.",
+    "facebook": "nhung.hongpham",
+    "tiktok": "@nhung_marketing",
+    "instagram": "nhung_hong",
     "socialInsuranceNumber": "156789012",
     "healthInsuranceNumber": "DN40156789012",
     "taxCode": "8765432109",
@@ -284,6 +355,29 @@ export const MOCK_EMPLOYEES: Employee[] = [
     "bankAccountHolder": "HOANG QUOC VIET",
     "bankName": "VietinBank",
     "bankBranch": "Chi nhánh Tây Hà Nội",
+    "bankAccounts": [
+      {
+        "id": "ba-viet-1",
+        "bankName": "VietinBank (Ngân hàng Công thương)",
+        "accountNumber": "1098273645",
+        "accountHolder": "HOANG QUOC VIET",
+        "branch": "Chi nhánh Tây Hà Nội",
+        "isPrimary": true
+      },
+      {
+        "id": "ba-viet-2",
+        "bankName": "Timo Digital Bank",
+        "accountNumber": "90011223344",
+        "accountHolder": "HOANG QUOC VIET",
+        "branch": "Online",
+        "isPrimary": false
+      }
+    ],
+    "hobbies": "Bóng đá, lập trình mã nguồn mở, chơi guitar",
+    "dislikes": "Họp hành kéo dài không rõ mục tiêu",
+    "notes": "Chuyên gia UI/UX và React frontend.",
+    "facebook": "viet.hoang.dev",
+    "zalo": "0962334455",
     "socialInsuranceNumber": "145678901",
     "healthInsuranceNumber": "DN40145678901",
     "taxCode": "8291039485",

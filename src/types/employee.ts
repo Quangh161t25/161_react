@@ -1,6 +1,25 @@
 export type EmployeeStatus = 'working' | 'probation' | 'resigned' | 'suspended';
 export type Gender = 'Nam' | 'Nữ' | 'Khác';
 
+export interface EmployeeBankAccount {
+  id: string;
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+  branch?: string;
+  isPrimary?: boolean;
+}
+
+export interface EmployeeSocialLinks {
+  facebook?: string;
+  zalo?: string;
+  linkedin?: string;
+  tiktok?: string;
+  instagram?: string;
+  twitter?: string;
+  other?: string;
+}
+
 export interface Employee {
   id: string;
   code: string; // e.g., 'emp-001', 'emp-029'
@@ -39,13 +58,31 @@ export interface Employee {
   educationLevel?: string;
   major?: string;
   school?: string;
+
+  // Banking
   bankAccount?: string;
   bankAccountHolder?: string;
   bankName?: string;
   bankBranch?: string;
+  bankAccounts?: EmployeeBankAccount[];
+
+  // Insurance & Tax
   socialInsuranceNumber?: string;
   healthInsuranceNumber?: string;
   taxCode?: string;
+
+  // Additional Fields
+  hobbies?: string; // Sở thích
+  dislikes?: string; // Không thích
+  notes?: string; // Ghi chú
+  socialMedia?: EmployeeSocialLinks; // Mạng xã hội
+  facebook?: string;
+  zalo?: string;
+  linkedin?: string;
+  tiktok?: string;
+  instagram?: string;
+  twitter?: string;
+
   isActiveAccount?: boolean;
   password?: string;
 }

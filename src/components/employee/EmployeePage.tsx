@@ -87,6 +87,12 @@ export const DEFAULT_EMPLOYEE_COLUMNS: ColumnItem[] = [
   { id: 'bankAccountHolder', label: 'Chủ tài khoản', visible: false, width: 190, align: 'left', wrap: 'truncate' },
   { id: 'bankName', label: 'Tên ngân hàng', visible: false, width: 170, align: 'left', wrap: 'truncate' },
   { id: 'bankBranch', label: 'Chi nhánh', visible: false, width: 170, align: 'left', wrap: 'truncate' },
+  { id: 'bankAccounts', label: 'Danh sách ngân hàng', visible: false, width: 230, align: 'left', wrap: 'truncate' },
+  { id: 'hobbies', label: 'Sở thích', visible: false, width: 200, align: 'left', wrap: 'truncate' },
+  { id: 'dislikes', label: 'Không thích', visible: false, width: 200, align: 'left', wrap: 'truncate' },
+  { id: 'facebook', label: 'Facebook', visible: false, width: 170, align: 'left', wrap: 'truncate' },
+  { id: 'zalo', label: 'Zalo', visible: false, width: 150, align: 'left', wrap: 'truncate' },
+  { id: 'notes', label: 'Ghi chú', visible: false, width: 220, align: 'left', wrap: 'truncate' },
   { id: 'socialInsuranceNumber', label: 'Số BHXH', visible: false, width: 150, align: 'center', wrap: 'truncate' },
   { id: 'healthInsuranceNumber', label: 'Số BHYT', visible: false, width: 150, align: 'center', wrap: 'truncate' },
   { id: 'taxCode', label: 'Mã số thuế cá nhân', visible: false, width: 160, align: 'center', wrap: 'truncate' },
@@ -594,58 +600,90 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       'Chủ tài khoản',
       'Tên ngân hàng',
       'Chi nhánh',
+      'Danh sách ngân hàng',
+      'Sở thích',
+      'Không thích',
+      'Facebook',
+      'Zalo',
+      'Ghi chú',
       'Số BHXH',
       'Số BHYT',
       'Mã số thuế cá nhân',
       'Tài khoản hoạt động',
     ];
 
-    const rows = filteredEmployees.map((e) => [
-      `"${e.name}"`,
-      e.username || '',
-      `"${e.password || ''}"`,
-      `"${e.phone}"`,
-      `"${e.role}"`,
-      `"${e.department}"`,
-      `"${e.subDepartment || ''}"`,
-      e.email,
-      e.gender,
-      e.status === 'working' ? 'Đang làm việc' : e.status === 'probation' ? 'Thử việc' : e.status === 'resigned' ? 'Đã nghỉ việc' : 'Tạm hoãn',
-      e.createdAt,
-      e.updatedAt,
-      e.code,
-      e.dob || '',
-      `"${e.maritalStatus || 'Độc thân'}"`,
-      `"${e.nationality || 'Việt Nam'}"`,
-      `"${e.ethnicity || 'Kinh'}"`,
-      `"${e.religion || 'Không'}"`,
-      `"${e.hometown || ''}"`,
-      e.rank || 1,
-      e.startDate || '',
-      e.officialDate || '',
-      e.resignationDate || '',
-      `"${e.resignationReason || ''}"`,
-      `"${e.idCardNumber || ''}"`,
-      e.idCardDate || '',
-      `"${e.idCardPlace || ''}"`,
-      `"${e.permanentAddress || ''}"`,
-      `"${e.currentAddress || ''}"`,
-      e.personalEmail || '',
-      `"${e.emergencyContactName || ''}"`,
-      `"${e.emergencyContactPhone || ''}"`,
-      `"${e.emergencyContactRelation || ''}"`,
-      e.educationLevel || '',
-      `"${e.major || ''}"`,
-      `"${e.school || ''}"`,
-      `"${e.bankAccount || ''}"`,
-      `"${e.bankAccountHolder || ''}"`,
-      `"${e.bankName || ''}"`,
-      `"${e.bankBranch || ''}"`,
-      `"${e.socialInsuranceNumber || ''}"`,
-      `"${e.healthInsuranceNumber || ''}"`,
-      `"${e.taxCode || ''}"`,
-      e.status !== 'resigned' ? 'Hoạt động' : 'Đã khoá',
-    ]);
+    const rows = filteredEmployees.map((e) => {
+      const bankAccountsStr =
+        e.bankAccounts && e.bankAccounts.length > 0
+          ? e.bankAccounts
+              .map(
+                (b) =>
+                  `${b.bankName || ''}: ${b.accountNumber} (${b.accountHolder || e.name})${
+                    b.isPrimary ? ' [Chính]' : ''
+                  }`
+              )
+              .join('; ')
+          : e.bankAccount || '';
+
+      return [
+        `"${e.name}"`,
+        e.username || '',
+        `"${e.password || ''}"`,
+        `"${e.phone}"`,
+        `"${e.role}"`,
+        `"${e.department}"`,
+        `"${e.subDepartment || ''}"`,
+        e.email,
+        e.gender,
+        e.status === 'working'
+          ? 'Đang làm việc'
+          : e.status === 'probation'
+          ? 'Thử việc'
+          : e.status === 'resigned'
+          ? 'Đã nghỉ việc'
+          : 'Tạm hoãn',
+        e.createdAt,
+        e.updatedAt,
+        e.code,
+        e.dob || '',
+        `"${e.maritalStatus || 'Độc thân'}"`,
+        `"${e.nationality || 'Việt Nam'}"`,
+        `"${e.ethnicity || 'Kinh'}"`,
+        `"${e.religion || 'Không'}"`,
+        `"${e.hometown || ''}"`,
+        e.rank || 1,
+        e.startDate || '',
+        e.officialDate || '',
+        e.resignationDate || '',
+        `"${e.resignationReason || ''}"`,
+        `"${e.idCardNumber || ''}"`,
+        e.idCardDate || '',
+        `"${e.idCardPlace || ''}"`,
+        `"${e.permanentAddress || ''}"`,
+        `"${e.currentAddress || ''}"`,
+        e.personalEmail || '',
+        `"${e.emergencyContactName || ''}"`,
+        `"${e.emergencyContactPhone || ''}"`,
+        `"${e.emergencyContactRelation || ''}"`,
+        e.educationLevel || '',
+        `"${e.major || ''}"`,
+        `"${e.school || ''}"`,
+        `"${e.bankAccount || ''}"`,
+        `"${e.bankAccountHolder || ''}"`,
+        `"${e.bankName || ''}"`,
+        `"${e.bankBranch || ''}"`,
+        `"${bankAccountsStr}"`,
+        `"${e.hobbies || ''}"`,
+        `"${e.dislikes || ''}"`,
+        `"${e.facebook || e.socialMedia?.facebook || ''}"`,
+        `"${e.zalo || e.socialMedia?.zalo || ''}"`,
+        `"${e.notes || ''}"`,
+        `"${e.socialInsuranceNumber || ''}"`,
+        `"${e.healthInsuranceNumber || ''}"`,
+        `"${e.taxCode || ''}"`,
+        e.status !== 'resigned' ? 'Hoạt động' : 'Đã khoá',
+      ];
+    });
 
     const csvContent =
       'data:text/csv;charset=utf-8,\uFEFF' +
@@ -995,6 +1033,89 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.bankName || '—'}</td>;
       case 'bankBranch':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.bankBranch || '—'}</td>;
+      case 'bankAccounts':
+        return (
+          <td key={colId} style={colStyle} className={`${tdBaseClass} ${textWrapClass}`}>
+            {emp.bankAccounts && emp.bankAccounts.length > 0 ? (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-mono text-xs font-semibold text-foreground truncate">
+                  {emp.bankAccounts[0].bankName ? `${emp.bankAccounts[0].bankName}: ` : ''}
+                  {emp.bankAccounts[0].accountNumber}
+                </span>
+                {emp.bankAccounts.length > 1 && (
+                  <span className="text-[10px] bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded-full shrink-0">
+                    +{emp.bankAccounts.length - 1}
+                  </span>
+                )}
+              </div>
+            ) : emp.bankAccount ? (
+              <span className="font-mono text-xs text-foreground truncate">
+                {emp.bankName ? `${emp.bankName}: ` : ''}
+                {emp.bankAccount}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </td>
+        );
+      case 'hobbies':
+        return (
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>
+            {emp.hobbies || '—'}
+          </td>
+        );
+      case 'dislikes':
+        return (
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>
+            {emp.dislikes || '—'}
+          </td>
+        );
+      case 'facebook': {
+        const fb = emp.facebook || emp.socialMedia?.facebook;
+        return (
+          <td key={colId} style={colStyle} className={`${tdBaseClass} ${textWrapClass}`}>
+            {fb ? (
+              <a
+                href={fb.startsWith('http') ? fb : `https://facebook.com/${fb}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-primary hover:underline font-medium"
+              >
+                {fb}
+              </a>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </td>
+        );
+      }
+      case 'zalo': {
+        const zl = emp.zalo || emp.socialMedia?.zalo;
+        return (
+          <td key={colId} style={colStyle} className={`${tdBaseClass} ${textWrapClass}`}>
+            {zl ? (
+              <a
+                href={zl.startsWith('http') ? zl : `https://zalo.me/${zl}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-primary hover:underline font-medium"
+              >
+                {zl}
+              </a>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </td>
+        );
+      }
+      case 'notes':
+        return (
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>
+            {emp.notes || '—'}
+          </td>
+        );
       case 'socialInsuranceNumber':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono text-muted-foreground ${textWrapClass}`}>{emp.socialInsuranceNumber || '—'}</td>;
       case 'healthInsuranceNumber':

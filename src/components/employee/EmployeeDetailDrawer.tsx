@@ -40,6 +40,12 @@ import {
   School,
   Landmark,
   AlertCircle,
+  Smile,
+  Ban,
+  Share2,
+  FileText,
+  Star,
+  ExternalLink,
 } from 'lucide-react';
 import { Employee } from '../../types/employee';
 
@@ -83,13 +89,33 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
   };
 
   const handleCopyAll = () => {
+    const bankListStr =
+      employee.bankAccounts && employee.bankAccounts.length > 0
+        ? employee.bankAccounts
+            .map(
+              (b, idx) =>
+                `  [${idx + 1}] ${b.bankName || 'Ngân hàng'}: ${b.accountNumber} - ${b.accountHolder || employee.name}${b.isPrimary ? ' (Chính)' : ''}${b.branch ? ` - CN: ${b.branch}` : ''}`
+            )
+            .join('\n')
+        : employee.bankAccount
+        ? `${employee.bankAccount} (${employee.bankName || ''})`
+        : '—';
+
     const lines = [
       `=== THÔNG TIN NHÂN SỰ: ${employee.name} ===`,
       `Mã nhân viên: ${employee.code || '—'}`,
       `Chức vụ: ${employee.role || '—'}`,
       `Phòng ban: ${employee.department || '—'}`,
       `Bộ phận: ${employee.subDepartment || '—'}`,
-      `Trạng thái: ${employee.status === 'working' ? 'Đang làm việc' : employee.status === 'probation' ? 'Thử việc' : employee.status === 'resigned' ? 'Đã nghỉ việc' : 'Tạm hoãn'}`,
+      `Trạng thái: ${
+        employee.status === 'working'
+          ? 'Đang làm việc'
+          : employee.status === 'probation'
+          ? 'Thử việc'
+          : employee.status === 'resigned'
+          ? 'Đã nghỉ việc'
+          : 'Tạm hoãn'
+      }`,
       `Điện thoại: ${employee.phone || '—'}`,
       `Email công việc: ${employee.email || '—'}`,
       `Email cá nhân: ${employee.personalEmail || '—'}`,
@@ -97,7 +123,14 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
       `Ngày sinh: ${employee.dob || '—'}`,
       `CMND/CCCD: ${employee.idCardNumber || '—'}`,
       `Địa chỉ: ${employee.currentAddress || employee.permanentAddress || '—'}`,
-      `Tài khoản ngân hàng: ${employee.bankAccount ? `${employee.bankAccount} (${employee.bankName || ''})` : '—'}`,
+      `Tài khoản ngân hàng:\n${bankListStr}`,
+      `Sở thích: ${employee.hobbies || '—'}`,
+      `Không thích: ${employee.dislikes || '—'}`,
+      `Facebook: ${employee.facebook || employee.socialMedia?.facebook || '—'}`,
+      `Zalo: ${employee.zalo || employee.socialMedia?.zalo || '—'}`,
+      `LinkedIn: ${employee.linkedin || employee.socialMedia?.linkedin || '—'}`,
+      `TikTok: ${employee.tiktok || employee.socialMedia?.tiktok || '—'}`,
+      `Ghi chú: ${employee.notes || '—'}`,
     ];
     navigator.clipboard.writeText(lines.join('\n'));
     setCopiedAll(true);
@@ -987,72 +1020,399 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
               </div>
 
               {/* Section: Tài chính & Ngân hàng */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <Landmark className="w-3.5 h-3.5" />
                     <span className="truncate">Tài chính & Ngân hàng</span>
                   </h4>
+                  {employee.bankAccounts && employee.bankAccounts.length > 0 && (
+                    <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                      {employee.bankAccounts.length} tài khoản
+                    </span>
+                  )}
+                </div>
+
+                {employee.bankAccounts && employee.bankAccounts.length > 0 ? (
+                  <div className="space-y-3">
+                    {employee.bankAccounts.map((account, idx) => (
+                      <div
+                        key={account.id || idx}
+                        className={`p-3.5 rounded-xl border transition-all ${
+                          account.isPrimary
+                            ? 'bg-primary/5 border-primary/30 ring-1 ring-primary/20'
+                            : 'bg-muted/30 border-border hover:border-border/80'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2.5 pb-2 border-b border-border/50">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div
+                              className={`p-1.5 rounded-lg shrink-0 ${
+                                account.isPrimary
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'bg-muted text-muted-foreground'
+                              }`}
+                            >
+                              <Landmark className="w-4 h-4" />
+                            </div>
+                            <span className="text-xs font-bold text-foreground truncate">
+                              {account.bankName || `Tài khoản ${idx + 1}`}
+                            </span>
+                          </div>
+                          {account.isPrimary && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">
+                              <Star className="w-2.5 h-2.5 fill-emerald-500 text-emerald-500" />
+                              Tài khoản chính
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                          <div>
+                            <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">
+                              Số tài khoản
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-foreground">
+                                {account.accountNumber || '—'}
+                              </span>
+                              {account.accountNumber && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleCopy(
+                                      account.accountNumber,
+                                      `bank-${account.id || idx}`
+                                    )
+                                  }
+                                  className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                                  title="Sao chép số tài khoản"
+                                >
+                                  {copiedField === `bank-${account.id || idx}` ? (
+                                    <Check className="w-3 h-3 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="w-3 h-3" />
+                                  )}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">
+                              Chủ tài khoản
+                            </span>
+                            <span className="font-semibold text-foreground uppercase">
+                              {account.accountHolder || employee.name || '—'}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-[11px] font-medium text-muted-foreground block mb-0.5">
+                              Chi nhánh
+                            </span>
+                            <span className="text-foreground">
+                              {account.branch || '—'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 w-full">
+                    <div className="space-y-1 min-w-0 w-full">
+                      <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0">
+                        <CreditCard className="w-3 h-3" />
+                        Số tài khoản
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-mono font-bold text-foreground leading-relaxed min-w-0 wrap-anywhere">
+                          {employee.bankAccount || '—'}
+                        </p>
+                        {employee.bankAccount && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopy(employee.bankAccount!, 'bankAccount')
+                            }
+                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                            title="Sao chép số tài khoản"
+                          >
+                            {copiedField === 'bankAccount' ? (
+                              <Check className="w-3 h-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1 min-w-0 w-full">
+                      <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0">
+                        <User className="w-3 h-3" />
+                        Chủ tài khoản
+                      </span>
+                      <p className="text-xs font-semibold text-foreground uppercase leading-relaxed min-w-0 wrap-anywhere">
+                        {employee.bankAccountHolder || employee.name || '—'}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1 min-w-0 w-full">
+                      <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0">
+                        <Landmark className="w-3 h-3" />
+                        Ngân hàng
+                      </span>
+                      <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
+                        {employee.bankName || '—'}
+                      </p>
+                    </div>
+
+                    <div className="space-y-1 min-w-0 w-full">
+                      <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0">
+                        <Building2 className="w-3 h-3" />
+                        Chi nhánh
+                      </span>
+                      <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
+                        {employee.bankBranch || '—'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section: Sở thích & Thói quen */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
+                  <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
+                    <Smile className="w-3.5 h-3.5" />
+                    <span className="truncate">Sở thích & Thói quen</span>
+                  </h4>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 w-full">
                   <div className="space-y-1 min-w-0 w-full">
-                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0">
-                      <CreditCard className="w-3 h-3" />
-                      Số tài khoản
+                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0 text-emerald-600 dark:text-emerald-400">
+                      <Smile className="w-3 h-3 text-emerald-500" />
+                      Sở thích
                     </span>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-mono font-bold text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                        {employee.bankAccount || '—'}
-                      </p>
-                      {employee.bankAccount && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleCopy(employee.bankAccount!, 'bankAccount')
+                    <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere whitespace-pre-line bg-muted/30 p-2.5 rounded-lg border border-border/50">
+                      {employee.hobbies || 'Chưa có thông tin'}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 min-w-0 w-full">
+                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0 text-rose-600 dark:text-rose-400">
+                      <Ban className="w-3 h-3 text-rose-500" />
+                      Không thích / Kiêng kỵ
+                    </span>
+                    <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere whitespace-pre-line bg-muted/30 p-2.5 rounded-lg border border-border/50">
+                      {employee.dislikes || 'Chưa có thông tin'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Section: Mạng xã hội & Kênh liên kết */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
+                  <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
+                    <Share2 className="w-3.5 h-3.5" />
+                    <span className="truncate">Mạng xã hội & Kênh liên kết</span>
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 w-full">
+                  {/* Facebook */}
+                  <div className="p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-1">
+                    <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                      Facebook
+                    </span>
+                    {employee.facebook || employee.socialMedia?.facebook ? (
+                      <div className="flex items-center justify-between gap-1">
+                        <a
+                          href={
+                            (employee.facebook || employee.socialMedia?.facebook || '').startsWith('http')
+                              ? (employee.facebook || employee.socialMedia?.facebook || '')
+                              : `https://facebook.com/${employee.facebook || employee.socialMedia?.facebook}`
                           }
-                          className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                          title="Sao chép số tài khoản"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary font-medium hover:underline truncate flex items-center gap-1"
                         >
-                          {copiedField === 'bankAccount' ? (
-                            <Check className="w-3 h-3 text-emerald-500" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                        </button>
-                      )}
+                          <span className="truncate">
+                            {employee.facebook || employee.socialMedia?.facebook}
+                          </span>
+                          <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">—</p>
+                    )}
+                  </div>
+
+                  {/* Zalo */}
+                  <div className="p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-1">
+                    <span className="text-[11px] font-semibold text-sky-600 dark:text-sky-400 flex items-center gap-1">
+                      Zalo
+                    </span>
+                    {employee.zalo || employee.socialMedia?.zalo ? (
+                      <div className="flex items-center justify-between gap-1">
+                        <a
+                          href={
+                            (employee.zalo || employee.socialMedia?.zalo || '').startsWith('http')
+                              ? (employee.zalo || employee.socialMedia?.zalo || '')
+                              : `https://zalo.me/${employee.zalo || employee.socialMedia?.zalo}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary font-medium hover:underline truncate flex items-center gap-1"
+                        >
+                          <span className="truncate">
+                            {employee.zalo || employee.socialMedia?.zalo}
+                          </span>
+                          <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">—</p>
+                    )}
+                  </div>
+
+                  {/* LinkedIn */}
+                  <div className="p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-1">
+                    <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                      LinkedIn
+                    </span>
+                    {employee.linkedin || employee.socialMedia?.linkedin ? (
+                      <div className="flex items-center justify-between gap-1">
+                        <a
+                          href={
+                            (employee.linkedin || employee.socialMedia?.linkedin || '').startsWith('http')
+                              ? (employee.linkedin || employee.socialMedia?.linkedin || '')
+                              : `https://linkedin.com/in/${employee.linkedin || employee.socialMedia?.linkedin}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary font-medium hover:underline truncate flex items-center gap-1"
+                        >
+                          <span className="truncate">
+                            {employee.linkedin || employee.socialMedia?.linkedin}
+                          </span>
+                          <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">—</p>
+                    )}
+                  </div>
+
+                  {/* TikTok */}
+                  <div className="p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1">
+                      TikTok
+                    </span>
+                    {employee.tiktok || employee.socialMedia?.tiktok ? (
+                      <div className="flex items-center justify-between gap-1">
+                        <a
+                          href={
+                            (employee.tiktok || employee.socialMedia?.tiktok || '').startsWith('http')
+                              ? (employee.tiktok || employee.socialMedia?.tiktok || '')
+                              : `https://tiktok.com/@${(employee.tiktok || employee.socialMedia?.tiktok || '').replace(/^@/, '')}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary font-medium hover:underline truncate flex items-center gap-1"
+                        >
+                          <span className="truncate">
+                            {employee.tiktok || employee.socialMedia?.tiktok}
+                          </span>
+                          <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">—</p>
+                    )}
+                  </div>
+
+                  {/* Instagram */}
+                  <div className="p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-1">
+                    <span className="text-[11px] font-semibold text-pink-600 dark:text-pink-400 flex items-center gap-1">
+                      Instagram
+                    </span>
+                    {employee.instagram || employee.socialMedia?.instagram ? (
+                      <div className="flex items-center justify-between gap-1">
+                        <a
+                          href={
+                            (employee.instagram || employee.socialMedia?.instagram || '').startsWith('http')
+                              ? (employee.instagram || employee.socialMedia?.instagram || '')
+                              : `https://instagram.com/${(employee.instagram || employee.socialMedia?.instagram || '').replace(/^@/, '')}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary font-medium hover:underline truncate flex items-center gap-1"
+                        >
+                          <span className="truncate">
+                            {employee.instagram || employee.socialMedia?.instagram}
+                          </span>
+                          <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">—</p>
+                    )}
+                  </div>
+
+                  {/* X / Twitter */}
+                  <div className="p-2.5 rounded-lg border border-border/60 bg-muted/20 space-y-1">
+                    <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      X / Twitter
+                    </span>
+                    {employee.twitter || employee.socialMedia?.twitter ? (
+                      <div className="flex items-center justify-between gap-1">
+                        <a
+                          href={
+                            (employee.twitter || employee.socialMedia?.twitter || '').startsWith('http')
+                              ? (employee.twitter || employee.socialMedia?.twitter || '')
+                              : `https://x.com/${(employee.twitter || employee.socialMedia?.twitter || '').replace(/^@/, '')}`
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-xs text-primary font-medium hover:underline truncate flex items-center gap-1"
+                        >
+                          <span className="truncate">
+                            {employee.twitter || employee.socialMedia?.twitter}
+                          </span>
+                          <ExternalLink className="w-3 h-3 shrink-0 opacity-70" />
+                        </a>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">—</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Section: Ghi chú nhân sự */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
+                  <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
+                    <FileText className="w-3.5 h-3.5" />
+                    <span className="truncate">Ghi chú nhân sự</span>
+                  </h4>
+                </div>
+
+                <div className="w-full">
+                  {employee.notes ? (
+                    <div className="text-xs text-foreground leading-relaxed bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg whitespace-pre-line">
+                      {employee.notes}
                     </div>
-                  </div>
-
-                  <div className="space-y-1 min-w-0 w-full">
-                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0">
-                      <User className="w-3 h-3" />
-                      Chủ tài khoản
-                    </span>
-                    <p className="text-xs font-semibold text-foreground uppercase leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.bankAccountHolder || employee.name || '—'}
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">
+                      Chưa có ghi chú nội bộ nào cho nhân sự này.
                     </p>
-                  </div>
-
-                  <div className="space-y-1 min-w-0 w-full">
-                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0">
-                      <Landmark className="w-3 h-3" />
-                      Ngân hàng
-                    </span>
-                    <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.bankName || '—'}
-                    </p>
-                  </div>
-
-                  <div className="space-y-1 min-w-0 w-full">
-                    <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 min-w-0 break-words [&>svg]:shrink-0">
-                      <Building2 className="w-3 h-3" />
-                      Chi nhánh
-                    </span>
-                    <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.bankBranch || '—'}
-                    </p>
-                  </div>
+                  )}
                 </div>
               </div>
 

@@ -31,8 +31,17 @@ import {
   Trash2,
   ZoomIn,
   Save,
+  Plus,
+  Star,
+  Share2,
+  Globe,
+  ThumbsDown,
+  FileText,
+  Sparkles,
+  MessageCircle,
 } from 'lucide-react';
-import { Employee, EmployeeStatus, Gender } from '../../types/employee';
+import { Employee, EmployeeStatus, Gender, EmployeeBankAccount } from '../../types/employee';
+import { VIETNAM_BANKS } from '../../data/employees';
 
 interface EmployeeFormDrawerProps {
   isOpen: boolean;
@@ -123,11 +132,19 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [major, setMajor] = useState('');
   const [school, setSchool] = useState('');
 
-  // Bank
-  const [bankAccount, setBankAccount] = useState('');
-  const [bankAccountHolder, setBankAccountHolder] = useState('');
-  const [bankName, setBankName] = useState('');
-  const [bankBranch, setBankBranch] = useState('');
+  // Bank Accounts (Supports multiple)
+  const [bankAccounts, setBankAccounts] = useState<EmployeeBankAccount[]>([]);
+
+  // Preferences & Social Media & Notes
+  const [hobbies, setHobbies] = useState('');
+  const [dislikes, setDislikes] = useState('');
+  const [notes, setNotes] = useState('');
+  const [facebook, setFacebook] = useState('');
+  const [zalo, setZalo] = useState('');
+  const [linkedin, setLinkedin] = useState('');
+  const [tiktok, setTiktok] = useState('');
+  const [instagram, setInstagram] = useState('');
+  const [twitter, setTwitter] = useState('');
 
   // Insurance & Tax
   const [socialInsuranceNumber, setSocialInsuranceNumber] = useState('');
@@ -180,10 +197,43 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setMajor(initialData.major || '');
       setSchool(initialData.school || '');
 
-      setBankAccount(initialData.bankAccount || '');
-      setBankAccountHolder(initialData.bankAccountHolder || initialData.name || '');
-      setBankName(initialData.bankName || '');
-      setBankBranch(initialData.bankBranch || '');
+      // Multi-bank accounts loading
+      if (initialData.bankAccounts && initialData.bankAccounts.length > 0) {
+        setBankAccounts(initialData.bankAccounts.map((ba) => ({ ...ba })));
+      } else if (initialData.bankAccount || initialData.bankName) {
+        setBankAccounts([
+          {
+            id: 'ba_1',
+            bankName: initialData.bankName || '',
+            accountNumber: initialData.bankAccount || '',
+            accountHolder: initialData.bankAccountHolder || initialData.name || '',
+            branch: initialData.bankBranch || '',
+            isPrimary: true,
+          },
+        ]);
+      } else {
+        setBankAccounts([
+          {
+            id: 'ba_' + Date.now(),
+            bankName: '',
+            accountNumber: '',
+            accountHolder: initialData.name ? initialData.name.toUpperCase() : '',
+            branch: '',
+            isPrimary: true,
+          },
+        ]);
+      }
+
+      // Preferences & Social Media
+      setHobbies(initialData.hobbies || '');
+      setDislikes(initialData.dislikes || '');
+      setNotes(initialData.notes || '');
+      setFacebook(initialData.facebook || initialData.socialMedia?.facebook || '');
+      setZalo(initialData.zalo || initialData.socialMedia?.zalo || '');
+      setLinkedin(initialData.linkedin || initialData.socialMedia?.linkedin || '');
+      setTiktok(initialData.tiktok || initialData.socialMedia?.tiktok || '');
+      setInstagram(initialData.instagram || initialData.socialMedia?.instagram || '');
+      setTwitter(initialData.twitter || initialData.socialMedia?.twitter || '');
 
       setSocialInsuranceNumber(initialData.socialInsuranceNumber || '');
       setHealthInsuranceNumber(initialData.healthInsuranceNumber || '');
@@ -230,10 +280,26 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setMajor('');
       setSchool('');
 
-      setBankAccount('');
-      setBankAccountHolder('');
-      setBankName('');
-      setBankBranch('');
+      setBankAccounts([
+        {
+          id: 'ba_' + Date.now(),
+          bankName: '',
+          accountNumber: '',
+          accountHolder: '',
+          branch: '',
+          isPrimary: true,
+        },
+      ]);
+
+      setHobbies('');
+      setDislikes('');
+      setNotes('');
+      setFacebook('');
+      setZalo('');
+      setLinkedin('');
+      setTiktok('');
+      setInstagram('');
+      setTwitter('');
 
       setSocialInsuranceNumber('');
       setHealthInsuranceNumber('');
@@ -264,6 +330,50 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
     }
   };
 
+  // Bank Accounts Management
+  const handleAddBankAccount = () => {
+    setBankAccounts((prev) => [
+      ...prev,
+      {
+        id: 'ba_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        bankName: '',
+        accountNumber: '',
+        accountHolder: name ? name.toUpperCase() : '',
+        branch: '',
+        isPrimary: prev.length === 0,
+      },
+    ]);
+  };
+
+  const handleRemoveBankAccount = (id: string) => {
+    setBankAccounts((prev) => {
+      const filtered = prev.filter((a) => a.id !== id);
+      if (filtered.length > 0 && !filtered.some((a) => a.isPrimary)) {
+        filtered[0].isPrimary = true;
+      }
+      return filtered;
+    });
+  };
+
+  const handleSetPrimaryBankAccount = (id: string) => {
+    setBankAccounts((prev) =>
+      prev.map((a) => ({
+        ...a,
+        isPrimary: a.id === id,
+      }))
+    );
+  };
+
+  const handleUpdateBankAccount = (
+    id: string,
+    field: keyof EmployeeBankAccount,
+    value: any
+  ) => {
+    setBankAccounts((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, [field]: value } : a))
+    );
+  };
+
   const validate = () => {
     const errors: { [key: string]: string } = {};
     if (!name.trim()) errors.name = 'Vui lòng nhập họ và tên';
@@ -278,6 +388,12 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+
+    const validBankAccounts = bankAccounts.filter(
+      (ba) => ba.accountNumber.trim() || ba.bankName.trim()
+    );
+    const primaryBank =
+      validBankAccounts.find((ba) => ba.isPrimary) || validBankAccounts[0];
 
     const payload: Partial<Employee> = {
       name: name.trim(),
@@ -320,10 +436,30 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       major: major.trim() || undefined,
       school: school.trim() || undefined,
 
-      bankAccount: bankAccount.trim() || undefined,
-      bankAccountHolder: (bankAccountHolder || name).trim() || undefined,
-      bankName: bankName.trim() || undefined,
-      bankBranch: bankBranch.trim() || undefined,
+      bankAccounts: validBankAccounts.length > 0 ? validBankAccounts : undefined,
+      bankAccount: primaryBank?.accountNumber?.trim() || undefined,
+      bankAccountHolder:
+        primaryBank?.accountHolder?.trim() || name.trim().toUpperCase() || undefined,
+      bankName: primaryBank?.bankName?.trim() || undefined,
+      bankBranch: primaryBank?.branch?.trim() || undefined,
+
+      hobbies: hobbies.trim() || undefined,
+      dislikes: dislikes.trim() || undefined,
+      notes: notes.trim() || undefined,
+      facebook: facebook.trim() || undefined,
+      zalo: zalo.trim() || undefined,
+      linkedin: linkedin.trim() || undefined,
+      tiktok: tiktok.trim() || undefined,
+      instagram: instagram.trim() || undefined,
+      twitter: twitter.trim() || undefined,
+      socialMedia: {
+        facebook: facebook.trim() || undefined,
+        zalo: zalo.trim() || undefined,
+        linkedin: linkedin.trim() || undefined,
+        tiktok: tiktok.trim() || undefined,
+        instagram: instagram.trim() || undefined,
+        twitter: twitter.trim() || undefined,
+      },
 
       socialInsuranceNumber: socialInsuranceNumber.trim() || undefined,
       healthInsuranceNumber: healthInsuranceNumber.trim() || undefined,
@@ -1169,78 +1305,277 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Section 6: Tài chính & Ngân hàng */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
+              {/* Section 6: Tài chính & Ngân hàng (Hỗ trợ nhiều tài khoản) */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-3 sm:space-y-3.5">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <Landmark className="w-3.5 h-3.5" />
-                    <span className="truncate">Tài chính & Ngân hàng</span>
+                    <span className="truncate">Tài chính & Ngân hàng ({bankAccounts.length} tài khoản)</span>
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={handleAddBankAccount}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Thêm tài khoản</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {bankAccounts.map((acc, index) => (
+                    <div
+                      key={acc.id}
+                      className={`p-3.5 rounded-xl border transition-all space-y-3 ${
+                        acc.isPrimary
+                          ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20 shadow-xs'
+                          : 'border-border bg-background/60 hover:border-border'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between pb-2 border-b border-border/60">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                              acc.isPrimary
+                                ? 'bg-primary text-primary-foreground shadow-2xs'
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {index + 1}
+                          </span>
+                          <span className="text-xs font-bold text-foreground">
+                            {acc.bankName ? acc.bankName : `Tài khoản ngân hàng #${index + 1}`}
+                          </span>
+                          {acc.isPrimary && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              <Star className="w-2.5 h-2.5 fill-current" /> Tài khoản chính (Nhận lương)
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {!acc.isPrimary && (
+                            <button
+                              type="button"
+                              onClick={() => handleSetPrimaryBankAccount(acc.id)}
+                              className="text-[11px] font-medium text-muted-foreground hover:text-amber-600 px-2 py-1 rounded-lg hover:bg-muted transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <Star className="w-3 h-3" /> Đặt làm chính
+                            </button>
+                          )}
+                          {bankAccounts.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveBankAccount(acc.id)}
+                              className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                              title="Xóa tài khoản này"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                        {/* Tên ngân hàng */}
+                        <div className="w-full">
+                          <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                            <Landmark className="w-3 h-3 shrink-0" />
+                            Tên ngân hàng
+                          </label>
+                          <div className="relative">
+                            <input
+                              list={`bank-list-${acc.id}`}
+                              value={acc.bankName}
+                              onChange={(e) =>
+                                handleUpdateBankAccount(acc.id, 'bankName', e.target.value)
+                              }
+                              placeholder="Chọn hoặc nhập tên ngân hàng..."
+                              className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                            />
+                            <datalist id={`bank-list-${acc.id}`}>
+                              {VIETNAM_BANKS.map((b) => (
+                                <option key={b} value={b} />
+                              ))}
+                            </datalist>
+                          </div>
+                        </div>
+
+                        {/* Số tài khoản */}
+                        <div className="w-full">
+                          <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                            <CreditCard className="w-3 h-3 shrink-0" />
+                            Số tài khoản
+                          </label>
+                          <div className="relative">
+                            <input
+                              value={acc.accountNumber}
+                              onChange={(e) =>
+                                handleUpdateBankAccount(acc.id, 'accountNumber', e.target.value)
+                              }
+                              placeholder="VD: 0123456789"
+                              className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Chủ tài khoản */}
+                        <div className="w-full">
+                          <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                            <User className="w-3 h-3 shrink-0" />
+                            Chủ tài khoản
+                          </label>
+                          <div className="relative">
+                            <input
+                              value={acc.accountHolder}
+                              onChange={(e) =>
+                                handleUpdateBankAccount(acc.id, 'accountHolder', e.target.value)
+                              }
+                              placeholder={name ? name.toUpperCase() : 'TÊN CHỦ TÀI KHOẢN'}
+                              className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 uppercase"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Chi nhánh */}
+                        <div className="w-full">
+                          <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                            <Building2 className="w-3 h-3 shrink-0" />
+                            Chi nhánh
+                          </label>
+                          <div className="relative">
+                            <input
+                              value={acc.branch || ''}
+                              onChange={(e) =>
+                                handleUpdateBankAccount(acc.id, 'branch', e.target.value)
+                              }
+                              placeholder="VD: Chi nhánh Sở Giao Dịch TP.HCM"
+                              className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={handleAddBankAccount}
+                    className="w-full py-2.5 rounded-xl border border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Thêm tài khoản ngân hàng khác</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Section: Sở thích, Không thích, Mạng xã hội & Ghi chú */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-3 sm:space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
+                  <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
+                    <Heart className="w-3.5 h-3.5" />
+                    <span className="truncate">Sở thích, Mạng xã hội & Ghi chú</span>
                   </h4>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
-                  {/* Số tài khoản */}
+                  {/* Sở thích */}
                   <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <CreditCard className="w-3 h-3 shrink-0" />
-                      Số tài khoản
+                      <Sparkles className="w-3 h-3 shrink-0 text-amber-500" />
+                      Sở thích
                     </label>
-                    <div className="relative">
-                      <input
-                        value={bankAccount}
-                        onChange={(e) => setBankAccount(e.target.value)}
-                        placeholder="VD: 0123456789"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
-                      />
-                    </div>
+                    <input
+                      value={hobbies}
+                      onChange={(e) => setHobbies(e.target.value)}
+                      placeholder="VD: Đọc sách, chạy bộ, đá bóng, du lịch, nghe nhạc..."
+                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                    />
                   </div>
 
-                  {/* Chủ tài khoản */}
+                  {/* Không thích / Dị ứng */}
                   <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <User className="w-3 h-3 shrink-0" />
-                      Chủ tài khoản
+                      <ThumbsDown className="w-3 h-3 shrink-0 text-rose-500" />
+                      Không thích / Dị ứng
                     </label>
-                    <div className="relative">
-                      <input
-                        value={bankAccountHolder}
-                        onChange={(e) => setBankAccountHolder(e.target.value)}
-                        placeholder={name || 'Tên chủ tài khoản'}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
-                      />
-                    </div>
+                    <input
+                      value={dislikes}
+                      onChange={(e) => setDislikes(e.target.value)}
+                      placeholder="VD: Hải sản, thức khuya, tiếng ồn lớn, đồ ngọt..."
+                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                    />
                   </div>
 
-                  {/* Tên ngân hàng */}
+                  {/* Mạng xã hội - Facebook */}
                   <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <Landmark className="w-3 h-3 shrink-0" />
-                      Tên ngân hàng
+                      <Globe className="w-3 h-3 shrink-0 text-blue-600" />
+                      Facebook
                     </label>
-                    <div className="relative">
-                      <input
-                        value={bankName}
-                        onChange={(e) => setBankName(e.target.value)}
-                        placeholder="VD: Vietcombank, BIDV..."
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
-                      />
-                    </div>
+                    <input
+                      value={facebook}
+                      onChange={(e) => setFacebook(e.target.value)}
+                      placeholder="Link Facebook hoặc tên hiển thị"
+                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                    />
                   </div>
 
-                  {/* Chi nhánh */}
+                  {/* Mạng xã hội - Zalo */}
                   <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <Building2 className="w-3 h-3 shrink-0" />
-                      Chi nhánh
+                      <MessageCircle className="w-3 h-3 shrink-0 text-blue-500" />
+                      Zalo
                     </label>
-                    <div className="relative">
-                      <input
-                        value={bankBranch}
-                        onChange={(e) => setBankBranch(e.target.value)}
-                        placeholder="VD: Chi nhánh Sở Giao Dịch"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
-                      />
-                    </div>
+                    <input
+                      value={zalo}
+                      onChange={(e) => setZalo(e.target.value)}
+                      placeholder="Số điện thoại Zalo hoặc link"
+                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                    />
+                  </div>
+
+                  {/* Mạng xã hội - LinkedIn */}
+                  <div className="w-full">
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Share2 className="w-3 h-3 shrink-0 text-sky-600" />
+                      LinkedIn
+                    </label>
+                    <input
+                      value={linkedin}
+                      onChange={(e) => setLinkedin(e.target.value)}
+                      placeholder="Link trang LinkedIn cá nhân"
+                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                    />
+                  </div>
+
+                  {/* Mạng xã hội - TikTok / Khác */}
+                  <div className="w-full">
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Globe className="w-3 h-3 shrink-0 text-pink-500" />
+                      TikTok / Instagram / Khác
+                    </label>
+                    <input
+                      value={tiktok}
+                      onChange={(e) => setTiktok(e.target.value)}
+                      placeholder="Link TikTok, Instagram hoặc mạng xã hội khác"
+                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                    />
+                  </div>
+
+                  {/* Ghi chú nhân sự */}
+                  <div className="w-full sm:col-span-2">
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <FileText className="w-3 h-3 shrink-0 text-primary" />
+                      Ghi chú nhân sự & Lưu ý đặc biệt
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Nhập các ghi chú nội bộ, tính cách, lưu ý đặc thù của nhân viên..."
+                      className="flex w-full rounded-lg border border-border bg-background p-3 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 resize-y"
+                    />
                   </div>
                 </div>
               </div>
