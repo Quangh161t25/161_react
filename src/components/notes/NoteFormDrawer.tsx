@@ -63,7 +63,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   const [content, setContent] = useState('');
   const [contentTab, setContentTab] = useState<'edit' | 'preview'>('edit');
 
-  const [category, setCategory] = useState<NoteCategory>('Biên bản cuộc họp');
+  const [category, setCategory] = useState<NoteCategory | ''>('');
   const [status, setStatus] = useState<NoteStatus>('published');
   const [isPinned, setIsPinned] = useState(false);
   const [color, setColor] = useState('blue');
@@ -85,6 +85,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   // Attachments & Images
   const [attachments, setAttachments] = useState<NoteAttachment[]>([]);
   const [images, setImages] = useState<string[]>([]);
+  const [pasteToast, setPasteToast] = useState<string | null>(null);
 
   // Validation
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
@@ -94,7 +95,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setTitle(initialData.title || '');
       setSummary(initialData.summary || '');
       setContent(initialData.content || '');
-      setCategory(initialData.category || 'Biên bản cuộc họp');
+      setCategory(initialData.category || '');
       setStatus(initialData.status || 'published');
       setIsPinned(!!initialData.isPinned);
       setColor(initialData.color || 'blue');
@@ -117,7 +118,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setTitle('');
       setSummary('');
       setContent('');
-      setCategory('Tài liệu kỹ thuật');
+      setCategory('');
       setStatus('published');
       setIsPinned(false);
       setColor('blue');
@@ -129,9 +130,49 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setLocation('');
       setCoordinates('');
 
-      setTags(['Kỹ thuật']);
+      setTags([]);
       setAttachments([]);
       setImages([]);
+
+      // Auto fetch GPS location if creating new note
+      if (isOpen && typeof navigator !== 'undefined' && navigator.geolocation) {
+        setIsLocating(true);
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            setIsLocating(false);
+            const lat = pos.coords.latitude.toFixed(6);
+            const lng = pos.coords.longitude.toFixed(6);
+            setCoordinates(`${lat}° N, ${lng}° E`);
+
+            // Try reverse geocoding to human readable address
+            try {
+              const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+                { headers: { 'Accept-Language': 'vi' } }
+              );
+              if (res.ok) {
+                const data = await res.json();
+                if (data && data.address) {
+                  const addr = data.address;
+                  const parts = [
+                    addr.road || addr.suburb || addr.quarter || addr.neighbourhood,
+                    addr.city_district || addr.district || addr.town || addr.city,
+                    addr.state || addr.province,
+                  ].filter(Boolean);
+                  const readable = parts.length > 0 ? parts.join(', ') : data.display_name;
+                  setLocation(readable);
+                  return;
+                }
+              }
+            } catch {}
+            setLocation(`Vị trí hiện tại (${lat}, ${lng})`);
+          },
+          () => {
+            setIsLocating(false);
+          },
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      }
     }
     setFormErrors({});
     setContentTab('edit');
@@ -219,28 +260,110 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     setImages(images.filter((img) => img !== url));
   };
 
-  // GPS Geolocation Handler
-  const handleGetCurrentLocation = () => {
+  // Clipboard Paste Image Handler (Ctrl + V)
+  const processPastedImage = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      if (evt.target?.result) {
+        const dataUrl = evt.target.result as string;
+        
+        // Add to images gallery
+        setImages((prev) => [...prev, dataUrl]);
+
+        // Add to attachments
+        const newAttach: NoteAttachment = {
+          id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+          name: `Anh_dan_${Date.now().toString().slice(-4)}.png`,
+          url: dataUrl,
+          type: 'image',
+          size: `${(file.size / 1024).toFixed(1)} KB`,
+        };
+        setAttachments((prev) => [...prev, newAttach]);
+
+        // If cursor inside textarea, insert markdown
+        const textarea = contentTextareaRef.current;
+        if (textarea && document.activeElement === textarea) {
+          const start = textarea.selectionStart;
+          const end = textarea.selectionEnd;
+          const imgMarkdown = `\n![Hình ảnh đính kèm](${dataUrl})\n`;
+          const newContent = content.substring(0, start) + imgMarkdown + content.substring(end);
+          setContent(newContent);
+        }
+
+        setPasteToast('✅ Đã dán ảnh từ Clipboard (Ctrl + V) thành công!');
+        setTimeout(() => setPasteToast(null), 3500);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Window-level Ctrl+V listener when Drawer is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            processPastedImage(file);
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [isOpen, content]);
+
+  // GPS Geolocation Handler with reverse geocoding
+  const handleGetCurrentLocation = (silent: boolean = false) => {
     if (!navigator.geolocation) {
-      alert('Trình duyệt của bạn không hỗ trợ định vị GPS.');
+      if (!silent) alert('Trình duyệt của bạn không hỗ trợ định vị GPS.');
       return;
     }
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
+      async (pos) => {
         setIsLocating(false);
         const lat = pos.coords.latitude.toFixed(6);
         const lng = pos.coords.longitude.toFixed(6);
         setCoordinates(`${lat}° N, ${lng}° E`);
-        if (!location) {
-          setLocation(`Tọa độ GPS (${lat}, ${lng})`);
-        }
+
+        // Try reverse geocoding to human readable address
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            { headers: { 'Accept-Language': 'vi' } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.address) {
+              const addr = data.address;
+              const parts = [
+                addr.road || addr.suburb || addr.quarter || addr.neighbourhood,
+                addr.city_district || addr.district || addr.town || addr.city,
+                addr.state || addr.province,
+              ].filter(Boolean);
+              const readable = parts.length > 0 ? parts.join(', ') : data.display_name;
+              setLocation(readable);
+              return;
+            }
+          }
+        } catch {}
+        setLocation((prev) => prev || `Vị trí hiện tại (${lat}, ${lng})`);
       },
       (err) => {
         setIsLocating(false);
-        alert(`Không thể lấy vị trí GPS: ${err.message}`);
+        if (!silent) {
+          alert(`Không thể lấy vị trí GPS: ${err.message}`);
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 8000 }
     );
   };
 
@@ -266,8 +389,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   const validate = () => {
     const errors: { [key: string]: string } = {};
     if (!title.trim()) errors.title = 'Vui lòng nhập tiêu đề bài viết/ghi chú';
-    if (!category) errors.category = 'Vui lòng chọn chuyên mục';
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -280,7 +401,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       title: title.trim(),
       summary: summary.trim() || undefined,
       content: content.trim() || '',
-      category,
+      category: (category || 'Ghi chú chung') as NoteCategory,
       status,
       isPinned,
       color,
@@ -399,6 +520,23 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Paste Toast Notification */}
+        {pasteToast && (
+          <div className="bg-emerald-600 text-white text-xs font-semibold px-4 py-2 flex items-center justify-between shadow-md transition-all animate-in slide-in-from-top duration-150">
+            <span className="flex items-center gap-1.5">
+              <ImageIcon className="w-4 h-4" />
+              {pasteToast}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPasteToast(null)}
+              className="text-white/80 hover:text-white"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Scrollable Form Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
@@ -723,13 +861,14 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                    Chuyên mục <span className="text-destructive">*</span>
+                    Chuyên mục
                   </label>
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as NoteCategory)}
                     className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                   >
+                    <option value="">-- Chưa phân loại / Chọn chuyên mục --</option>
                     {NOTE_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
@@ -877,7 +1016,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   </label>
                   <button
                     type="button"
-                    onClick={handleGetCurrentLocation}
+                    onClick={() => handleGetCurrentLocation(false)}
                     disabled={isLocating}
                     className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline disabled:opacity-50"
                   >
@@ -976,6 +1115,14 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   </button>
                 </div>
 
+                {/* Ctrl+V Paste Helper Notice */}
+                <div className="flex items-center gap-2 p-2.5 rounded-xl border border-primary/25 bg-primary/5 text-primary text-xs mb-3">
+                  <ImageIcon className="w-4 h-4 shrink-0 text-primary" />
+                  <span className="leading-snug">
+                    <strong>Hỗ trợ dán ảnh nhanh:</strong> Bạn có thể chụp màn hình hoặc sao chép ảnh từ máy tính rồi nhấn <strong>Ctrl + V</strong> ở bất kỳ đâu trong form để đính kèm ảnh ngay!
+                  </span>
+                </div>
+
                 <input
                   ref={galleryInputRef}
                   type="file"
@@ -994,13 +1141,23 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                       >
                         <img src={imgUrl} alt={`Attachment ${idx + 1}`} className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-between p-2">
-                          <span className="text-[10px] text-white truncate max-w-full font-medium">
-                            Ảnh #{idx + 1}
-                          </span>
+                          <div className="w-full flex items-center justify-between">
+                            <span className="text-[10px] text-white truncate max-w-[70%] font-medium">
+                              Ảnh #{idx + 1}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setCoverUrl(imgUrl)}
+                              className="px-1.5 py-0.5 rounded bg-white/90 text-[10px] text-foreground font-semibold hover:bg-white transition-all shadow-xs"
+                              title="Đặt làm ảnh bìa"
+                            >
+                              Làm bìa
+                            </button>
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleRemoveAttachment(`img_${idx}`, imgUrl)}
-                            className="p-1 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            className="p-1 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all self-end"
                             title="Xóa ảnh"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1012,7 +1169,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 ) : (
                   <div className="text-center py-4 border border-dashed border-border rounded-xl bg-muted/20">
                     <p className="text-xs text-muted-foreground">
-                      Chưa có ảnh đính kèm. Bấm nút <strong>"Tải thêm ảnh"</strong> để tải ảnh minh họa.
+                      Chưa có ảnh đính kèm. Bấm nút <strong>"Tải thêm ảnh"</strong> hoặc nhấn <strong>Ctrl + V</strong> để dán ảnh.
                     </p>
                   </div>
                 )}
