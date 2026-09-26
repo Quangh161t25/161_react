@@ -358,23 +358,27 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
               </div>
 
               {/* Tags & Location row */}
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/60 text-xs">
-                {note.location && (
-                  <div className="inline-flex items-center gap-1.5 text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg">
-                    <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                    <span className="font-medium text-foreground">{note.location}</span>
-                  </div>
-                )}
-                {note.tags?.map((t) => (
-                  <span
-                    key={t}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[11px] font-medium"
-                  >
-                    <Tag className="w-3 h-3 text-muted-foreground" />
-                    {t}
-                  </span>
-                ))}
-              </div>
+              {((note.tags && note.tags.filter((t) => t && t.trim()).length > 0) || note.location) && (
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/60 text-xs">
+                  {note.location && (
+                    <div className="inline-flex items-center gap-1.5 text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg">
+                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span className="font-medium text-foreground">{note.location}</span>
+                    </div>
+                  )}
+                  {note.tags
+                    ?.filter((t) => t && t.trim())
+                    .map((t) => (
+                      <span
+                        key={t}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-[11px] font-medium"
+                      >
+                        <Tag className="w-3 h-3 text-muted-foreground" />
+                        #{t.replace(/^#/, '')}
+                      </span>
+                    ))}
+                </div>
+              )}
             </div>
 
             {/* Quick Actions Grid */}

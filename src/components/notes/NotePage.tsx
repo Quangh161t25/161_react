@@ -650,21 +650,29 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
           </td>
         );
 
-      case 'tags':
+      case 'tags': {
+        const validTags = Array.isArray(note.tags)
+          ? note.tags.map((t) => (typeof t === 'string' ? t.trim() : '')).filter((t) => t.length > 0)
+          : [];
         return (
-          <td key={colId} style={tdStyle} className={`${tdBaseClass} ${textWrapClass}`}>
-            <div className="flex flex-wrap items-center gap-1 overflow-hidden">
-              {(note.tags || []).map((t, idx) => (
-                <span
-                  key={idx}
-                  className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground border border-border shrink-0"
-                >
-                  #{t}
-                </span>
-              ))}
-            </div>
+          <td key={colId} style={tdStyle} className={tdBaseClass}>
+            {validTags.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-1 overflow-hidden max-w-full">
+                {validTags.map((t, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground border border-border shrink-0 max-w-full truncate"
+                  >
+                    #{t.replace(/^#/, '')}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-xs">—</span>
+            )}
           </td>
         );
+      }
 
       case 'noteDate':
         return (
