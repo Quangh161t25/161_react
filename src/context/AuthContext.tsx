@@ -36,6 +36,7 @@ interface AuthContextType {
   login: (username: string, password?: string) => Promise<{ success: boolean; error?: string; user?: AuthUser }>;
   logout: () => void;
   updateCurrentUser: (partial: Partial<AuthUser>) => void;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -177,6 +178,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+      let employees: Employee[] = [];
+      try {
+        employees = await employeeService.fetchFromSheet();
+      } catch {
+        employees = employeeService.getInitialEmployees();
+      }
+
+      if (!employees || employees.length === 0) {
+        employees = employeeService.getInitialEmployees();
+      }
+
+      const currentId = currentUser.id;
+      const currentUsername = (currentUser.username || '').toLowerCase().trim();
+      const currentCode = (currentUser.code || '').toLowerCase().trim();
+      const currentEmail = (currentUser.email || '').toLowerCase().trim();
+
+      const empIndex = employees.findIndex((e) => {
+        return (
+          (currentId && e.id === currentId) ||
+          (currentCode && (e.code || '').toLowerCase().trim() === currentCode) ||
+          (currentUsername && (e.username || '').toLowerCase().trim() === currentUsername) ||
+          (currentEmail && (e.email || '').toLowerCase().trim() === currentEmail)
+        );
+      });
+
+      if (empIndex === -1) {
+        return { success: false, error: 'Không tìm thấy thông tin nhân viên trên Google Sheet!' };
+      }
+
+      const emp = employees[empIndex];
+      const expectedPassword = (emp.password || '123456').trim();
+      if (currentPassword.trim() !== expectedPassword) {
+        return { success: false, error: 'Mật khẩu hiện tại không chính xác!' };
+      }
+
+      // Update password
+      const updatedEmp: Employee = {
+        ...emp,
+        password: newPassword.trim(),
+        updatedAt: new Date().toLocaleDateString('vi-VN'),
+      };
+
+      employees[empIndex] = updatedEmp;
+      employeeService.saveToCache(employees);
+
+      // Realtime 2-way sync directly to Google Sheet row
+      const ok = await employeeService.updateInSheet(updatedEmp);
+      if (!ok) {
+        console.warn('Sync to Google Sheet returned false, but local cache was updated');
+      }
+
+      return { success: true };
+    },
+    [currentUser]
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -185,6 +244,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         updateCurrentUser,
+        changePassword,
       }}
     >
       {children}

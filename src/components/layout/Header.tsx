@@ -16,6 +16,7 @@ import { NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../data/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { FINANCE_SECTIONS } from '../../data/finance';
 import { SYSTEM_SECTIONS } from '../../data/system';
+import { ChangePasswordModal } from '../auth/ChangePasswordModal';
 
 interface HeaderProps {
   isCollapsed: boolean;
@@ -33,6 +34,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { currentUser, logout } = useAuth();
   const [time, setTime] = useState<Date>(new Date());
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -393,7 +395,7 @@ export const Header: React.FC<HeaderProps> = ({
                     type="button"
                     onClick={() => {
                       setUserMenuOpen(false);
-                      alert('Tính năng Đổi mật khẩu đang được phát triển');
+                      setIsChangePasswordOpen(true);
                     }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-medium text-muted-foreground hover:bg-primary/5 hover:text-primary rounded-lg transition-colors group text-left cursor-pointer"
                   >
@@ -424,6 +426,12 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
     </header>
   );
 };
