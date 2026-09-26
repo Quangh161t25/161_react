@@ -10,6 +10,11 @@ import {
   updateEmployeeInSheet,
   deleteEmployeesFromSheet,
   fetchSystemFromSheet,
+  fetchNotesFromSheet,
+  saveAllNotesToSheet,
+  appendNoteToSheet,
+  updateNoteInSheet,
+  deleteNotesFromSheet,
 } from '../server/sheetsService.mjs';
 
 export default async function handler(req, res) {
@@ -99,6 +104,40 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
       const employees = body.employees || [];
       const result = await saveAllEmployeesToSheet(employees);
+      return res.status(200).json({ success: true, count: result.count });
+    }
+
+    // --- NOTES ---
+    if (action === 'notes' && req.method === 'GET') {
+      const notes = await fetchNotesFromSheet();
+      return res.status(200).json({ success: true, data: notes });
+    }
+
+    if ((action === 'notes' || action === 'append-note') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const note = body.note || body;
+      await appendNoteToSheet(note);
+      return res.status(200).json({ success: true, note });
+    }
+
+    if ((action === 'notes' && req.method === 'PUT') || (action === 'update-note' && req.method === 'POST')) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const note = body.note || body;
+      await updateNoteInSheet(note);
+      return res.status(200).json({ success: true, note });
+    }
+
+    if ((action === 'notes' && req.method === 'DELETE') || (action === 'delete-notes' && (req.method === 'POST' || req.method === 'DELETE'))) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const codes = body.codes || (body.code ? [body.code] : (body.identifiers || []));
+      const result = await deleteNotesFromSheet(codes);
+      return res.status(200).json({ success: true, count: result.count });
+    }
+
+    if (action === 'save-notes' && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const notes = body.notes || [];
+      const result = await saveAllNotesToSheet(notes);
       return res.status(200).json({ success: true, count: result.count });
     }
 

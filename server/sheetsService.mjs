@@ -929,3 +929,367 @@ export async function fetchSystemFromSheet() {
       guideHref: r[5] || '',
     }));
 }
+
+// ---------------------- NOTES (GHI CHU & BAI VIET) ----------------------
+
+export const NOTES_HEADERS = [
+  'Mã ghi chú',
+  'Tiêu đề',
+  'Nội dung',
+  'Tóm tắt',
+  'Chuyên mục',
+  'Thẻ phân loại',
+  'Trạng thái',
+  'Ghim',
+  'Màu sắc',
+  'Ngày thực hiện',
+  'Giờ',
+  'Địa điểm',
+  'Tọa độ GPS',
+  'Ảnh bìa',
+  'Thư viện ảnh (JSON)',
+  'Tệp đính kèm (JSON)',
+  'Tác giả',
+  'Ảnh tác giả',
+  'Ngày tạo',
+  'Cập nhật',
+];
+
+export function noteToRow(n) {
+  const isPinnedText = n.isPinned ? 'Có' : 'Không';
+  const tagsText = Array.isArray(n.tags) ? n.tags.join(', ') : n.tags || '';
+  const imagesJson = Array.isArray(n.images) ? JSON.stringify(n.images) : n.images || '';
+  const attachmentsJson = Array.isArray(n.attachments) ? JSON.stringify(n.attachments) : n.attachments || '';
+
+  return [
+    n.code || n.id || '',
+    n.title || '',
+    n.content || '',
+    n.summary || '',
+    n.category || 'Biên bản cuộc họp',
+    tagsText,
+    n.status || 'published',
+    isPinnedText,
+    n.color || 'blue',
+    n.noteDate || '',
+    n.noteTime || '',
+    n.location || '',
+    n.coordinates || '',
+    n.coverUrl || '',
+    imagesJson,
+    attachmentsJson,
+    n.author || 'Lê Minh Công',
+    n.authorAvatar || '',
+    n.createdAt || '',
+    n.updatedAt || '',
+  ];
+}
+
+export function rowToNote(r, idx) {
+  const code = r[0] || `NOTE-${String(idx + 1).padStart(3, '0')}`;
+  const id = code.startsWith('note_') || code.startsWith('note-') ? code : `note-${code}`;
+
+  let tags = [];
+  if (r[5]) {
+    try {
+      if (r[5].startsWith('[')) {
+        tags = JSON.parse(r[5]);
+      } else {
+        tags = r[5].split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean);
+      }
+    } catch {
+      tags = r[5].split(',').map((t) => t.trim()).filter(Boolean);
+    }
+  }
+
+  let images = [];
+  if (r[14]) {
+    try {
+      images = JSON.parse(r[14]);
+    } catch {
+      images = [r[14]];
+    }
+  }
+
+  let attachments = [];
+  if (r[15]) {
+    try {
+      attachments = JSON.parse(r[15]);
+    } catch {
+      attachments = [];
+    }
+  }
+
+  const isPinned = r[7] === 'Có' || r[7] === 'true' || r[7] === true || r[7] === '1';
+
+  return {
+    id,
+    code,
+    title: r[1] || 'Ghi chú không tên',
+    content: r[2] || '',
+    summary: r[3] || undefined,
+    category: r[4] || 'Biên bản cuộc họp',
+    tags,
+    status: r[6] === 'draft' ? 'draft' : r[6] === 'archived' ? 'archived' : 'published',
+    isPinned,
+    color: r[8] || 'blue',
+    noteDate: r[9] || '',
+    noteTime: r[10] || '',
+    location: r[11] || '',
+    coordinates: r[12] || '',
+    coverUrl: r[13] || undefined,
+    images: Array.isArray(images) ? images : [],
+    attachments: Array.isArray(attachments) ? attachments : [],
+    author: r[16] || 'Lê Minh Công',
+    authorAvatar: r[17] || undefined,
+    createdAt: r[18] || '',
+    updatedAt: r[19] || '',
+  };
+}
+
+export async function ensureGhiChuTabExists() {
+  const token = await getAccessToken();
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const meta = await metaRes.json();
+  const existingSheets = (meta.sheets || []).map((s) => s.properties.title);
+
+  if (!existingSheets.includes('GhiChu')) {
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{ addSheet: { properties: { title: 'GhiChu' } } }],
+        }),
+      }
+    );
+
+    // Write header
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:T1?valueInputOption=USER_ENTERED`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: [NOTES_HEADERS] }),
+      }
+    );
+  }
+}
+
+export async function fetchNotesFromSheet() {
+  await ensureGhiChuTabExists();
+  const token = await getAccessToken();
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A2:T`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch sheet data: ${errText}`);
+  }
+
+  const data = await res.json();
+  const rows = data.values || [];
+
+  return rows
+    .filter((r) => r && r[1]) // filter by title
+    .map((r, idx) => rowToNote(r, idx));
+}
+
+export async function saveAllNotesToSheet(notes) {
+  await ensureGhiChuTabExists();
+  const token = await getAccessToken();
+  const rows = notes.map((n) => noteToRow(n));
+  const values = [NOTES_HEADERS, ...rows];
+
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:T${values.length + 50}:clear`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:T${values.length}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ values }),
+    }
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to save notes: ${errText}`);
+  }
+
+  return { success: true, count: notes.length };
+}
+
+export async function appendNoteToSheet(note) {
+  await ensureGhiChuTabExists();
+  const token = await getAccessToken();
+  const row = noteToRow(note);
+
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A:T:append?valueInputOption=USER_ENTERED`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ values: [row] }),
+    }
+  );
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to append note: ${errText}`);
+  }
+
+  return { success: true };
+}
+
+export async function updateNoteInSheet(note) {
+  await ensureGhiChuTabExists();
+  const token = await getAccessToken();
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:T`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await res.json();
+  const rows = data.values || [];
+
+  const targetCode = String(note.code || note.id || '').trim().toLowerCase();
+  const targetTitle = String(note.title || '').trim().toLowerCase();
+
+  let rowIndex = -1;
+  for (let i = 1; i < rows.length; i++) {
+    const rowCode = String(rows[i][0] || '').trim().toLowerCase();
+    const rowTitle = String(rows[i][1] || '').trim().toLowerCase();
+    if ((targetCode && rowCode === targetCode) || (targetTitle && rowTitle === targetTitle)) {
+      rowIndex = i + 1; // 1-based index in sheets
+      break;
+    }
+  }
+
+  if (rowIndex === -1) {
+    return appendNoteToSheet(note);
+  }
+
+  const row = noteToRow(note);
+  const updateRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A${rowIndex}:T${rowIndex}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ values: [row] }),
+    }
+  );
+
+  if (!updateRes.ok) {
+    const errText = await updateRes.text();
+    throw new Error(`Failed to update note: ${errText}`);
+  }
+
+  return { success: true };
+}
+
+export async function deleteNotesFromSheet(identifiers) {
+  await ensureGhiChuTabExists();
+  const token = await getAccessToken();
+
+  const metaRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const meta = await metaRes.json();
+  const ghiChuSheet = (meta.sheets || []).find((s) => s.properties.title === 'GhiChu');
+  if (!ghiChuSheet) throw new Error('Sheet GhiChu not found');
+  const sheetId = ghiChuSheet.properties.sheetId;
+
+  const dataRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:T`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await dataRes.json();
+  const rows = data.values || [];
+
+  const idList = Array.isArray(identifiers) ? identifiers : [identifiers];
+  const cleanIdList = idList.map((id) => String(id || '').trim().toLowerCase()).filter(Boolean);
+
+  const indicesToDelete = [];
+  rows.forEach((r, idx) => {
+    if (idx === 0) return; // skip header
+    const code = String(r[0] || '').trim().toLowerCase();
+    const title = String(r[1] || '').trim().toLowerCase();
+
+    const isMatch = cleanIdList.some((cleanId) => {
+      return (
+        (code && cleanId === code) ||
+        (title && cleanId === title) ||
+        (code && `note-${code}` === cleanId)
+      );
+    });
+
+    if (isMatch) {
+      indicesToDelete.push(idx);
+    }
+  });
+
+  if (indicesToDelete.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  // Sort descending so deleting rows doesn't shift earlier indices
+  indicesToDelete.sort((a, b) => b - a);
+
+  const requests = indicesToDelete.map((rowIdx) => ({
+    deleteDimension: {
+      range: {
+        sheetId,
+        dimension: 'ROWS',
+        startIndex: rowIdx,
+        endIndex: rowIdx + 1,
+      },
+    },
+  }));
+
+  const batchRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ requests }),
+    }
+  );
+
+  if (!batchRes.ok) {
+    const err = await batchRes.text();
+    throw new Error(`Delete notes failed: ${err}`);
+  }
+
+  return { success: true, count: indicesToDelete.length };
+}
+
