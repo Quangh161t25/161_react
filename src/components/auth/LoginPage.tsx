@@ -8,8 +8,8 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const { login } = useAuth();
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -196,35 +196,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 </>
               )}
             </button>
-
-            {/* Quick Demo Accounts */}
-            <div className="pt-2">
-              <p className="text-[11px] text-muted-foreground text-center mb-2 font-medium">
-                Hoặc chọn nhanh tài khoản nhân viên:
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-1.5">
-                {[
-                  { u: 'admin', p: 'admin123', label: 'Admin (Lê Minh Công)' },
-                  { u: 'hoangnv', p: 'Password@2026!', label: 'Nguyễn Văn Hoàng' },
-                  { u: 'dangvh', p: 'Password@2024', label: 'Vũ Hải Đăng' },
-                  { u: 'quangnm', p: '123456', label: 'Nguyễn Mạnh Quang' },
-                  { u: 'thang.bd', p: '123456', label: 'Bùi Đức Thắng' },
-                ].map((acc) => (
-                  <button
-                    key={acc.u}
-                    type="button"
-                    onClick={() => {
-                      setUsername(acc.u);
-                      setPassword(acc.p);
-                      setErrorMessage(null);
-                    }}
-                    className="text-[11px] px-2.5 py-1 rounded-md bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground border border-border transition-colors cursor-pointer"
-                  >
-                    {acc.label}
-                  </button>
-                ))}
-              </div>
-            </div>
           </form>
         </div>
 

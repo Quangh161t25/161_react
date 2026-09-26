@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, error: 'Vui lòng nhập tên tài khoản!' };
       }
 
-      // Fetch or get latest employee list (from Google Sheets or cache)
+      // Strictly fetch latest employee records from Google Sheets
       let employees: Employee[] = [];
       try {
         employees = await employeeService.fetchFromSheet();
@@ -87,40 +87,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         employees = employeeService.getInitialEmployees();
       }
 
-      // 1. Special Admin Account match
-      if (cleanUsername === 'admin') {
-        if (cleanPassword && cleanPassword !== 'admin123' && cleanPassword !== '123456') {
-          return { success: false, error: 'Mật khẩu cho tài khoản admin không chính xác!' };
-        }
-        const adminUser: AuthUser = {
-          ...DEFAULT_USER,
-          username: 'admin',
-        };
-        setCurrentUser(adminUser);
-        setIsAuthenticated(true);
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(adminUser));
-        return { success: true, user: adminUser };
-      }
-
-      // 2. Search against employee list
+      // Search against employee list from Google Sheet
+      const cleanPhoneInput = cleanUsername.replace(/[\s.-]/g, '');
       const matchedEmp = employees.find((emp) => {
         const u = (emp.username || '').toLowerCase().trim();
         const code = (emp.code || '').toLowerCase().trim();
         const email = (emp.email || '').toLowerCase().trim();
-        const name = (emp.name || '').toLowerCase().trim();
-        return u === cleanUsername || code === cleanUsername || email === cleanUsername || name === cleanUsername;
+        const phone = (emp.phone || '').toLowerCase().trim().replace(/[\s.-]/g, '');
+        return (
+          u === cleanUsername ||
+          code === cleanUsername ||
+          email === cleanUsername ||
+          (phone && phone === cleanPhoneInput)
+        );
       });
 
       if (!matchedEmp) {
         return {
           success: false,
-          error: `Không tìm thấy tài khoản "${usernameInput}". Vui lòng kiểm tra lại tên đăng nhập hoặc mã nhân viên!`,
+          error: `Tài khoản "${usernameInput}" không tồn tại trên hệ thống Google Sheet!`,
         };
       }
 
-      // Check Password
+      // Check if account is active
+      if (matchedEmp.status === 'resigned' || matchedEmp.isActiveAccount === false) {
+        return {
+          success: false,
+          error: 'Tài khoản này đã bị khóa hoặc đã nghỉ việc trên Google Sheet!',
+        };
+      }
+
+      // Check Password from Google Sheet (defaults to 123456 if empty)
       const expectedPassword = (matchedEmp.password || '123456').trim();
-      if (cleanPassword && cleanPassword !== expectedPassword) {
+      if (cleanPassword !== expectedPassword) {
         return {
           success: false,
           error: 'Mật khẩu không chính xác. Vui lòng kiểm tra lại!',
@@ -130,10 +129,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const authUser: AuthUser = {
         id: matchedEmp.id,
         name: matchedEmp.name,
-        username: matchedEmp.username || cleanUsername,
+        username: matchedEmp.username || matchedEmp.code || cleanUsername,
         title: matchedEmp.role || 'Nhân viên',
         role: matchedEmp.role || 'Nhân viên',
-        department: matchedEmp.department || 'Phòng Kỹ thuật',
+        department: matchedEmp.department || 'Phòng ban',
         avatarUrl:
           matchedEmp.avatarUrl ||
           `https://ui-avatars.com/api/?name=${encodeURIComponent(matchedEmp.name)}&background=1d4ed8&color=fff`,
