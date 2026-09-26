@@ -43,6 +43,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 interface NoteFormDrawerProps {
   isOpen: boolean;
   initialData?: Note | null;
+  defaultDate?: string;
   existingTags?: string[];
   onClose: () => void;
   onSubmit: (formData: Partial<Note>) => void;
@@ -53,6 +54,7 @@ type WidthMode = 'narrow' | 'normal' | 'wide' | 'fullscreen';
 export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   isOpen,
   initialData,
+  defaultDate,
   existingTags = [],
   onClose,
   onSubmit,
@@ -152,7 +154,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setAuthor(currentUser?.name || currentUser?.username || 'admin');
       setAuthorAvatar(currentUser?.avatarUrl || '');
 
-      setNoteDate(todayStr);
+      setNoteDate(defaultDate || todayStr);
       setNoteTime(timeStr);
 
       setLocation('');

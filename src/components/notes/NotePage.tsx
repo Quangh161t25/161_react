@@ -33,6 +33,7 @@ import { noteService } from '../../services/noteService';
 import { NoteDetailDrawer } from './NoteDetailDrawer';
 import { NoteFormDrawer } from './NoteFormDrawer';
 import { NoteStatsTab } from './NoteStatsTab';
+import { NoteCalendarView } from './NoteCalendarView';
 import {
   ColumnCustomizerPopover,
   ColumnItem,
@@ -67,7 +68,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   const { currentUser } = useAuth();
   const { formatDate, formatTime } = useSettings();
   const [notes, setNotes] = useState<Note[]>(() => noteService.getInitialNotes());
-  const [activeTopTab, setActiveTopTab] = useState<'list' | 'stats'>('list');
+  const [activeTopTab, setActiveTopTab] = useState<'list' | 'calendar' | 'stats'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
@@ -87,6 +88,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   // Detail & Edit Drawers
   const [selectedNoteForDetail, setSelectedNoteForDetail] = useState<Note | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [defaultFormDate, setDefaultFormDate] = useState<string | undefined>(undefined);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
 
   // Pagination State
@@ -768,7 +770,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col p-1.5 md:p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-      {/* Top View Tabs: Danh sách / Thống kê */}
+      {/* Top View Tabs: Danh sách / Lịch ghi chú / Thống kê */}
       <div className="flex items-center gap-1.5 mb-1.5 px-0.5 shrink-0">
         <button
           type="button"
@@ -781,6 +783,18 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         >
           <List className="w-3.5 h-3.5" />
           <span>Danh sách bài viết</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTopTab('calendar')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            activeTopTab === 'calendar'
+              ? 'bg-primary text-primary-foreground shadow-xs shadow-primary/20'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+          }`}
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          <span>Lịch ghi chú</span>
         </button>
         <button
           type="button"
@@ -1151,7 +1165,26 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
             </div>
           )}
 
-          {/* Tab 2: Thống kê */}
+          {/* Tab 2: Lịch ghi chú & sự kiện */}
+          {activeTopTab === 'calendar' && (
+            <div className="flex-1 min-h-0 flex flex-col">
+              <NoteCalendarView
+                notes={notes}
+                onSelectNote={(note) => setSelectedNoteForDetail(note)}
+                onAddNote={(defaultDate) => {
+                  setEditingNote(null);
+                  setDefaultFormDate(defaultDate);
+                  setIsFormDrawerOpen(true);
+                }}
+                onEditNote={(note) => {
+                  setEditingNote(note);
+                  setIsFormDrawerOpen(true);
+                }}
+              />
+            </div>
+          )}
+
+          {/* Tab 3: Thống kê */}
           {activeTopTab === 'stats' && (
             <div className="flex-1 min-h-0 overflow-y-auto">
               <NoteStatsTab notes={notes} />
@@ -1584,10 +1617,12 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       <NoteFormDrawer
         isOpen={isFormDrawerOpen}
         initialData={editingNote}
+        defaultDate={defaultFormDate}
         existingTags={allUniqueTags}
         onClose={() => {
           setIsFormDrawerOpen(false);
           setEditingNote(null);
+          setDefaultFormDate(undefined);
         }}
         onSubmit={handleSaveNote}
       />
