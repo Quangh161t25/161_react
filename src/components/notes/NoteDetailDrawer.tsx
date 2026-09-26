@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { Note } from '../../types/note';
 import { useSettings } from '../../context/SettingsContext';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface NoteDetailDrawerProps {
   isOpen?: boolean;
@@ -467,10 +468,10 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                   </div>
                 )}
 
-                {/* Rich HTML Content Body */}
-                <div
-                  className="prose prose-sm dark:prose-invert max-w-none text-xs text-foreground leading-relaxed space-y-3 [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-primary [&_h2]:mt-4 [&_h2]:mb-2 [&_h3]:text-xs [&_h3]:font-bold [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_li]:mt-1 [&_p]:leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: note.content }}
+                {/* Rich Markdown / HTML Content Body */}
+                <MarkdownRenderer
+                  content={note.content}
+                  onImageClick={(url) => setSelectedLightboxImage(url)}
                 />
               </div>
 

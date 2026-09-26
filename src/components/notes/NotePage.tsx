@@ -40,6 +40,7 @@ import {
 } from '../common/ColumnCustomizerPopover';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
+import { stripMarkdown } from './MarkdownRenderer';
 
 interface NotePageProps {
   onBack: () => void;
@@ -457,7 +458,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     const rows = sortedNotes.map((n) => [
       n.code || n.id,
       `"${(n.title || '').replace(/"/g, '""')}"`,
-      `"${(n.content || '').replace(/<[^>]*>?/gm, '').replace(/"/g, '""')}"`,
+      `"${stripMarkdown(n.content || '').replace(/"/g, '""')}"`,
       `"${n.category}"`,
       `"${n.status}"`,
       n.isPinned ? 'Có' : 'Không',
@@ -627,7 +628,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         );
 
       case 'content':
-        const cleanContent = (note.content || '').replace(/<[^>]*>?/gm, '').replace(/^[#>\-\*]+\s*/gm, '').trim();
+        const cleanContent = stripMarkdown(note.content || '');
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} text-foreground/80`}>
             <div className={`w-full min-w-0 ${textWrapClass}`} title={cleanContent}>

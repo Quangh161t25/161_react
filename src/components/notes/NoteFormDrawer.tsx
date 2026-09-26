@@ -32,11 +32,13 @@ import {
   Lightbulb,
   CheckSquare,
   User,
+  Table,
 } from 'lucide-react';
 import { Note, NoteCategory, NoteStatus, NoteAttachment } from '../../types/note';
 import { NOTE_CATEGORIES, NOTE_COLOR_THEMES, PRESET_TAGS } from '../../data/notes';
 import { TimePickerInput } from '../common/TimePickerInput';
 import { useAuth } from '../../context/AuthContext';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface NoteFormDrawerProps {
   isOpen: boolean;
@@ -392,21 +394,41 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   };
 
   // Content Toolbar Inserts
-  const insertContentMarkup = (before: string, after: string = '') => {
+  const insertContentMarkup = (before: string, after: string = '', defaultPlaceholder: string = 'nội dung') => {
     const textarea = contentTextareaRef.current;
     if (!textarea) return;
 
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const selectedText = content.substring(start, end);
-    const replacement = `${before}${selectedText || 'nội dung'}${after}`;
+    const isBlock =
+      before.startsWith('#') ||
+      before.startsWith('>') ||
+      before.startsWith('```') ||
+      before.startsWith('- ') ||
+      before.startsWith('1. ') ||
+      before.startsWith('|');
+
+    let prefix = before;
+    if (isBlock && start > 0) {
+      if (content[start - 1] !== '\n') {
+        prefix = '\n\n' + before;
+      } else if (start > 1 && content[start - 2] !== '\n') {
+        prefix = '\n' + before;
+      }
+    }
+
+    const placeholder = selectedText || defaultPlaceholder;
+    const replacement = `${prefix}${placeholder}${after}`;
 
     const newContent = content.substring(0, start) + replacement + content.substring(end);
     setContent(newContent);
 
     setTimeout(() => {
       textarea.focus();
-      textarea.setSelectionRange(start + before.length, start + replacement.length - after.length);
+      const selectStart = start + prefix.length;
+      const selectEnd = selectStart + placeholder.length;
+      textarea.setSelectionRange(selectStart, selectEnd);
     }, 50);
   };
 
@@ -735,8 +757,23 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                       <div className="w-[1px] h-4 bg-border mx-1" />
                       <button
                         type="button"
+                        title="Bảng dữ liệu Markdown"
+                        onClick={() =>
+                          insertContentMarkup(
+                            '| Cột 1 | Cột 2 | Cột 3 |\n| --- | --- | --- |\n| Dữ liệu 1 | Dữ liệu 2 | Dữ liệu 3 |\n',
+                            '',
+                            ''
+                          )
+                        }
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <Table className="w-4 h-4" />
+                      </button>
+                      <div className="w-[1px] h-4 bg-border mx-1" />
+                      <button
+                        type="button"
                         title="Hộp lưu ý (Note callout)"
-                        onClick={() => insertContentMarkup('> [!NOTE]\n> ')}
+                        onClick={() => insertContentMarkup('> [!NOTE]\n> ', '', 'Nhập nội dung lưu ý quan trọng tại đây...')}
                         className="p-1.5 rounded-lg hover:bg-muted text-primary transition-colors text-xs flex items-center gap-1"
                       >
                         <Info className="w-3.5 h-3.5" /> Note
@@ -744,7 +781,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                       <button
                         type="button"
                         title="Hộp mẹo hay (Tip callout)"
-                        onClick={() => insertContentMarkup('> [!TIP]\n> ')}
+                        onClick={() => insertContentMarkup('> [!TIP]\n> ', '', 'Nhập mẹo hay hoặc hướng dẫn thực thi...')}
                         className="p-1.5 rounded-lg hover:bg-muted text-emerald-600 dark:text-emerald-400 transition-colors text-xs flex items-center gap-1"
                       >
                         <Lightbulb className="w-3.5 h-3.5" /> Mẹo
@@ -752,7 +789,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                       <button
                         type="button"
                         title="Hộp cảnh báo (Warning callout)"
-                        onClick={() => insertContentMarkup('> [!WARNING]\n> ')}
+                        onClick={() => insertContentMarkup('> [!WARNING]\n> ', '', 'Cảnh báo rủi ro hoặc lưu ý bắt buộc...')}
                         className="p-1.5 rounded-lg hover:bg-muted text-amber-600 dark:text-amber-400 transition-colors text-xs flex items-center gap-1"
                       >
                         <AlertTriangle className="w-3.5 h-3.5" /> Cảnh báo
@@ -771,88 +808,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   </div>
                 ) : (
                   /* Live Preview */
-                  <div className="rounded-xl border border-border/80 bg-background/50 p-5 min-h-[200px] prose dark:prose-invert max-w-none text-xs sm:text-sm">
-                    {content ? (
-                      <div className="space-y-4">
-                        {content.split('\n\n').map((block, idx) => {
-                          const trimmed = block.trim();
-                          if (trimmed.startsWith('# ')) {
-                            return (
-                              <h1 key={idx} className="text-xl sm:text-2xl font-bold text-foreground border-b border-border pb-2 mt-4 first:mt-0">
-                                {trimmed.replace('# ', '')}
-                              </h1>
-                            );
-                          }
-                          if (trimmed.startsWith('## ')) {
-                            return (
-                              <h2 key={idx} className="text-lg sm:text-xl font-bold text-foreground mt-4">
-                                {trimmed.replace('## ', '')}
-                              </h2>
-                            );
-                          }
-                          if (trimmed.startsWith('### ')) {
-                            return (
-                              <h3 key={idx} className="text-base sm:text-lg font-semibold text-foreground mt-3">
-                                {trimmed.replace('### ', '')}
-                              </h3>
-                            );
-                          }
-                          if (trimmed.startsWith('> [!NOTE]')) {
-                            return (
-                              <div key={idx} className="my-3 p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-800 dark:text-blue-200">
-                                <div className="flex items-center gap-1.5 font-bold text-xs uppercase mb-1">
-                                  <Info className="w-4 h-4 text-blue-500" /> Lưu ý quan trọng
-                                </div>
-                                <p className="text-xs leading-relaxed">{trimmed.replace('> [!NOTE]', '').replace(/^>\s*/gm, '').trim()}</p>
-                              </div>
-                            );
-                          }
-                          if (trimmed.startsWith('> [!TIP]')) {
-                            return (
-                              <div key={idx} className="my-3 p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200">
-                                <div className="flex items-center gap-1.5 font-bold text-xs uppercase mb-1">
-                                  <Lightbulb className="w-4 h-4 text-emerald-500" /> Mẹo thực thi
-                                </div>
-                                <p className="text-xs leading-relaxed">{trimmed.replace('> [!TIP]', '').replace(/^>\s*/gm, '').trim()}</p>
-                              </div>
-                            );
-                          }
-                          if (trimmed.startsWith('> [!WARNING]')) {
-                            return (
-                              <div key={idx} className="my-3 p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200">
-                                <div className="flex items-center gap-1.5 font-bold text-xs uppercase mb-1">
-                                  <AlertTriangle className="w-4 h-4 text-amber-500" /> Cảnh báo
-                                </div>
-                                <p className="text-xs leading-relaxed">{trimmed.replace('> [!WARNING]', '').replace(/^>\s*/gm, '').trim()}</p>
-                              </div>
-                            );
-                          }
-                          if (trimmed.startsWith('> ')) {
-                            return (
-                              <blockquote key={idx} className="border-l-4 border-primary pl-4 py-1 italic text-muted-foreground my-3 bg-muted/20 rounded-r-lg">
-                                {trimmed.replace(/^>\s*/gm, '')}
-                              </blockquote>
-                            );
-                          }
-                          if (trimmed.startsWith('```')) {
-                            const lines = trimmed.split('\n');
-                            const codeText = lines.slice(1, -1).join('\n');
-                            return (
-                              <pre key={idx} className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto my-3">
-                                <code>{codeText}</code>
-                              </pre>
-                            );
-                          }
-                          return (
-                            <p key={idx} className="text-foreground/90 leading-relaxed">
-                              {trimmed}
-                            </p>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground italic text-center py-8">Chưa có nội dung để xem trước...</p>
-                    )}
+                  <div className="rounded-xl border border-border/80 bg-background/50 p-5 min-h-[220px]">
+                    <MarkdownRenderer content={content} />
                   </div>
                 )}
               </div>
