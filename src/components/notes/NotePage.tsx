@@ -39,6 +39,7 @@ import {
   TableDensity,
 } from '../common/ColumnCustomizerPopover';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface NotePageProps {
   onBack: () => void;
@@ -62,6 +63,7 @@ export const DEFAULT_NOTE_COLUMNS: ColumnItem[] = [
 ];
 
 export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
+  const { currentUser } = useAuth();
   const { formatDate, formatTime } = useSettings();
   const [notes, setNotes] = useState<Note[]>(() => noteService.getInitialNotes());
   const [activeTopTab, setActiveTopTab] = useState<'list' | 'stats'>('list');
@@ -98,7 +100,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   // Column Customizer & Density State
   const [tableColumns, setTableColumns] = useState<ColumnItem[]>(() => {
     try {
-      const saved = localStorage.getItem('erp_note_columns_v2');
+      const saved = localStorage.getItem('erp_note_columns_v3');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -110,6 +112,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
               merged.push({
                 ...def,
                 ...p,
+                label: def.label,
                 width: p.width || def.width || 160,
                 pinned: p.pinned !== undefined ? p.pinned : def.pinned,
                 align: p.align || def.align || 'left',
@@ -142,7 +145,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   const handleSaveColumns = (newCols: ColumnItem[]) => {
     setTableColumns(newCols);
     try {
-      localStorage.setItem('erp_note_columns_v2', JSON.stringify(newCols));
+      localStorage.setItem('erp_note_columns_v3', JSON.stringify(newCols));
     } catch {}
   };
 
@@ -157,7 +160,9 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     setTableColumns(DEFAULT_NOTE_COLUMNS);
     setTableDensity('normal');
     try {
+      localStorage.removeItem('erp_note_columns_v3');
       localStorage.removeItem('erp_note_columns_v2');
+      localStorage.removeItem('erp_note_columns');
       localStorage.removeItem('erp_note_density');
     } catch {}
   };
@@ -356,8 +361,11 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         coordinates: formData.coordinates,
         tags: formData.tags || [],
         attachments: formData.attachments || [],
-        author: 'Lê Minh Công',
-        authorAvatar: 'https://ui-avatars.com/api/?name=Le+Minh+Cong&background=0f172a&color=fff',
+        author: formData.author || currentUser?.name || currentUser?.username || 'admin',
+        authorAvatar:
+          formData.authorAvatar ||
+          currentUser?.avatarUrl ||
+          `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || currentUser?.username || 'admin')}&background=1d4ed8&color=fff`,
         createdAt: new Date().toISOString().split('T')[0],
         updatedAt: new Date().toISOString().split('T')[0],
       };
@@ -506,13 +514,18 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     tableDensity === 'compact' ? 'py-1 px-3' : tableDensity === 'relaxed' ? 'py-3.5 px-4' : 'py-2 px-3.5';
 
   // Render Category Badge
-  const renderCategoryBadge = (cat: NoteCategory) => {
+  const renderCategoryBadge = (cat?: NoteCategory | string | null) => {
+    if (!cat || typeof cat !== 'string' || !cat.trim()) {
+      return <span className="text-muted-foreground text-xs">—</span>;
+    }
+    const lower = cat.toLowerCase();
     let colorClass = 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
-    if (cat.includes('cuộc họp')) colorClass = 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
-    if (cat.includes('kỹ thuật')) colorClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
-    if (cat.includes('Kế hoạch')) colorClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
-    if (cat.includes('Ý tưởng')) colorClass = 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
-    if (cat.includes('quy trình')) colorClass = 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20';
+    if (lower.includes('cuộc họp')) colorClass = 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
+    if (lower.includes('kỹ thuật')) colorClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+    if (lower.includes('kế hoạch')) colorClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+    if (lower.includes('ý tưởng')) colorClass = 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
+    if (lower.includes('quy trình')) colorClass = 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20';
+    if (lower.includes('khảo sát')) colorClass = 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20';
 
     return (
       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${colorClass}`}>
@@ -703,7 +716,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} font-medium text-foreground`}>
             <div className={`w-full min-w-0 ${textWrapClass}`}>
-              {note.author || 'Lê Minh Công'}
+              {note.author || currentUser?.name || currentUser?.username || '—'}
             </div>
           </td>
         );
@@ -1562,6 +1575,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       <NoteFormDrawer
         isOpen={isFormDrawerOpen}
         initialData={editingNote}
+        existingTags={allUniqueTags}
         onClose={() => {
           setIsFormDrawerOpen(false);
           setEditingNote(null);

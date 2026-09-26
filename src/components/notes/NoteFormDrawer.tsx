@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
   FileText,
@@ -31,14 +31,17 @@ import {
   AlertTriangle,
   Lightbulb,
   CheckSquare,
+  User,
 } from 'lucide-react';
 import { Note, NoteCategory, NoteStatus, NoteAttachment } from '../../types/note';
 import { NOTE_CATEGORIES, NOTE_COLOR_THEMES, PRESET_TAGS } from '../../data/notes';
 import { TimePickerInput } from '../common/TimePickerInput';
+import { useAuth } from '../../context/AuthContext';
 
 interface NoteFormDrawerProps {
   isOpen: boolean;
   initialData?: Note | null;
+  existingTags?: string[];
   onClose: () => void;
   onSubmit: (formData: Partial<Note>) => void;
 }
@@ -48,9 +51,11 @@ type WidthMode = 'narrow' | 'normal' | 'wide' | 'fullscreen';
 export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   isOpen,
   initialData,
+  existingTags = [],
   onClose,
   onSubmit,
 }) => {
+  const { currentUser } = useAuth();
   const [widthMode, setWidthMode] = useState<WidthMode>('wide');
   const isEdit = !!initialData;
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -68,6 +73,10 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   const [isPinned, setIsPinned] = useState(false);
   const [color, setColor] = useState('blue');
   const [coverUrl, setCoverUrl] = useState('');
+
+  // Author
+  const [author, setAuthor] = useState('');
+  const [authorAvatar, setAuthorAvatar] = useState('');
 
   // Date & Time
   const [noteDate, setNoteDate] = useState('');
@@ -90,6 +99,19 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   // Validation
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
+  // Dynamic tags from existing notes + database
+  const availableTags = useMemo(() => {
+    const set = new Set<string>();
+    (existingTags || []).forEach((t) => {
+      if (t && t.trim()) set.add(t.trim().replace(/^#/, ''));
+    });
+    // Add default fallbacks if none exist yet
+    if (set.size === 0) {
+      PRESET_TAGS.forEach((t) => set.add(t));
+    }
+    return Array.from(set);
+  }, [existingTags]);
+
   useEffect(() => {
     if (initialData) {
       setTitle(initialData.title || '');
@@ -100,6 +122,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setIsPinned(!!initialData.isPinned);
       setColor(initialData.color || 'blue');
       setCoverUrl(initialData.coverUrl || '');
+      setAuthor(initialData.author || currentUser?.name || currentUser?.username || 'admin');
+      setAuthorAvatar(initialData.authorAvatar || currentUser?.avatarUrl || '');
 
       setNoteDate(initialData.noteDate || '');
       setNoteTime(initialData.noteTime || '');
@@ -123,6 +147,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setIsPinned(false);
       setColor('blue');
       setCoverUrl('');
+      setAuthor(currentUser?.name || currentUser?.username || 'admin');
+      setAuthorAvatar(currentUser?.avatarUrl || '');
 
       setNoteDate(todayStr);
       setNoteTime(timeStr);
@@ -409,6 +435,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       location: location.trim() || undefined,
       coordinates: coordinates.trim() || undefined,
       tags: tags.length > 0 ? tags : [],
+      author: author.trim() || currentUser?.name || currentUser?.username || 'admin',
+      authorAvatar: authorAvatar || currentUser?.avatarUrl || undefined,
       attachments: attachments.length > 0 ? attachments : undefined,
       images: images.length > 0 ? images : undefined,
     };
@@ -857,8 +885,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Category, Status & Pin */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Category, Status, Author & Pin */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Chuyên mục
@@ -890,6 +918,22 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                     <option value="draft">Bản nháp</option>
                     <option value="archived">Lưu trữ</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    Tác giả ghi chép
+                  </label>
+                  <div className="relative">
+                    <User className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      value={author}
+                      onChange={(e) => setAuthor(e.target.value)}
+                      placeholder="Người tạo..."
+                      className="w-full rounded-xl border border-border bg-background pl-8.5 pr-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -946,10 +990,10 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   />
                 </div>
 
-                {/* Preset Tag Badges */}
+                {/* Preset Tag Badges (dynamic from existing notes) */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                  <span className="text-[11px] text-muted-foreground mr-1">Gợi ý nhanh:</span>
-                  {PRESET_TAGS.map((pt) => {
+                  <span className="text-[11px] text-muted-foreground mr-1">Gợi ý nhanh từ ghi chú:</span>
+                  {availableTags.map((pt: string) => {
                     const isSelected = tags.includes(pt);
                     return (
                       <button
