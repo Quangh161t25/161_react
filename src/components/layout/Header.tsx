@@ -167,14 +167,14 @@ export const Header: React.FC<HeaderProps> = ({
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <header className="h-12 md:h-14 shrink-0 border-b border-border/50 bg-card sticky top-0 z-40 px-3 md:px-5 flex items-center justify-between gap-3 safe-area-top">
+    <header className="h-12 md:h-13 shrink-0 border-b border-border/50 bg-card sticky top-0 z-40 px-3 md:px-4 flex items-center justify-between gap-3 safe-area-top">
       {/* Left: Collapse Button & Breadcrumb */}
       <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
         <button
           type="button"
           onClick={onToggleSidebar}
           aria-label={isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
-          className="h-9 w-9 md:h-8 md:w-8 flex items-center justify-center rounded-lg bg-muted/60 border border-border/80 text-muted-foreground hover:text-primary hover:bg-primary/5 hover:border-primary/20 transition-all active:scale-90 shrink-0"
+          className="h-8 w-8 flex items-center justify-center rounded-lg bg-muted/60 border border-border/80 text-muted-foreground hover:text-primary hover:bg-primary/5 hover:border-primary/20 transition-all active:scale-90 shrink-0"
         >
           {isCollapsed ? (
             <PanelLeft className="w-3.5 h-3.5" aria-hidden="true" />
@@ -199,7 +199,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <House className="w-3.5 h-3.5" />
                     </span>
                     <span
-                      className="px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold flex items-center whitespace-nowrap shadow-sm shadow-primary/20"
+                      className="px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold flex items-center whitespace-nowrap shadow-sm shadow-primary/20 selection:bg-white/35 selection:text-white"
                       aria-current="page"
                     >
                       Trang chủ
@@ -232,7 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />
                   {isLast ? (
                     <span
-                      className="px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold flex items-center whitespace-nowrap shadow-sm shadow-primary/20"
+                      className="px-2 py-0.5 rounded-md bg-primary text-primary-foreground text-xs font-semibold flex items-center whitespace-nowrap shadow-sm shadow-primary/20 selection:bg-white/35 selection:text-white"
                       aria-current="page"
                     >
                       {crumb.label}

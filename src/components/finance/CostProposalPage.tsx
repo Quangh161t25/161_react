@@ -77,6 +77,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
   // Resizing state
   const [resizingColId, setResizingColId] = useState<string | null>(null);
   const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
+  const lastSelectedIdRef = useRef<string | null>(null);
 
   // Column Customizer & Density State
   const [tableColumns, setTableColumns] = useState<ColumnItem[]>(() => {
@@ -261,11 +262,38 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
     }
   };
 
-  const handleToggleSelect = (id: string, e?: React.SyntheticEvent) => {
-    if (e) e.stopPropagation();
+  const handleToggleSelect = (id: string, e?: React.MouseEvent | React.SyntheticEvent) => {
+    if (e && 'stopPropagation' in e) e.stopPropagation();
+
+    const isShiftKey = (e as React.MouseEvent)?.shiftKey;
+    const currentIndex = filteredProposals.findIndex((p) => p.id === id);
+
+    if (isShiftKey && lastSelectedIdRef.current !== null && currentIndex !== -1) {
+      const lastIndex = filteredProposals.findIndex((p) => p.id === lastSelectedIdRef.current);
+      if (lastIndex !== -1) {
+        const start = Math.min(lastIndex, currentIndex);
+        const end = Math.max(lastIndex, currentIndex);
+        const rangeIds = filteredProposals.slice(start, end + 1).map((p) => p.id);
+
+        setSelectedIds((prev) => {
+          const isTargetSelected = prev.includes(id);
+          if (isTargetSelected) {
+            const rangeSet = new Set(rangeIds);
+            return prev.filter((item) => !rangeSet.has(item));
+          } else {
+            const combined = new Set([...prev, ...rangeIds]);
+            return Array.from(combined);
+          }
+        });
+        lastSelectedIdRef.current = id;
+        return;
+      }
+    }
+
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+    lastSelectedIdRef.current = id;
   };
 
   // Open Form Drawer for Create
@@ -778,10 +806,10 @@ const handleDeleteProposal = async (id: string) => {
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col p-1.5 md:p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <div className="flex-1 min-h-0 flex flex-col p-1 md:p-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       <div className="flex-1 min-h-0 flex flex-col">
         <div className="flex flex-col h-full relative">
-          <div className="flex-1 min-h-0 flex flex-col mt-1.5 rounded-xl border border-border bg-card shadow-sm overflow-hidden relative z-0">
+          <div className="flex-1 min-h-0 flex flex-col rounded-xl border border-border bg-card shadow-sm overflow-hidden relative z-0">
             {/* Top Toolbar */}
             <div
               data-print="hide"
@@ -1142,14 +1170,21 @@ const handleDeleteProposal = async (id: string) => {
                                 {/* Checkbox */}
                                 <td
                                   style={{ width: 44, minWidth: 44, maxWidth: 44 }}
-                                  className={`sticky left-0 z-[10] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${stickyBgClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
-                                  onClick={(e) => e.stopPropagation()}
+                                  className={`sticky left-0 z-[10] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${stickyBgClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] cursor-pointer select-none`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleSelect(item.id, e);
+                                  }}
                                 >
                                   <input
                                     type="checkbox"
                                     checked={isSelected}
-                                    onChange={() => handleToggleSelect(item.id)}
-                                    className="w-4 h-4 rounded border-border text-primary accent-primary cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleSelect(item.id, e);
+                                    }}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 rounded border-border text-primary accent-primary cursor-pointer align-middle"
                                   />
                                 </td>
 

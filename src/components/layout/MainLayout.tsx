@@ -25,7 +25,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   };
 
   return (
-    <div className="flex h-[100dvh] bg-background font-sans text-foreground selection:bg-primary/20 selection:text-primary overflow-x-hidden min-h-0">
+    <div className="flex h-[100dvh] bg-background font-sans text-foreground overflow-x-hidden min-h-0">
       {/* Accessibility Skip Link */}
       <a
         href="#main-content"

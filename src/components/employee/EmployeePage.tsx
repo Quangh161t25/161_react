@@ -26,6 +26,7 @@ import {
   Link2,
   Pin,
   SlidersHorizontal,
+  Printer,
 } from 'lucide-react';
 import { Employee } from '../../types/employee';
 import { EmployeeDetailDrawer } from './EmployeeDetailDrawer';
@@ -115,6 +116,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
   // Resizing state
   const [resizingColId, setResizingColId] = useState<string | null>(null);
   const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
+  const lastSelectedIdRef = useRef<string | null>(null);
 
   // Column Customizer & Density State
   const [tableColumns, setTableColumns] = useState<ColumnItem[]>(() => {
@@ -309,11 +311,38 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
     }
   };
 
-  const handleToggleSelect = (id: string, e?: React.SyntheticEvent) => {
-    if (e) e.stopPropagation();
+  const handleToggleSelect = (id: string, e?: React.MouseEvent | React.SyntheticEvent) => {
+    if (e && 'stopPropagation' in e) e.stopPropagation();
+
+    const isShiftKey = (e as React.MouseEvent)?.shiftKey;
+    const currentIndex = filteredEmployees.findIndex((emp) => emp.id === id);
+
+    if (isShiftKey && lastSelectedIdRef.current !== null && currentIndex !== -1) {
+      const lastIndex = filteredEmployees.findIndex((emp) => emp.id === lastSelectedIdRef.current);
+      if (lastIndex !== -1) {
+        const start = Math.min(lastIndex, currentIndex);
+        const end = Math.max(lastIndex, currentIndex);
+        const rangeIds = filteredEmployees.slice(start, end + 1).map((emp) => emp.id);
+
+        setSelectedIds((prev) => {
+          const isTargetSelected = prev.includes(id);
+          if (isTargetSelected) {
+            const rangeSet = new Set(rangeIds);
+            return prev.filter((item) => !rangeSet.has(item));
+          } else {
+            const combined = new Set([...prev, ...rangeIds]);
+            return Array.from(combined);
+          }
+        });
+        lastSelectedIdRef.current = id;
+        return;
+      }
+    }
+
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
+    lastSelectedIdRef.current = id;
   };
 
   // Bulk Delete
@@ -993,80 +1022,63 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
 
   return (
     <div className="flex-1 min-h-0 flex flex-col p-1.5 md:p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      {/* Top View Tabs: Danh sách / Thống kê */}
+      <div className="flex items-center gap-1.5 mb-1.5 px-0.5 shrink-0">
+        <button
+          type="button"
+          onClick={() => setActiveTopTab('list')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            activeTopTab === 'list'
+              ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+          }`}
+        >
+          <List className="w-3.5 h-3.5" />
+          <span>Danh sách</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTopTab('stats')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            activeTopTab === 'stats'
+              ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+          }`}
+        >
+          <ChartColumn className="w-3.5 h-3.5" />
+          <span>Thống kê</span>
+        </button>
+      </div>
+
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Main Card Container */}
         <div className="flex-1 min-h-0 flex flex-col bg-card rounded-xl border border-border overflow-hidden shadow-sm">
-          {/* Header Bar */}
-          <div className="p-4 border-b border-border space-y-4">
-            {/* Top row: Back button, Title & Stats Tabs */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={onBack}
-                  className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                  title="Quay lại Hệ thống"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-base md:text-lg font-bold text-foreground">
-                      Hồ sơ nhân sự
-                    </h1>
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-primary/10 text-primary font-semibold">
-                      {employees.length}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Quản lý danh sách, thông tin nhân viên, phòng ban và chức vụ
-                  </p>
-                </div>
-              </div>
+          {/* Header Bar Toolbar */}
+          {activeTopTab === 'list' && (
+            <div className="px-3 py-2 border-b border-border bg-card">
+              <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2">
+                {/* Left: Back button, Search and Filters */}
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                  {/* Quay lại Button */}
+                  <button
+                    type="button"
+                    onClick={onBack}
+                    className="h-8 px-2.5 rounded-lg border border-border bg-background hover:bg-muted text-foreground text-xs font-medium flex items-center gap-1.5 shadow-sm transition-colors shrink-0"
+                    title="Quay lại Hệ thống"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="hidden sm:inline">Quay lại</span>
+                  </button>
 
-              {/* Top View Tabs: Danh sách / Thống kê */}
-              <div className="flex items-center gap-1 p-1 bg-muted rounded-xl self-start sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setActiveTopTab('list')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    activeTopTab === 'list'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <List className="w-3.5 h-3.5" />
-                  Danh sách
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTopTab('stats')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    activeTopTab === 'stats'
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <ChartColumn className="w-3.5 h-3.5" />
-                  Thống kê
-                </button>
-              </div>
-            </div>
-
-            {/* Bottom Row Filters and Actions */}
-            {activeTopTab === 'list' && (
-              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 pt-1">
-                {/* Search and Filters */}
-                <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
                   {/* Search Bar */}
-                  <div className="relative flex-1 min-w-[200px] max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <div className="relative flex-1 min-w-[160px] max-w-sm">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
                     <input
                       type="text"
-                      placeholder="Tìm kiếm theo tên, mã NV, username, SĐT, email..."
+                      placeholder="Tìm kiếm"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full h-8 pl-9 pr-3 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      className="w-full h-8 pl-8 pr-3 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
                     />
                   </div>
 
@@ -1291,7 +1303,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                 </div>
 
                 {/* Right Actions */}
-                <div className="flex items-center gap-1.5 shrink-0 self-end md:self-auto">
+                <div className="flex items-center gap-1.5 shrink-0 self-end lg:self-auto">
                   {/* Bulk Delete Button when items are selected */}
                   {selectedIds.length > 0 && (
                     <button
@@ -1319,6 +1331,17 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                     </span>
                   </button>
 
+                  {/* Print */}
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    title="In danh sách"
+                    className="h-8 w-8 flex items-center justify-center border rounded-lg transition-all bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Bookmark */}
                   <button
                     type="button"
                     title="Ghim mục"
@@ -1375,8 +1398,8 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Tab 2: Thống kê */}
           {activeTopTab === 'stats' && (
@@ -1512,14 +1535,21 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                                 {/* 1. Sticky Checkbox */}
                                 <td
                                   style={{ width: 44, minWidth: 44, maxWidth: 44 }}
-                                  className={`sticky left-0 z-[10] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${stickyBgClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
-                                  onClick={(e) => e.stopPropagation()}
+                                  className={`sticky left-0 z-[10] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${stickyBgClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)] cursor-pointer select-none`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleSelect(emp.id, e);
+                                  }}
                                 >
                                   <input
                                     type="checkbox"
                                     checked={isSelected}
-                                    onChange={() => handleToggleSelect(emp.id)}
-                                    className="w-4 h-4 rounded border-border text-primary accent-primary cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleSelect(emp.id, e);
+                                    }}
+                                    onChange={() => {}}
+                                    className="w-4 h-4 rounded border-border text-primary accent-primary cursor-pointer align-middle"
                                   />
                                 </td>
 

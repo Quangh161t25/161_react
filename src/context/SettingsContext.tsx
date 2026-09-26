@@ -73,7 +73,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       }
 
       // 4. Font Family
-      const font = settings.fontFamily;
+      const font = settings.fontFamily || 'Inter';
       const fontParam = FONT_CONFIG[font]?.googleParam;
       if (fontParam) {
         const id = 'gfont-' + font.replace(/\s+/g, '-');
@@ -86,9 +86,14 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }
       const SANS_FALLBACK =
-        "'Noto Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'";
+        "'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji'";
       const quotedFont = font.indexOf(' ') >= 0 ? `'${font}'` : font;
-      el.style.setProperty('--font-sans', `${quotedFont}, ${SANS_FALLBACK}`);
+      const fullFontFamily = `${quotedFont}, ${SANS_FALLBACK}`;
+      el.style.setProperty('--font-sans', fullFontFamily);
+      el.style.fontFamily = fullFontFamily;
+      if (document.body) {
+        document.body.style.fontFamily = fullFontFamily;
+      }
 
       // 5. Persist to localStorage
       localStorage.setItem(

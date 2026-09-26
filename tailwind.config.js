@@ -38,7 +38,7 @@ export default {
         ring: 'hsl(var(--ring) / <alpha-value>)',
       },
       fontFamily: {
-        sans: ['Inter', 'Noto Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-sans)', 'Inter', 'Noto Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
     },
   },
