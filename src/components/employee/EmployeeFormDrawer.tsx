@@ -33,12 +33,10 @@ import {
   Save,
   Plus,
   Star,
-  Share2,
   Globe,
   ThumbsDown,
   FileText,
   Sparkles,
-  MessageCircle,
 } from 'lucide-react';
 import { Employee, EmployeeStatus, Gender, EmployeeBankAccount } from '../../types/employee';
 import { VIETNAM_BANKS } from '../../data/employees';
@@ -139,12 +137,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [hobbies, setHobbies] = useState('');
   const [dislikes, setDislikes] = useState('');
   const [notes, setNotes] = useState('');
-  const [facebook, setFacebook] = useState('');
-  const [zalo, setZalo] = useState('');
-  const [linkedin, setLinkedin] = useState('');
-  const [tiktok, setTiktok] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [twitter, setTwitter] = useState('');
+  const [socialMedia, setSocialMedia] = useState('');
 
   // Insurance & Tax
   const [socialInsuranceNumber, setSocialInsuranceNumber] = useState('');
@@ -224,16 +217,28 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
         ]);
       }
 
-      // Preferences & Social Media
+      // Preferences & Social Media & Notes
       setHobbies(initialData.hobbies || '');
       setDislikes(initialData.dislikes || '');
       setNotes(initialData.notes || '');
-      setFacebook(initialData.facebook || initialData.socialMedia?.facebook || '');
-      setZalo(initialData.zalo || initialData.socialMedia?.zalo || '');
-      setLinkedin(initialData.linkedin || initialData.socialMedia?.linkedin || '');
-      setTiktok(initialData.tiktok || initialData.socialMedia?.tiktok || '');
-      setInstagram(initialData.instagram || initialData.socialMedia?.instagram || '');
-      setTwitter(initialData.twitter || initialData.socialMedia?.twitter || '');
+
+      if (typeof initialData.socialMedia === 'string') {
+        setSocialMedia(initialData.socialMedia);
+      } else if (initialData.socialMedia && typeof initialData.socialMedia === 'object') {
+        const s = initialData.socialMedia as Record<string, string | undefined>;
+        const links = [s.facebook, s.zalo, s.linkedin, s.tiktok, s.instagram, s.twitter, s.other].filter(Boolean);
+        setSocialMedia(links.join('\n'));
+      } else {
+        const links = [
+          initialData.facebook,
+          initialData.zalo,
+          initialData.linkedin,
+          initialData.tiktok,
+          initialData.instagram,
+          initialData.twitter,
+        ].filter(Boolean);
+        setSocialMedia(links.join('\n'));
+      }
 
       setSocialInsuranceNumber(initialData.socialInsuranceNumber || '');
       setHealthInsuranceNumber(initialData.healthInsuranceNumber || '');
@@ -294,12 +299,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setHobbies('');
       setDislikes('');
       setNotes('');
-      setFacebook('');
-      setZalo('');
-      setLinkedin('');
-      setTiktok('');
-      setInstagram('');
-      setTwitter('');
+      setSocialMedia('');
 
       setSocialInsuranceNumber('');
       setHealthInsuranceNumber('');
@@ -441,25 +441,10 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       bankAccountHolder:
         primaryBank?.accountHolder?.trim() || name.trim().toUpperCase() || undefined,
       bankName: primaryBank?.bankName?.trim() || undefined,
-      bankBranch: primaryBank?.branch?.trim() || undefined,
-
       hobbies: hobbies.trim() || undefined,
       dislikes: dislikes.trim() || undefined,
       notes: notes.trim() || undefined,
-      facebook: facebook.trim() || undefined,
-      zalo: zalo.trim() || undefined,
-      linkedin: linkedin.trim() || undefined,
-      tiktok: tiktok.trim() || undefined,
-      instagram: instagram.trim() || undefined,
-      twitter: twitter.trim() || undefined,
-      socialMedia: {
-        facebook: facebook.trim() || undefined,
-        zalo: zalo.trim() || undefined,
-        linkedin: linkedin.trim() || undefined,
-        tiktok: tiktok.trim() || undefined,
-        instagram: instagram.trim() || undefined,
-        twitter: twitter.trim() || undefined,
-      },
+      socialMedia: socialMedia.trim() || undefined,
 
       socialInsuranceNumber: socialInsuranceNumber.trim() || undefined,
       healthInsuranceNumber: healthInsuranceNumber.trim() || undefined,
@@ -1474,22 +1459,23 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <Heart className="w-3.5 h-3.5" />
-                    <span className="truncate">Sở thích, Mạng xã hội & Ghi chú</span>
+                    <span className="truncate">Sở thích, Thói quen, Mạng xã hội & Ghi chú</span>
                   </h4>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
+                <div className="space-y-3.5">
                   {/* Sở thích */}
                   <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
                       <Sparkles className="w-3 h-3 shrink-0 text-amber-500" />
-                      Sở thích
+                      Sở thích & Thói quen cá nhân
                     </label>
-                    <input
+                    <textarea
+                      rows={2}
                       value={hobbies}
                       onChange={(e) => setHobbies(e.target.value)}
-                      placeholder="VD: Đọc sách, chạy bộ, đá bóng, du lịch, nghe nhạc..."
-                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                      placeholder="VD: Cà phê sáng không đường, đọc sách công nghệ, đá bóng chiều thứ 7, du lịch trải nghiệm..."
+                      className="flex w-full rounded-lg border border-border bg-background p-3 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 resize-y leading-relaxed"
                     />
                   </div>
 
@@ -1497,74 +1483,34 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                   <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
                       <ThumbsDown className="w-3 h-3 shrink-0 text-rose-500" />
-                      Không thích / Dị ứng
+                      Không thích / Kiêng cữ / Dị ứng
                     </label>
-                    <input
+                    <textarea
+                      rows={2}
                       value={dislikes}
                       onChange={(e) => setDislikes(e.target.value)}
-                      placeholder="VD: Hải sản, thức khuya, tiếng ồn lớn, đồ ngọt..."
-                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                      placeholder="VD: Dị ứng hải sản có vỏ, không thích tiếng ồn lớn khi tập trung, kiêng ăn đồ ngọt/cay..."
+                      className="flex w-full rounded-lg border border-border bg-background p-3 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 resize-y leading-relaxed"
                     />
                   </div>
 
-                  {/* Mạng xã hội - Facebook */}
+                  {/* Mạng xã hội */}
                   <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
                       <Globe className="w-3 h-3 shrink-0 text-blue-600" />
-                      Facebook
+                      Mạng xã hội & Kênh liên kết (Dán link)
                     </label>
-                    <input
-                      value={facebook}
-                      onChange={(e) => setFacebook(e.target.value)}
-                      placeholder="Link Facebook hoặc tên hiển thị"
-                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
-                    />
-                  </div>
-
-                  {/* Mạng xã hội - Zalo */}
-                  <div className="w-full">
-                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <MessageCircle className="w-3 h-3 shrink-0 text-blue-500" />
-                      Zalo
-                    </label>
-                    <input
-                      value={zalo}
-                      onChange={(e) => setZalo(e.target.value)}
-                      placeholder="Số điện thoại Zalo hoặc link"
-                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
-                    />
-                  </div>
-
-                  {/* Mạng xã hội - LinkedIn */}
-                  <div className="w-full">
-                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <Share2 className="w-3 h-3 shrink-0 text-sky-600" />
-                      LinkedIn
-                    </label>
-                    <input
-                      value={linkedin}
-                      onChange={(e) => setLinkedin(e.target.value)}
-                      placeholder="Link trang LinkedIn cá nhân"
-                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
-                    />
-                  </div>
-
-                  {/* Mạng xã hội - TikTok / Khác */}
-                  <div className="w-full">
-                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <Globe className="w-3 h-3 shrink-0 text-pink-500" />
-                      TikTok / Instagram / Khác
-                    </label>
-                    <input
-                      value={tiktok}
-                      onChange={(e) => setTiktok(e.target.value)}
-                      placeholder="Link TikTok, Instagram hoặc mạng xã hội khác"
-                      className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                    <textarea
+                      rows={2}
+                      value={socialMedia}
+                      onChange={(e) => setSocialMedia(e.target.value)}
+                      placeholder="Dán link Facebook, Zalo, TikTok, LinkedIn, Instagram... (mỗi link 1 dòng hoặc cách nhau bởi dấu phẩy)"
+                      className="flex w-full rounded-lg border border-border bg-background p-3 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 resize-y font-mono leading-relaxed"
                     />
                   </div>
 
                   {/* Ghi chú nhân sự */}
-                  <div className="w-full sm:col-span-2">
+                  <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
                       <FileText className="w-3 h-3 shrink-0 text-primary" />
                       Ghi chú nhân sự & Lưu ý đặc biệt
@@ -1573,8 +1519,8 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                       rows={3}
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Nhập các ghi chú nội bộ, tính cách, lưu ý đặc thù của nhân viên..."
-                      className="flex w-full rounded-lg border border-border bg-background p-3 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 resize-y"
+                      placeholder="Nhập các ghi chú nội bộ, tính cách, hoàn cảnh gia đình hoặc lưu ý đặc thù..."
+                      className="flex w-full rounded-lg border border-border bg-background p-3 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 resize-y leading-relaxed"
                     />
                   </div>
                 </div>

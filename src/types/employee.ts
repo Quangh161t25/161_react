@@ -72,10 +72,10 @@ export interface Employee {
   taxCode?: string;
 
   // Additional Fields
-  hobbies?: string; // Sở thích
-  dislikes?: string; // Không thích
-  notes?: string; // Ghi chú
-  socialMedia?: EmployeeSocialLinks; // Mạng xã hội
+  hobbies?: string; // Sở thích (textarea)
+  dislikes?: string; // Không thích (textarea)
+  notes?: string; // Ghi chú (textarea)
+  socialMedia?: string; // Mạng xã hội (dán link tự do)
   facebook?: string;
   zalo?: string;
   linkedin?: string;

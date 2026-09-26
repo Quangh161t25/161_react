@@ -86,12 +86,10 @@ export const DEFAULT_EMPLOYEE_COLUMNS: ColumnItem[] = [
   { id: 'bankAccount', label: 'Số tài khoản', visible: false, width: 170, align: 'left', wrap: 'truncate' },
   { id: 'bankAccountHolder', label: 'Chủ tài khoản', visible: false, width: 190, align: 'left', wrap: 'truncate' },
   { id: 'bankName', label: 'Tên ngân hàng', visible: false, width: 170, align: 'left', wrap: 'truncate' },
-  { id: 'bankBranch', label: 'Chi nhánh', visible: false, width: 170, align: 'left', wrap: 'truncate' },
   { id: 'bankAccounts', label: 'Danh sách ngân hàng', visible: false, width: 230, align: 'left', wrap: 'truncate' },
-  { id: 'hobbies', label: 'Sở thích', visible: false, width: 200, align: 'left', wrap: 'truncate' },
-  { id: 'dislikes', label: 'Không thích', visible: false, width: 200, align: 'left', wrap: 'truncate' },
-  { id: 'facebook', label: 'Facebook', visible: false, width: 170, align: 'left', wrap: 'truncate' },
-  { id: 'zalo', label: 'Zalo', visible: false, width: 150, align: 'left', wrap: 'truncate' },
+  { id: 'hobbies', label: 'Sở thích', visible: false, width: 220, align: 'left', wrap: 'truncate' },
+  { id: 'dislikes', label: 'Không thích', visible: false, width: 220, align: 'left', wrap: 'truncate' },
+  { id: 'socialMedia', label: 'Mạng xã hội', visible: false, width: 240, align: 'left', wrap: 'truncate' },
   { id: 'notes', label: 'Ghi chú', visible: false, width: 220, align: 'left', wrap: 'truncate' },
   { id: 'socialInsuranceNumber', label: 'Số BHXH', visible: false, width: 150, align: 'center', wrap: 'truncate' },
   { id: 'healthInsuranceNumber', label: 'Số BHYT', visible: false, width: 150, align: 'center', wrap: 'truncate' },
@@ -603,8 +601,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       'Danh sách ngân hàng',
       'Sở thích',
       'Không thích',
-      'Facebook',
-      'Zalo',
+      'Mạng xã hội',
       'Ghi chú',
       'Số BHXH',
       'Số BHYT',
@@ -624,6 +621,13 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
               )
               .join('; ')
           : e.bankAccount || '';
+
+      const socialMediaStr =
+        typeof e.socialMedia === 'string'
+          ? e.socialMedia
+          : [e.facebook, e.zalo, e.linkedin, e.tiktok, e.instagram, e.twitter]
+              .filter(Boolean)
+              .join('; ');
 
       return [
         `"${e.name}"`,
@@ -675,8 +679,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         `"${bankAccountsStr}"`,
         `"${e.hobbies || ''}"`,
         `"${e.dislikes || ''}"`,
-        `"${e.facebook || e.socialMedia?.facebook || ''}"`,
-        `"${e.zalo || e.socialMedia?.zalo || ''}"`,
+        `"${socialMediaStr}"`,
         `"${e.notes || ''}"`,
         `"${e.socialInsuranceNumber || ''}"`,
         `"${e.healthInsuranceNumber || ''}"`,
@@ -1070,8 +1073,35 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
             {emp.dislikes || '—'}
           </td>
         );
+      case 'socialMedia': {
+        const rawSocial =
+          typeof emp.socialMedia === 'string'
+            ? emp.socialMedia
+            : [
+                emp.facebook,
+                emp.zalo,
+                emp.linkedin,
+                emp.tiktok,
+                emp.instagram,
+                emp.twitter,
+              ]
+                .filter(Boolean)
+                .join(', ');
+
+        return (
+          <td key={colId} style={colStyle} className={`${tdBaseClass} ${textWrapClass}`}>
+            {rawSocial ? (
+              <span className="font-mono text-xs text-primary truncate max-w-full block">
+                {rawSocial}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
+          </td>
+        );
+      }
       case 'facebook': {
-        const fb = emp.facebook || emp.socialMedia?.facebook;
+        const fb = emp.facebook;
         return (
           <td key={colId} style={colStyle} className={`${tdBaseClass} ${textWrapClass}`}>
             {fb ? (
@@ -1091,7 +1121,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         );
       }
       case 'zalo': {
-        const zl = emp.zalo || emp.socialMedia?.zalo;
+        const zl = emp.zalo;
         return (
           <td key={colId} style={colStyle} className={`${tdBaseClass} ${textWrapClass}`}>
             {zl ? (
