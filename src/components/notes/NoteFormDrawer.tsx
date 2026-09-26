@@ -178,8 +178,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     setContentTab('edit');
   }, [initialData, isOpen]);
 
-  if (!isOpen) return null;
-
   const getWidthStyle = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 640) {
       return '100vw';
@@ -417,6 +415,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
 
     onSubmit(payload);
   };
+
+  if (!isOpen) return null;
 
   return (
     <>
