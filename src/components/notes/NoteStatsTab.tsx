@@ -2,11 +2,11 @@ import React from 'react';
 import {
   FileText,
   Pin,
-  Table as TableIcon,
   MapPin,
   Tag,
   FolderOpen,
   PieChart,
+  ImageIcon,
 } from 'lucide-react';
 import { Note } from '../../types/note';
 import { NOTE_CATEGORIES } from '../../data/notes';
@@ -18,7 +18,6 @@ interface NoteStatsTabProps {
 export const NoteStatsTab: React.FC<NoteStatsTabProps> = ({ notes }) => {
   const total = notes.length;
   const pinnedCount = notes.filter((n) => n.isPinned).length;
-  const tableCount = notes.filter((n) => n.tableData && n.tableData.columns?.length > 0).length;
   const locationCount = notes.filter((n) => n.location || n.coordinates).length;
   const attachmentCount = notes.reduce(
     (acc, n) => acc + (n.attachments?.length || 0) + (n.images?.length || 0),
@@ -65,17 +64,17 @@ export const NoteStatsTab: React.FC<NoteStatsTabProps> = ({ notes }) => {
           </div>
         </div>
 
-        {/* Wiki Tables */}
+        {/* Attachments & Images */}
         <div className="p-4 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-4 hover:shadow-md transition-shadow">
           <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
-            <TableIcon className="w-6 h-6" />
+            <ImageIcon className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Bài có Bảng dữ liệu Wiki</p>
+            <p className="text-xs font-medium text-muted-foreground">Hình ảnh & Tệp đính kèm</p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <h3 className="text-2xl font-extrabold text-foreground">{tableCount}</h3>
+              <h3 className="text-2xl font-extrabold text-foreground">{attachmentCount}</h3>
               <span className="text-xs font-medium text-purple-600">
-                {total > 0 ? Math.round((tableCount / total) * 100) : 0}% tổng số
+                Tệp minh họa
               </span>
             </div>
           </div>
@@ -97,17 +96,17 @@ export const NoteStatsTab: React.FC<NoteStatsTabProps> = ({ notes }) => {
           </div>
         </div>
 
-        {/* GPS Location & Attachments */}
+        {/* GPS Location */}
         <div className="p-4 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-4 hover:shadow-md transition-shadow">
           <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
             <MapPin className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground">Có vị trí & Đính kèm</p>
+            <p className="text-xs font-medium text-muted-foreground">Có vị trí & Địa điểm</p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <h3 className="text-2xl font-extrabold text-foreground">{locationCount}</h3>
               <span className="text-xs font-medium text-emerald-600">
-                {attachmentCount} tệp/ảnh
+                {total > 0 ? Math.round((locationCount / total) * 100) : 0}% tổng bài
               </span>
             </div>
           </div>
@@ -211,8 +210,8 @@ export const NoteStatsTab: React.FC<NoteStatsTabProps> = ({ notes }) => {
                   <span>Bản nháp ({draftCount})</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  <span>Đính kèm ({attachmentCount})</span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                  <span>Hình ảnh ({attachmentCount})</span>
                 </div>
               </div>
             </div>

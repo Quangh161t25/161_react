@@ -29,7 +29,6 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { Note } from '../../types/note';
-import { WikiTableEditor } from './WikiTableEditor';
 
 interface NoteDetailDrawerProps {
   isOpen?: boolean;
@@ -469,20 +468,7 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                 />
               </div>
 
-              {/* Card 2: Bảng dữ liệu Wiki (Wiki Table) */}
-              {note.tableData && note.tableData.columns && note.tableData.columns.length > 0 && (
-                <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">
-                    <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-2 text-primary font-bold">
-                      <FileText className="w-4 h-4" />
-                      <span>Bảng dữ liệu Wiki nhúng</span>
-                    </h4>
-                  </div>
-                  <WikiTableEditor tableData={note.tableData} isEditable={false} />
-                </div>
-              )}
-
-              {/* Card 3: Bộ sưu tập hình ảnh (Gallery) */}
+              {/* Card 2: Bộ sưu tập hình ảnh (Gallery) */}
               {note.images && note.images.length > 0 && (
                 <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">

@@ -15,7 +15,6 @@ import {
   Pin,
   Plus,
   Trash2,
-  Table as TableIcon,
   Bold,
   Italic,
   List,
@@ -34,9 +33,8 @@ import {
   Lightbulb,
   CheckSquare,
 } from 'lucide-react';
-import { Note, NoteCategory, NoteStatus, WikiTable, NoteAttachment } from '../../types/note';
+import { Note, NoteCategory, NoteStatus, NoteAttachment } from '../../types/note';
 import { NOTE_CATEGORIES, NOTE_COLOR_THEMES, PRESET_TAGS } from '../../data/notes';
-import { WikiTableEditor } from './WikiTableEditor';
 
 interface NoteFormDrawerProps {
   isOpen: boolean;
@@ -62,6 +60,9 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   // Form State
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
+  const [content, setContent] = useState('');
+  const [contentTab, setContentTab] = useState<'edit' | 'preview'>('edit');
+
   const [category, setCategory] = useState<NoteCategory>('Biên bản cuộc họp');
   const [status, setStatus] = useState<NoteStatus>('published');
   const [isPinned, setIsPinned] = useState(false);
@@ -81,14 +82,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
 
-  // Rich Content
-  const [content, setContent] = useState('');
-  const [contentTab, setContentTab] = useState<'edit' | 'preview'>('edit');
-
-  // Wiki Table
-  const [hasWikiTable, setHasWikiTable] = useState(false);
-  const [tableData, setTableData] = useState<WikiTable | undefined>(undefined);
-
   // Attachments & Images
   const [attachments, setAttachments] = useState<NoteAttachment[]>([]);
   const [images, setImages] = useState<string[]>([]);
@@ -100,6 +93,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     if (initialData) {
       setTitle(initialData.title || '');
       setSummary(initialData.summary || '');
+      setContent(initialData.content || '');
       setCategory(initialData.category || 'Biên bản cuộc họp');
       setStatus(initialData.status || 'published');
       setIsPinned(!!initialData.isPinned);
@@ -113,16 +107,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setCoordinates(initialData.coordinates || '');
 
       setTags(initialData.tags || []);
-      setContent(initialData.content || '');
-
-      if (initialData.tableData && initialData.tableData.columns?.length > 0) {
-        setHasWikiTable(true);
-        setTableData(initialData.tableData);
-      } else {
-        setHasWikiTable(false);
-        setTableData(undefined);
-      }
-
       setAttachments(initialData.attachments || []);
       setImages(initialData.images || []);
     } else {
@@ -132,6 +116,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
 
       setTitle('');
       setSummary('');
+      setContent('');
       setCategory('Tài liệu kỹ thuật');
       setStatus('published');
       setIsPinned(false);
@@ -145,9 +130,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setCoordinates('');
 
       setTags(['Kỹ thuật']);
-      setContent('');
-      setHasWikiTable(false);
-      setTableData(undefined);
       setAttachments([]);
       setImages([]);
     }
@@ -281,30 +263,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     }, 50);
   };
 
-  // Toggle Wiki Table
-  const handleToggleWikiTable = () => {
-    if (hasWikiTable) {
-      setHasWikiTable(false);
-    } else {
-      setHasWikiTable(true);
-      if (!tableData) {
-        setTableData({
-          title: 'Bảng dữ liệu kỹ thuật / Wiki',
-          columns: [
-            { id: 'c1', title: 'Hạng mục / Tham số', width: 200, align: 'left' },
-            { id: 'c2', title: 'Mô tả / Giá trị', width: 240, align: 'left' },
-            { id: 'c3', title: 'Trạng thái', width: 130, align: 'center' },
-            { id: 'c4', title: 'Ghi chú', width: 180, align: 'left' },
-          ],
-          rows: [
-            { id: 'r1', cells: { c1: 'Dữ liệu hàng 1', c2: 'Chi tiết thông số...', c3: 'Đạt', c4: 'Sẵn sàng' } },
-            { id: 'r2', cells: { c1: 'Dữ liệu hàng 2', c2: 'Nội dung tiếp theo...', c3: 'Đang xử lý', c4: 'Cần rà soát' } },
-          ],
-        });
-      }
-    }
-  };
-
   const validate = () => {
     const errors: { [key: string]: string } = {};
     if (!title.trim()) errors.title = 'Vui lòng nhập tiêu đề bài viết/ghi chú';
@@ -321,6 +279,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     const payload: Partial<Note> = {
       title: title.trim(),
       summary: summary.trim() || undefined,
+      content: content.trim() || '',
       category,
       status,
       isPinned,
@@ -331,8 +290,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       location: location.trim() || undefined,
       coordinates: coordinates.trim() || undefined,
       tags: tags.length > 0 ? tags : [],
-      content: content.trim() || '',
-      tableData: hasWikiTable && tableData?.columns?.length ? tableData : undefined,
       attachments: attachments.length > 0 ? attachments : undefined,
       images: images.length > 0 ? images : undefined,
     };
@@ -353,7 +310,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
         className="fixed inset-y-0 right-0 w-full bg-card shadow-2xl flex flex-col h-[100dvh] border-l border-border outline-none transform-gpu z-50 transition-[width] duration-200"
         role="dialog"
         aria-modal="true"
-        aria-label={isEdit ? 'Chỉnh sửa Ghi chú & Wiki' : 'Tạo mới Ghi chú & Wiki'}
+        aria-label={isEdit ? 'Chỉnh sửa Ghi chú & Bài viết' : 'Tạo mới Ghi chú & Bài viết'}
         tabIndex={-1}
         style={{
           width: getWidthStyle(),
@@ -377,10 +334,10 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-semibold text-foreground leading-tight truncate">
-                {isEdit ? 'Chỉnh sửa Ghi chú & Wiki' : 'Tạo mới Ghi chú & Bài viết Wiki'}
+                {isEdit ? 'Chỉnh sửa Ghi chú' : 'Tạo mới Ghi chú & Bài viết'}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                {isEdit ? title || 'Biên tập nội dung tài liệu' : 'Soạn thảo bài viết, bảng wiki, ảnh và định vị GPS'}
+                {isEdit ? title || 'Biên tập nội dung tài liệu' : 'Soạn thảo tiêu đề, nội dung bài viết, ảnh và định vị GPS'}
               </p>
             </div>
           </div>
@@ -446,84 +403,41 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
         {/* Scrollable Form Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           <form id="note-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* 1. THÔNG TIN CƠ BẢN & BÌA */}
+            {/* 1. TIÊU ĐỀ & NỘI DUNG BÀI VIẾT (Được đưa lên đầu theo yêu cầu) */}
             <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
-                  <FolderOpen className="w-4 h-4 text-primary" />
+                  <Edit3 className="w-4 h-4 text-primary" />
                   <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    1. Tiêu đề & Thông tin cơ bản
+                    1. Tiêu đề & Nội dung bài viết
                   </h4>
                 </div>
-                {/* Theme Color Picker */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Màu sắc:</span>
-                  {NOTE_COLOR_THEMES.map((theme) => (
-                    <button
-                      key={theme.id}
-                      type="button"
-                      title={theme.name}
-                      onClick={() => setColor(theme.id)}
-                      className={`w-5 h-5 rounded-full ${theme.badge} border transition-all ${
-                        color === theme.id ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
 
-              {/* Cover Banner Uploader */}
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                  Ảnh bìa bài viết (Cover Banner)
-                </label>
-                {coverUrl ? (
-                  <div className="relative rounded-xl overflow-hidden border border-border h-40 sm:h-48 group">
-                    <img src={coverUrl} alt="Cover Preview" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => coverInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg bg-white/90 text-foreground text-xs font-medium hover:bg-white flex items-center gap-1.5 shadow-md"
-                      >
-                        <Upload className="w-3.5 h-3.5" /> Thay ảnh
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCoverUrl('')}
-                        className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-medium hover:bg-destructive/90 flex items-center gap-1.5 shadow-md"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Xóa bìa
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => coverInputRef.current?.click()}
-                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-dashed border-border hover:border-primary/50 bg-muted/30 hover:bg-primary/5 text-xs text-muted-foreground hover:text-primary transition-all flex items-center justify-center gap-2"
-                    >
-                      <ImageIcon className="w-4 h-4" /> Tải ảnh bìa từ máy
-                    </button>
-                    <div className="flex-1 w-full relative">
-                      <input
-                        type="url"
-                        placeholder="Hoặc dán URL hình ảnh..."
-                        value={coverUrl}
-                        onChange={(e) => setCoverUrl(e.target.value)}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                  </div>
-                )}
-                <input
-                  ref={coverInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverFileUpload}
-                  className="hidden"
-                />
+                {/* Editor / Preview Switcher */}
+                <div className="flex items-center rounded-xl border border-border p-0.5 bg-muted/30 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setContentTab('edit')}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                      contentTab === 'edit'
+                        ? 'bg-card text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Edit3 className="w-3.5 h-3.5" /> Soạn thảo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContentTab('preview')}
+                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                      contentTab === 'preview'
+                        ? 'bg-card text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Eye className="w-3.5 h-3.5" /> Xem trước
+                  </button>
+                </div>
               </div>
 
               {/* Title */}
@@ -533,7 +447,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Quy chuẩn Kiến trúc Hệ thống ERP & Microservices 2026..."
+                  placeholder="Ví dụ: Biên bản Cuộc họp Chiến lược Q4/2026..."
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className={`w-full rounded-xl border ${
@@ -557,6 +471,252 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   onChange={(e) => setSummary(e.target.value)}
                   className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all resize-none"
                 />
+              </div>
+
+              {/* Main Content Area */}
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                  Nội dung chi tiết (Markdown / Web Rich Content)
+                </label>
+
+                {contentTab === 'edit' ? (
+                  <div className="space-y-2">
+                    {/* Rich Toolbar */}
+                    <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl border border-border bg-muted/20">
+                      <button
+                        type="button"
+                        title="Tiêu đề H1"
+                        onClick={() => insertContentMarkup('# ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <Heading1 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Tiêu đề H2"
+                        onClick={() => insertContentMarkup('## ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <Heading2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Tiêu đề H3"
+                        onClick={() => insertContentMarkup('### ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <Heading3 className="w-4 h-4" />
+                      </button>
+                      <div className="w-[1px] h-4 bg-border mx-1" />
+                      <button
+                        type="button"
+                        title="Chữ đậm"
+                        onClick={() => insertContentMarkup('**', '**')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <Bold className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Chữ nghiêng"
+                        onClick={() => insertContentMarkup('*', '*')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <Italic className="w-4 h-4" />
+                      </button>
+                      <div className="w-[1px] h-4 bg-border mx-1" />
+                      <button
+                        type="button"
+                        title="Danh sách gạch đầu dòng"
+                        onClick={() => insertContentMarkup('- ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <List className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Danh sách đánh số"
+                        onClick={() => insertContentMarkup('1. ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <ListOrdered className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Checklist công việc"
+                        onClick={() => insertContentMarkup('- [ ] ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                      </button>
+                      <div className="w-[1px] h-4 bg-border mx-1" />
+                      <button
+                        type="button"
+                        title="Trích dẫn"
+                        onClick={() => insertContentMarkup('> ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <Quote className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        title="Khối mã nguồn (Code block)"
+                        onClick={() => insertContentMarkup('```typescript\n', '\n```')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                      >
+                        <Code className="w-4 h-4" />
+                      </button>
+                      <div className="w-[1px] h-4 bg-border mx-1" />
+                      <button
+                        type="button"
+                        title="Hộp lưu ý (Note callout)"
+                        onClick={() => insertContentMarkup('> [!NOTE]\n> ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-primary transition-colors text-xs flex items-center gap-1"
+                      >
+                        <Info className="w-3.5 h-3.5" /> Note
+                      </button>
+                      <button
+                        type="button"
+                        title="Hộp mẹo hay (Tip callout)"
+                        onClick={() => insertContentMarkup('> [!TIP]\n> ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-emerald-600 dark:text-emerald-400 transition-colors text-xs flex items-center gap-1"
+                      >
+                        <Lightbulb className="w-3.5 h-3.5" /> Mẹo
+                      </button>
+                      <button
+                        type="button"
+                        title="Hộp cảnh báo (Warning callout)"
+                        onClick={() => insertContentMarkup('> [!WARNING]\n> ')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-amber-600 dark:text-amber-400 transition-colors text-xs flex items-center gap-1"
+                      >
+                        <AlertTriangle className="w-3.5 h-3.5" /> Cảnh báo
+                      </button>
+                    </div>
+
+                    {/* Textarea */}
+                    <textarea
+                      ref={contentTextareaRef}
+                      rows={12}
+                      placeholder="Soạn thảo nội dung chi tiết bài viết, biên bản hoặc ghi nhớ..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background p-4 text-xs sm:text-sm font-mono leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all resize-y"
+                    />
+                  </div>
+                ) : (
+                  /* Live Preview */
+                  <div className="rounded-xl border border-border/80 bg-background/50 p-5 min-h-[200px] prose dark:prose-invert max-w-none text-xs sm:text-sm">
+                    {content ? (
+                      <div className="space-y-4">
+                        {content.split('\n\n').map((block, idx) => {
+                          const trimmed = block.trim();
+                          if (trimmed.startsWith('# ')) {
+                            return (
+                              <h1 key={idx} className="text-xl sm:text-2xl font-bold text-foreground border-b border-border pb-2 mt-4 first:mt-0">
+                                {trimmed.replace('# ', '')}
+                              </h1>
+                            );
+                          }
+                          if (trimmed.startsWith('## ')) {
+                            return (
+                              <h2 key={idx} className="text-lg sm:text-xl font-bold text-foreground mt-4">
+                                {trimmed.replace('## ', '')}
+                              </h2>
+                            );
+                          }
+                          if (trimmed.startsWith('### ')) {
+                            return (
+                              <h3 key={idx} className="text-base sm:text-lg font-semibold text-foreground mt-3">
+                                {trimmed.replace('### ', '')}
+                              </h3>
+                            );
+                          }
+                          if (trimmed.startsWith('> [!NOTE]')) {
+                            return (
+                              <div key={idx} className="my-3 p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-800 dark:text-blue-200">
+                                <div className="flex items-center gap-1.5 font-bold text-xs uppercase mb-1">
+                                  <Info className="w-4 h-4 text-blue-500" /> Lưu ý quan trọng
+                                </div>
+                                <p className="text-xs leading-relaxed">{trimmed.replace('> [!NOTE]', '').replace(/^>\s*/gm, '').trim()}</p>
+                              </div>
+                            );
+                          }
+                          if (trimmed.startsWith('> [!TIP]')) {
+                            return (
+                              <div key={idx} className="my-3 p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200">
+                                <div className="flex items-center gap-1.5 font-bold text-xs uppercase mb-1">
+                                  <Lightbulb className="w-4 h-4 text-emerald-500" /> Mẹo thực thi
+                                </div>
+                                <p className="text-xs leading-relaxed">{trimmed.replace('> [!TIP]', '').replace(/^>\s*/gm, '').trim()}</p>
+                              </div>
+                            );
+                          }
+                          if (trimmed.startsWith('> [!WARNING]')) {
+                            return (
+                              <div key={idx} className="my-3 p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200">
+                                <div className="flex items-center gap-1.5 font-bold text-xs uppercase mb-1">
+                                  <AlertTriangle className="w-4 h-4 text-amber-500" /> Cảnh báo
+                                </div>
+                                <p className="text-xs leading-relaxed">{trimmed.replace('> [!WARNING]', '').replace(/^>\s*/gm, '').trim()}</p>
+                              </div>
+                            );
+                          }
+                          if (trimmed.startsWith('> ')) {
+                            return (
+                              <blockquote key={idx} className="border-l-4 border-primary pl-4 py-1 italic text-muted-foreground my-3 bg-muted/20 rounded-r-lg">
+                                {trimmed.replace(/^>\s*/gm, '')}
+                              </blockquote>
+                            );
+                          }
+                          if (trimmed.startsWith('```')) {
+                            const lines = trimmed.split('\n');
+                            const codeText = lines.slice(1, -1).join('\n');
+                            return (
+                              <pre key={idx} className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto my-3">
+                                <code>{codeText}</code>
+                              </pre>
+                            );
+                          }
+                          return (
+                            <p key={idx} className="text-foreground/90 leading-relaxed">
+                              {trimmed}
+                            </p>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground italic text-center py-8">Chưa có nội dung để xem trước...</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 2. CHUYÊN MỤC, THẺ & TRẠNG THÁI */}
+            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-primary" />
+                  <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                    2. Chuyên mục, Thẻ & Trạng thái
+                  </h4>
+                </div>
+
+                {/* Theme Color Picker */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Màu sắc:</span>
+                  {NOTE_COLOR_THEMES.map((theme) => (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      title={theme.name}
+                      onClick={() => setColor(theme.id)}
+                      className={`w-5 h-5 rounded-full ${theme.badge} border transition-all ${
+                        color === theme.id ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'
+                      }`}
+                    />
+                  ))}
+                </div>
               </div>
 
               {/* Category, Status & Pin */}
@@ -609,87 +769,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                     <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-current' : ''}`} />
                     {isPinned ? 'Đang ghim lên đầu' : 'Không ghim'}
                   </button>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. THỜI GIAN, THẺ & VỊ TRÍ */}
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
-              <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-                <Calendar className="w-4 h-4 text-primary" />
-                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  2. Thời gian, Thẻ & Định vị
-                </h4>
-              </div>
-
-              {/* Event Date & Time */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                    Ngày sự kiện / thực hiện
-                  </label>
-                  <div className="relative">
-                    <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="date"
-                      value={noteDate}
-                      onChange={(e) => setNoteDate(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                    Giờ sự kiện / thực hiện
-                  </label>
-                  <div className="relative">
-                    <Clock className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="time"
-                      value={noteTime}
-                      onChange={(e) => setNoteTime(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Location with GPS */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-muted-foreground">
-                    Vị trí / Địa điểm (GPS)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleGetCurrentLocation}
-                    disabled={isLocating}
-                    className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline disabled:opacity-50"
-                  >
-                    <LocateFixed className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
-                    {isLocating ? 'Đang xác định GPS...' : 'Lấy vị trí GPS hiện tại'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="relative">
-                    <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="Tên địa điểm / Địa chỉ (Ví dụ: Phòng họp Lotus, Tòa Landmark 81...)"
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Tọa độ GPS (Ví dụ: 10.7951° N, 106.7218° E)"
-                    value={coordinates}
-                    onChange={(e) => setCoordinates(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-mono"
-                  />
                 </div>
               </div>
 
@@ -752,355 +831,196 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               </div>
             </div>
 
-            {/* 3. NỘI DUNG BÀI VIẾT KIỂU WEB WIKI */}
+            {/* 3. THỜI GIAN, VỊ TRÍ & ẢNH ĐÍNH KÈM */}
             <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
-                <div className="flex items-center gap-2">
-                  <Edit3 className="w-4 h-4 text-primary" />
-                  <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    3. Nội dung bài viết (Markdown / Wiki Web)
-                  </h4>
-                </div>
-
-                {/* Editor / Preview Switcher */}
-                <div className="flex items-center rounded-xl border border-border p-0.5 bg-muted/30 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setContentTab('edit')}
-                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
-                      contentTab === 'edit'
-                        ? 'bg-card text-foreground shadow-xs'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Edit3 className="w-3.5 h-3.5" /> Soạn thảo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContentTab('preview')}
-                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
-                      contentTab === 'preview'
-                        ? 'bg-card text-foreground shadow-xs'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Eye className="w-3.5 h-3.5" /> Xem trước
-                  </button>
-                </div>
+              <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                <Calendar className="w-4 h-4 text-primary" />
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                  3. Thời gian, Vị trí & Ảnh đính kèm
+                </h4>
               </div>
 
-              {contentTab === 'edit' ? (
-                <div className="space-y-2">
-                  {/* Rich Toolbar */}
-                  <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl border border-border bg-muted/20">
-                    <button
-                      type="button"
-                      title="Tiêu đề H1"
-                      onClick={() => insertContentMarkup('# ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <Heading1 className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Tiêu đề H2"
-                      onClick={() => insertContentMarkup('## ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <Heading2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Tiêu đề H3"
-                      onClick={() => insertContentMarkup('### ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <Heading3 className="w-4 h-4" />
-                    </button>
-                    <div className="w-[1px] h-4 bg-border mx-1" />
-                    <button
-                      type="button"
-                      title="Chữ đậm"
-                      onClick={() => insertContentMarkup('**', '**')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <Bold className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Chữ nghiêng"
-                      onClick={() => insertContentMarkup('*', '*')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <Italic className="w-4 h-4" />
-                    </button>
-                    <div className="w-[1px] h-4 bg-border mx-1" />
-                    <button
-                      type="button"
-                      title="Danh sách gạch đầu dòng"
-                      onClick={() => insertContentMarkup('- ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <List className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Danh sách đánh số"
-                      onClick={() => insertContentMarkup('1. ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <ListOrdered className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Checklist công việc"
-                      onClick={() => insertContentMarkup('- [ ] ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <CheckSquare className="w-4 h-4" />
-                    </button>
-                    <div className="w-[1px] h-4 bg-border mx-1" />
-                    <button
-                      type="button"
-                      title="Trích dẫn"
-                      onClick={() => insertContentMarkup('> ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <Quote className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      title="Khối mã nguồn (Code block)"
-                      onClick={() => insertContentMarkup('```typescript\n', '\n```')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
-                    >
-                      <Code className="w-4 h-4" />
-                    </button>
-                    <div className="w-[1px] h-4 bg-border mx-1" />
-                    <button
-                      type="button"
-                      title="Hộp lưu ý (Note callout)"
-                      onClick={() => insertContentMarkup('> [!NOTE]\n> ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-primary transition-colors text-xs flex items-center gap-1"
-                    >
-                      <Info className="w-3.5 h-3.5" /> Note
-                    </button>
-                    <button
-                      type="button"
-                      title="Hộp mẹo hay (Tip callout)"
-                      onClick={() => insertContentMarkup('> [!TIP]\n> ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-emerald-600 dark:text-emerald-400 transition-colors text-xs flex items-center gap-1"
-                    >
-                      <Lightbulb className="w-3.5 h-3.5" /> Mẹo
-                    </button>
-                    <button
-                      type="button"
-                      title="Hộp cảnh báo (Warning callout)"
-                      onClick={() => insertContentMarkup('> [!WARNING]\n> ')}
-                      className="p-1.5 rounded-lg hover:bg-muted text-amber-600 dark:text-amber-400 transition-colors text-xs flex items-center gap-1"
-                    >
-                      <AlertTriangle className="w-3.5 h-3.5" /> Cảnh báo
-                    </button>
+              {/* Event Date & Time */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    Ngày sự kiện / thực hiện
+                  </label>
+                  <div className="relative">
+                    <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="date"
+                      value={noteDate}
+                      onChange={(e) => setNoteDate(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
                   </div>
+                </div>
 
-                  {/* Textarea */}
-                  <textarea
-                    ref={contentTextareaRef}
-                    rows={12}
-                    placeholder="Soạn thảo nội dung bài viết chi tiết, hướng dẫn kỹ thuật hoặc biên bản cuộc họp... Hỗ trợ Markdown, HTML, code block, hình ảnh, trích dẫn..."
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background p-4 text-xs sm:text-sm font-mono leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all resize-y"
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    Giờ sự kiện / thực hiện
+                  </label>
+                  <div className="relative">
+                    <Clock className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="time"
+                      value={noteTime}
+                      onChange={(e) => setNoteTime(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Location with GPS */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-muted-foreground">
+                    Vị trí / Địa điểm (GPS)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGetCurrentLocation}
+                    disabled={isLocating}
+                    className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline disabled:opacity-50"
+                  >
+                    <LocateFixed className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
+                    {isLocating ? 'Đang xác định GPS...' : 'Lấy vị trí GPS hiện tại'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="relative">
+                    <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Tên địa điểm / Địa chỉ..."
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Tọa độ GPS (Ví dụ: 10.7951° N, 106.7218° E)"
+                    value={coordinates}
+                    onChange={(e) => setCoordinates(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-mono"
                   />
                 </div>
-              ) : (
-                /* Live Preview */
-                <div className="rounded-xl border border-border/80 bg-background/50 p-5 min-h-[250px] prose dark:prose-invert max-w-none text-xs sm:text-sm">
-                  {content ? (
-                    <div className="space-y-4">
-                      {content.split('\n\n').map((block, idx) => {
-                        const trimmed = block.trim();
-                        if (trimmed.startsWith('# ')) {
-                          return (
-                            <h1 key={idx} className="text-xl sm:text-2xl font-bold text-foreground border-b border-border pb-2 mt-4 first:mt-0">
-                              {trimmed.replace('# ', '')}
-                            </h1>
-                          );
-                        }
-                        if (trimmed.startsWith('## ')) {
-                          return (
-                            <h2 key={idx} className="text-lg sm:text-xl font-bold text-foreground mt-4">
-                              {trimmed.replace('## ', '')}
-                            </h2>
-                          );
-                        }
-                        if (trimmed.startsWith('### ')) {
-                          return (
-                            <h3 key={idx} className="text-base sm:text-lg font-semibold text-foreground mt-3">
-                              {trimmed.replace('### ', '')}
-                            </h3>
-                          );
-                        }
-                        if (trimmed.startsWith('> [!NOTE]')) {
-                          return (
-                            <div key={idx} className="my-3 p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-800 dark:text-blue-200">
-                              <div className="flex items-center gap-1.5 font-bold text-xs uppercase mb-1">
-                                <Info className="w-4 h-4 text-blue-500" /> Lưu ý quan trọng
-                              </div>
-                              <p className="text-xs leading-relaxed">{trimmed.replace('> [!NOTE]', '').replace(/^>\s*/gm, '').trim()}</p>
-                            </div>
-                          );
-                        }
-                        if (trimmed.startsWith('> [!TIP]')) {
-                          return (
-                            <div key={idx} className="my-3 p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200">
-                              <div className="flex items-center gap-1.5 font-bold text-xs uppercase mb-1">
-                                <Lightbulb className="w-4 h-4 text-emerald-500" /> Mẹo thực thi
-                              </div>
-                              <p className="text-xs leading-relaxed">{trimmed.replace('> [!TIP]', '').replace(/^>\s*/gm, '').trim()}</p>
-                            </div>
-                          );
-                        }
-                        if (trimmed.startsWith('> [!WARNING]')) {
-                          return (
-                            <div key={idx} className="my-3 p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200">
-                              <div className="flex items-center gap-1.5 font-bold text-xs uppercase mb-1">
-                                <AlertTriangle className="w-4 h-4 text-amber-500" /> Cảnh báo
-                              </div>
-                              <p className="text-xs leading-relaxed">{trimmed.replace('> [!WARNING]', '').replace(/^>\s*/gm, '').trim()}</p>
-                            </div>
-                          );
-                        }
-                        if (trimmed.startsWith('> ')) {
-                          return (
-                            <blockquote key={idx} className="border-l-4 border-primary pl-4 py-1 italic text-muted-foreground my-3 bg-muted/20 rounded-r-lg">
-                              {trimmed.replace(/^>\s*/gm, '')}
-                            </blockquote>
-                          );
-                        }
-                        if (trimmed.startsWith('```')) {
-                          const lines = trimmed.split('\n');
-                          const codeText = lines.slice(1, -1).join('\n');
-                          return (
-                            <pre key={idx} className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto my-3">
-                              <code>{codeText}</code>
-                            </pre>
-                          );
-                        }
-                        return (
-                          <p key={idx} className="text-foreground/90 leading-relaxed">
-                            {trimmed}
-                          </p>
-                        );
-                      })}
+              </div>
+
+              {/* Cover Banner */}
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                  Ảnh bìa bài viết (Cover Banner)
+                </label>
+                {coverUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-border h-36 sm:h-44 group">
+                    <img src={coverUrl} alt="Cover Preview" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => coverInputRef.current?.click()}
+                        className="px-3 py-1.5 rounded-lg bg-white/90 text-foreground text-xs font-medium hover:bg-white flex items-center gap-1.5 shadow-md"
+                      >
+                        <Upload className="w-3.5 h-3.5" /> Thay ảnh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCoverUrl('')}
+                        className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-medium hover:bg-destructive/90 flex items-center gap-1.5 shadow-md"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Xóa bìa
+                      </button>
                     </div>
-                  ) : (
-                    <p className="text-muted-foreground italic text-center py-8">Chưa có nội dung để xem trước...</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* 4. VẼ BẢNG DỮ LIỆU WIKI */}
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
-              <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                <div className="flex items-center gap-2">
-                  <TableIcon className="w-4 h-4 text-primary" />
-                  <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    4. Bảng dữ liệu Wiki tương tác
-                  </h4>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleToggleWikiTable}
-                  className={`px-3 py-1.5 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5 ${
-                    hasWikiTable
-                      ? 'bg-destructive/10 border-destructive/30 text-destructive hover:bg-destructive/20'
-                      : 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/20'
-                  }`}
-                >
-                  {hasWikiTable ? <Trash2 className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                  {hasWikiTable ? 'Gỡ bỏ bảng' : 'Thêm bảng Wiki'}
-                </button>
-              </div>
-
-              {hasWikiTable ? (
-                <div className="pt-2">
-                  <WikiTableEditor
-                    tableData={tableData}
-                    isEditable={true}
-                    onChange={(updated) => setTableData(updated)}
-                  />
-                </div>
-              ) : (
-                <div className="text-center py-6 border border-dashed border-border rounded-xl bg-muted/20">
-                  <TableIcon className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">
-                    Chưa có bảng dữ liệu Wiki. Bấm nút <strong>"Thêm bảng Wiki"</strong> phía trên để vẽ bảng so sánh, thông số kỹ thuật, cấu hình...
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* 5. THƯ VIỆN ẢNH ĐÍNH KÈM */}
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
-              <div className="flex items-center justify-between border-b border-border/60 pb-3">
-                <div className="flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-primary" />
-                  <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    5. Thư viện hình ảnh đính kèm ({images.length})
-                  </h4>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => galleryInputRef.current?.click()}
-                  className="px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Tải ảnh lên
-                </button>
-              </div>
-
-              <input
-                ref={galleryInputRef}
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleGalleryUpload}
-                className="hidden"
-              />
-
-              {images.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {images.map((imgUrl, idx) => (
-                    <div
-                      key={idx}
-                      className="relative rounded-xl overflow-hidden border border-border group bg-muted/40 aspect-video flex items-center justify-center"
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => coverInputRef.current?.click()}
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-dashed border-border hover:border-primary/50 bg-muted/30 hover:bg-primary/5 text-xs text-muted-foreground hover:text-primary transition-all flex items-center justify-center gap-2"
                     >
-                      <img src={imgUrl} alt={`Attachment ${idx + 1}`} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-between p-2">
-                        <span className="text-[10px] text-white truncate max-w-full font-medium">
-                          Ảnh #{idx + 1}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveAttachment(`img_${idx}`, imgUrl)}
-                          className="p-1 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          title="Xóa ảnh"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                      <ImageIcon className="w-4 h-4" /> Tải ảnh bìa từ máy
+                    </button>
+                    <div className="flex-1 w-full relative">
+                      <input
+                        type="url"
+                        placeholder="Hoặc dán URL hình ảnh..."
+                        value={coverUrl}
+                        onChange={(e) => setCoverUrl(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
                     </div>
-                  ))}
+                  </div>
+                )}
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverFileUpload}
+                  className="hidden"
+                />
+              </div>
+
+              {/* Photo Gallery Attachments */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-semibold text-muted-foreground">
+                    Thư viện hình ảnh đính kèm ({images.length})
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" /> Tải thêm ảnh
+                  </button>
                 </div>
-              ) : (
-                <div className="text-center py-6 border border-dashed border-border rounded-xl bg-muted/20">
-                  <ImageIcon className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">
-                    Chưa có ảnh đính kèm. Bấm nút <strong>"Tải ảnh lên"</strong> để thêm hình ảnh minh họa cho bài viết.
-                  </p>
-                </div>
-              )}
+
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleGalleryUpload}
+                  className="hidden"
+                />
+
+                {images.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                    {images.map((imgUrl, idx) => (
+                      <div
+                        key={idx}
+                        className="relative rounded-xl overflow-hidden border border-border group bg-muted/40 aspect-video flex items-center justify-center"
+                      >
+                        <img src={imgUrl} alt={`Attachment ${idx + 1}`} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-between p-2">
+                          <span className="text-[10px] text-white truncate max-w-full font-medium">
+                            Ảnh #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAttachment(`img_${idx}`, imgUrl)}
+                            className="p-1 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            title="Xóa ảnh"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-4 border border-dashed border-border rounded-xl bg-muted/20">
+                    <p className="text-xs text-muted-foreground">
+                      Chưa có ảnh đính kèm. Bấm nút <strong>"Tải thêm ảnh"</strong> để tải ảnh minh họa.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </form>
         </div>
@@ -1129,7 +1049,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               className="inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-8 px-4 text-xs bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 cursor-pointer"
             >
               <Save className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-              {isEdit ? 'Lưu thay đổi' : 'Lưu ghi chú & Wiki'}
+              {isEdit ? 'Lưu thay đổi' : 'Lưu ghi chú'}
             </button>
           </div>
         </div>

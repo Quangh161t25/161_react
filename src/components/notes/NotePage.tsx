@@ -23,7 +23,6 @@ import {
   Pin,
   SlidersHorizontal,
   Printer,
-  Table as TableIcon,
   MapPin,
   Calendar,
   ImageIcon,
@@ -44,18 +43,19 @@ interface NotePageProps {
   onBack: () => void;
 }
 
+// Ordered columns: Tiêu đề -> Nội dung -> Chuyên mục -> Thẻ -> Trạng thái -> Ngày -> Giờ -> Vị trí -> Đính kèm -> Tác giả
 export const DEFAULT_NOTE_COLUMNS: ColumnItem[] = [
-  { id: 'title', label: 'Tiêu đề ghi chú & Wiki', visible: true, pinned: true, width: 280, align: 'left', wrap: 'truncate' },
+  { id: 'title', label: 'Tiêu đề', visible: true, pinned: true, width: 260, align: 'left', wrap: 'truncate' },
+  { id: 'content', label: 'Nội dung bài viết', visible: true, pinned: false, width: 380, align: 'left', wrap: 'truncate' },
   { id: 'category', label: 'Chuyên mục', visible: true, pinned: false, width: 160, align: 'center', wrap: 'truncate' },
+  { id: 'tags', label: 'Thẻ (Tags)', visible: true, width: 180, align: 'left', wrap: 'truncate' },
   { id: 'status', label: 'Trạng thái', visible: true, width: 130, align: 'center', wrap: 'truncate' },
-  { id: 'tags', label: 'Thẻ (Tags)', visible: true, width: 200, align: 'left', wrap: 'truncate' },
   { id: 'noteDate', label: 'Ngày thực hiện', visible: true, width: 130, align: 'center', wrap: 'truncate' },
-  { id: 'noteTime', label: 'Giờ', visible: true, width: 100, align: 'center', wrap: 'truncate' },
-  { id: 'location', label: 'Vị trí / GPS', visible: true, width: 200, align: 'left', wrap: 'truncate' },
-  { id: 'tableData', label: 'Bảng Wiki', visible: true, width: 120, align: 'center', wrap: 'truncate' },
-  { id: 'attachments', label: 'Đính kèm', visible: true, width: 110, align: 'center', wrap: 'truncate' },
+  { id: 'noteTime', label: 'Giờ', visible: true, width: 90, align: 'center', wrap: 'truncate' },
+  { id: 'location', label: 'Vị trí / Địa điểm', visible: true, width: 200, align: 'left', wrap: 'truncate' },
+  { id: 'attachments', label: 'Hình ảnh / Đính kèm', visible: true, width: 140, align: 'center', wrap: 'truncate' },
   { id: 'author', label: 'Tác giả', visible: true, width: 150, align: 'left', wrap: 'truncate' },
-  { id: 'summary', label: 'Tóm tắt nội dung', visible: false, width: 260, align: 'left', wrap: 'truncate' },
+  { id: 'summary', label: 'Tóm tắt ngắn', visible: false, width: 260, align: 'left', wrap: 'truncate' },
   { id: 'createdAt', label: 'Ngày tạo', visible: false, width: 130, align: 'center', wrap: 'truncate' },
   { id: 'updatedAt', label: 'Cập nhật', visible: false, width: 130, align: 'center', wrap: 'truncate' },
 ];
@@ -96,7 +96,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   // Column Customizer & Density State
   const [tableColumns, setTableColumns] = useState<ColumnItem[]>(() => {
     try {
-      const saved = localStorage.getItem('erp_note_columns');
+      const saved = localStorage.getItem('erp_note_columns_v2');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -140,7 +140,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   const handleSaveColumns = (newCols: ColumnItem[]) => {
     setTableColumns(newCols);
     try {
-      localStorage.setItem('erp_note_columns', JSON.stringify(newCols));
+      localStorage.setItem('erp_note_columns_v2', JSON.stringify(newCols));
     } catch {}
   };
 
@@ -155,7 +155,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     setTableColumns(DEFAULT_NOTE_COLUMNS);
     setTableDensity('normal');
     try {
-      localStorage.removeItem('erp_note_columns');
+      localStorage.removeItem('erp_note_columns_v2');
       localStorage.removeItem('erp_note_density');
     } catch {}
   };
@@ -192,7 +192,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         if (resizingRef.current) {
           try {
             setTableColumns((currentCols) => {
-              localStorage.setItem('erp_note_columns', JSON.stringify(currentCols));
+              localStorage.setItem('erp_note_columns_v2', JSON.stringify(currentCols));
               return currentCols;
             });
           } catch {}
@@ -353,7 +353,6 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         location: formData.location,
         coordinates: formData.coordinates,
         tags: formData.tags || [],
-        tableData: formData.tableData,
         attachments: formData.attachments || [],
         author: 'Lê Minh Công',
         authorAvatar: 'https://ui-avatars.com/api/?name=Le+Minh+Cong&background=0f172a&color=fff',
@@ -444,10 +443,11 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
 
   // Export CSV
   const handleExportCSV = () => {
-    const headers = ['Mã', 'Tiêu đề', 'Chuyên mục', 'Trạng thái', 'Ghim', 'Thẻ', 'Ngày', 'Giờ', 'Địa điểm', 'Có bảng Wiki', 'Số đính kèm', 'Tác giả', 'Ngày tạo'];
+    const headers = ['Mã', 'Tiêu đề', 'Nội dung', 'Chuyên mục', 'Trạng thái', 'Ghim', 'Thẻ', 'Ngày', 'Giờ', 'Địa điểm', 'Số đính kèm', 'Tác giả', 'Ngày tạo'];
     const rows = sortedNotes.map((n) => [
       n.code || n.id,
       `"${(n.title || '').replace(/"/g, '""')}"`,
+      `"${(n.content || '').replace(/<[^>]*>?/gm, '').replace(/"/g, '""')}"`,
       `"${n.category}"`,
       `"${n.status}"`,
       n.isPinned ? 'Có' : 'Không',
@@ -455,7 +455,6 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       n.noteDate || '',
       n.noteTime || '',
       `"${(n.location || '').replace(/"/g, '""')}"`,
-      n.tableData && n.tableData.columns?.length ? 'Có' : 'Không',
       (n.attachments?.length || 0) + (n.images?.length || 0),
       `"${n.author || ''}"`,
       n.createdAt || '',
@@ -466,7 +465,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Ghi_chu_Wiki_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `Ghi_chu_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -610,6 +609,16 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
           </td>
         );
 
+      case 'content':
+        const cleanContent = (note.content || '').replace(/<[^>]*>?/gm, '').replace(/^[#>\-\*]+\s*/gm, '').trim();
+        return (
+          <td key={colId} style={tdStyle} className={`${tdBaseClass} text-foreground/80`}>
+            <span className={textWrapClass} title={cleanContent}>
+              {cleanContent || '—'}
+            </span>
+          </td>
+        );
+
       case 'category':
         return (
           <td key={colId} style={tdStyle} className={tdBaseClass}>
@@ -668,25 +677,13 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
           </td>
         );
 
-      case 'tableData':
-        return (
-          <td key={colId} style={tdStyle} className={tdBaseClass}>
-            {note.tableData && note.tableData.columns?.length > 0 ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-                <TableIcon className="w-3 h-3" /> {note.tableData.rows?.length || 0} hàng
-              </span>
-            ) : (
-              <span className="text-muted-foreground text-xs">—</span>
-            )}
-          </td>
-        );
-
       case 'attachments':
+        const attachCount = (note.attachments?.length || 0) + (note.images?.length || 0);
         return (
           <td key={colId} style={tdStyle} className={tdBaseClass}>
-            {(note.attachments?.length || 0) + (note.images?.length || 0) > 0 ? (
+            {attachCount > 0 ? (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                <ImageIcon className="w-3 h-3" /> {(note.attachments?.length || 0) + (note.images?.length || 0)}
+                <ImageIcon className="w-3 h-3" /> {attachCount} ảnh/tệp
               </span>
             ) : (
               <span className="text-muted-foreground text-xs">—</span>
@@ -757,7 +754,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
           }`}
         >
           <ChartColumn className="w-3.5 h-3.5" />
-          <span>Thống kê Wiki</span>
+          <span>Thống kê</span>
         </button>
       </div>
 
@@ -1023,7 +1020,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                     type="button"
                     onClick={handleManualSync}
                     disabled={isSyncing}
-                    title="Đồng bộ 2 chiều với Google Sheet (Tab: Ghi chú & Wiki)"
+                    title="Đồng bộ 2 chiều với Google Sheet"
                     className="h-8 px-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -1065,7 +1062,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                   <button
                     type="button"
                     onClick={() => setViewMode(viewMode === 'table' ? 'grid' : 'table')}
-                    title={viewMode === 'table' ? 'Xem dạng lưới thẻ Wiki' : 'Xem dạng bảng dữ liệu'}
+                    title={viewMode === 'table' ? 'Xem dạng lưới thẻ' : 'Xem dạng bảng dữ liệu'}
                     className={`h-8 w-8 flex items-center justify-center border rounded-lg transition-all ${
                       viewMode === 'grid'
                         ? 'bg-primary/10 border-primary text-primary'
@@ -1237,8 +1234,8 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                               : isSelected
                               ? 'bg-blue-50 dark:bg-blue-900 hover:bg-blue-100 dark:hover:bg-blue-800'
                               : isEven
-                              ? 'bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
-                              : 'bg-white dark:bg-card hover:bg-slate-100 dark:hover:bg-slate-800';
+                              ? 'bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-850'
+                              : 'bg-white dark:bg-card hover:bg-slate-100 dark:hover:bg-slate-850';
 
                             return (
                               <tr
@@ -1268,7 +1265,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                                   />
                                 </td>
 
-                                {/* Dynamic Columns */}
+                                {/* Dynamic Columns (Ordered: Tiêu đề -> Nội dung -> ...) */}
                                 {visibleColumns.map((col) => renderNoteCell(col, note, stickyBgClass))}
 
                                 {/* Sticky Thao tác */}
@@ -1370,11 +1367,9 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                               {note.title}
                             </h3>
 
-                            {note.summary && (
-                              <p className="text-xs text-muted-foreground line-clamp-2 mt-1.5">
-                                {note.summary}
-                              </p>
-                            )}
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1.5">
+                              {note.summary || note.content.replace(/<[^>]*>?/gm, '').replace(/^[#>\-\*]+\s*/gm, '').trim()}
+                            </p>
                           </div>
 
                           {/* Meta elements */}
@@ -1404,9 +1399,10 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                                 <Calendar className="w-3 h-3 text-primary" />
                                 {note.noteDate || note.createdAt || '—'}
                               </span>
-                              {note.tableData && note.tableData.columns?.length > 0 && (
-                                <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400 font-medium">
-                                  <TableIcon className="w-3 h-3" /> Wiki Table
+                              {note.location && (
+                                <span className="flex items-center gap-1 truncate max-w-[120px]">
+                                  <MapPin className="w-3 h-3 text-primary shrink-0" />
+                                  <span className="truncate">{note.location}</span>
                                 </span>
                               )}
                             </div>
