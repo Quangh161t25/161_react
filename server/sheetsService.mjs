@@ -724,6 +724,22 @@ export async function appendEmployeeToSheet(employee) {
     throw new Error(`Append employee failed: ${err}`);
   }
 
+  try {
+    const tsPath = path.resolve(process.cwd(), 'src/data/employees.ts');
+    const emps = await fetchEmployeesFromSheet();
+    const sortedForUi = [...emps]
+      .sort((a, b) => (b.code || '').localeCompare(a.code || ''))
+      .map((e, idx) => ({ ...e, id: e.id || String(idx + 1) }));
+    const tsContent = `import { Employee } from '../types/employee';\n\nexport const MOCK_EMPLOYEES: Employee[] = ${JSON.stringify(
+      sortedForUi,
+      null,
+      2
+    )};\n`;
+    fs.writeFileSync(tsPath, tsContent, 'utf8');
+  } catch (e) {
+    console.error('Failed to update employees.ts cache:', e);
+  }
+
   return { success: true };
 }
 
@@ -798,18 +814,24 @@ export async function deleteEmployeesFromSheet(identifiers) {
   const data = await dataRes.json();
   const rows = data.values || [];
 
+  const cleanIdList = idList.map((id) => String(id || '').trim().toLowerCase()).filter(Boolean);
+
   const indicesToDelete = [];
   rows.forEach((r, idx) => {
     if (idx === 0) return; // skip header
-    const code = r[12] || r[11] || '';
-    const username = r[1] || '';
-    const name = r[0] || '';
-    if (
-      idList.includes(code) ||
-      idList.includes(username) ||
-      idList.includes(name) ||
-      (r[0] && r[0].startsWith('emp-') && idList.includes(r[0]))
-    ) {
+    const name = String(r[0] || '').trim().toLowerCase();
+    const username = String(r[1] || '').trim().toLowerCase();
+    const code = String(r[12] || r[11] || (r[0] && r[0].startsWith('emp-') ? r[0] : '') || '').trim().toLowerCase();
+
+    const isMatch = cleanIdList.some((cleanId) => {
+      return (
+        (code && cleanId === code) ||
+        (username && cleanId === username) ||
+        (name && cleanId === name)
+      );
+    });
+
+    if (isMatch) {
       indicesToDelete.push(idx); // 0-based index
     }
   });

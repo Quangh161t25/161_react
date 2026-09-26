@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
+  Pin,
   Trash2,
   ArrowLeft,
   Search,
@@ -40,23 +41,23 @@ interface CostProposalPageProps {
 }
 
 export const DEFAULT_PROPOSAL_COLUMNS: ColumnItem[] = [
-  { id: 'code', label: 'Số phiếu', visible: true, locked: true, width: 160 },
-  { id: 'proposalDate', label: 'Ngày đề xuất', visible: true, width: 140 },
-  { id: 'dueDate', label: 'Ngày cần chi', visible: true, width: 140 },
-  { id: 'proposer', label: 'Người đề xuất', visible: true, width: 200 },
-  { id: 'department', label: 'Phòng ban', visible: true, width: 200 },
-  { id: 'title', label: 'Tiêu đề', visible: true, width: 260 },
-  { id: 'reason', label: 'Lý do', visible: true, width: 280 },
-  { id: 'amount', label: 'Tổng tiền', visible: true, width: 160 },
-  { id: 'account', label: 'Tài khoản đề nghị chi', visible: true, width: 220 },
-  { id: 'beneficiary', label: 'Đối tượng thụ hưởng', visible: true, width: 240 },
-  { id: 'isOverBudget', label: 'Vượt kế hoạch', visible: true, width: 130 },
-  { id: 'overBudgetReason', label: 'Lý do vượt kế hoạch', visible: true, width: 240 },
-  { id: 'note', label: 'Ghi chú', visible: true, width: 240 },
-  { id: 'approvalSteps', label: 'Số bậc duyệt', visible: true, width: 120 },
-  { id: 'approvalStatus', label: 'Trạng thái duyệt', visible: true, width: 160 },
-  { id: 'status', label: 'Trạng thái', visible: true, width: 140 },
-  { id: 'updatedAt', label: 'Cập nhật', visible: true, width: 140 },
+  { id: 'code', label: 'Số phiếu', visible: true, pinned: true, width: 160, align: 'left', wrap: 'truncate' },
+  { id: 'proposalDate', label: 'Ngày đề xuất', visible: true, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'dueDate', label: 'Ngày cần chi', visible: true, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'proposer', label: 'Người đề xuất', visible: true, width: 200, align: 'left', wrap: 'truncate' },
+  { id: 'department', label: 'Phòng ban', visible: true, width: 200, align: 'left', wrap: 'truncate' },
+  { id: 'title', label: 'Tiêu đề', visible: true, width: 260, align: 'left', wrap: 'truncate' },
+  { id: 'reason', label: 'Lý do', visible: true, width: 280, align: 'left', wrap: 'truncate' },
+  { id: 'amount', label: 'Tổng tiền', visible: true, width: 160, align: 'right', wrap: 'truncate' },
+  { id: 'account', label: 'Tài khoản đề nghị chi', visible: true, width: 220, align: 'left', wrap: 'truncate' },
+  { id: 'beneficiary', label: 'Đối tượng thụ hưởng', visible: true, width: 240, align: 'left', wrap: 'truncate' },
+  { id: 'isOverBudget', label: 'Vượt kế hoạch', visible: true, width: 130, align: 'center', wrap: 'truncate' },
+  { id: 'overBudgetReason', label: 'Lý do vượt kế hoạch', visible: true, width: 240, align: 'left', wrap: 'truncate' },
+  { id: 'note', label: 'Ghi chú', visible: true, width: 240, align: 'left', wrap: 'truncate' },
+  { id: 'approvalSteps', label: 'Số bậc duyệt', visible: true, width: 120, align: 'center', wrap: 'truncate' },
+  { id: 'approvalStatus', label: 'Trạng thái duyệt', visible: true, width: 160, align: 'center', wrap: 'truncate' },
+  { id: 'status', label: 'Trạng thái', visible: true, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'updatedAt', label: 'Cập nhật', visible: true, width: 140, align: 'center', wrap: 'truncate' },
 ];
 
 export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) => {
@@ -93,6 +94,9 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
                 ...def,
                 ...p,
                 width: p.width || def.width || 160,
+                pinned: p.pinned !== undefined ? p.pinned : def.pinned,
+                align: p.align || def.align || 'left',
+                wrap: p.wrap || def.wrap || 'truncate',
               });
             }
           });
@@ -567,28 +571,106 @@ const handleDeleteProposal = async (id: string) => {
       ? 'py-4 px-4'
       : 'py-3 px-4';
 
-  const codeCol = tableColumns.find((c) => c.id === 'code');
-  const codeWidth = codeCol?.width || 160;
+    // Visible columns in order
+  const visibleColumns = useMemo(() => {
+    return tableColumns.filter((c) => c.visible);
+  }, [tableColumns]);
 
-  const renderProposalCell = (col: ColumnItem, item: CostProposal) => {
+  // Compute dynamic sticky offsets for pinned columns
+  const columnOffsets = useMemo(() => {
+    const offsets = new Map<string, { isPinned: boolean; left: number; isLastPinned: boolean }>();
+    let currentLeft = 44; // Starts right after sticky Checkbox (width 44px)
+    let lastPinnedId: string | null = null;
+
+    for (let i = visibleColumns.length - 1; i >= 0; i--) {
+      if (visibleColumns[i].pinned) {
+        lastPinnedId = visibleColumns[i].id;
+        break;
+      }
+    }
+
+    for (const col of visibleColumns) {
+      const colWidth = col.width || 160;
+      if (col.pinned) {
+        offsets.set(col.id, {
+          isPinned: true,
+          left: currentLeft,
+          isLastPinned: col.id === lastPinnedId,
+        });
+        currentLeft += colWidth;
+      } else {
+        offsets.set(col.id, {
+          isPinned: false,
+          left: 0,
+          isLastPinned: false,
+        });
+      }
+    }
+    return offsets;
+  }, [visibleColumns]);
+
+  const renderProposalCell = (col: ColumnItem, item: CostProposal, stickyBgClass: string) => {
     const colId = col.id;
     const colWidth = col.width || 160;
+    const colAlign = col.align || 'left';
+    const isWrap = col.wrap === 'wrap';
+
+    const alignClass =
+      colAlign === 'center'
+        ? 'text-center'
+        : colAlign === 'right'
+        ? 'text-right'
+        : 'text-left';
+
+    const justifyClass =
+      colAlign === 'center'
+        ? 'justify-center'
+        : colAlign === 'right'
+        ? 'justify-end'
+        : 'justify-start';
+
+    const textWrapClass = isWrap
+      ? 'whitespace-normal break-words leading-relaxed'
+      : 'whitespace-nowrap truncate';
+
+    const offsetInfo = columnOffsets.get(col.id);
+    const isPinned = !!offsetInfo?.isPinned;
+    const pinnedLeft = offsetInfo?.left || 0;
+    const isLastPinned = !!offsetInfo?.isLastPinned;
+
+    const stickyTdClass = isPinned
+      ? `sticky z-[10] ${stickyBgClass} ${isLastPinned ? 'shadow-[3px_0_6px_-2px_rgba(0,0,0,0.12)]' : ''}`
+      : '';
+
     const colStyle: React.CSSProperties = {
       width: colWidth,
       minWidth: colWidth,
       maxWidth: colWidth,
+      ...(isPinned ? { left: `${pinnedLeft}px` } : {}),
     };
 
+    const tdBaseClass = `${cellPaddingClass} border-r border-border/40 ${alignClass} ${stickyTdClass}`;
+
     switch (colId) {
+      case 'code':
+        return (
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <div className={`flex items-center ${justifyClass} gap-2 min-w-0`}>
+              <FileText className="w-3.5 h-3.5 text-primary/70 shrink-0" />
+              <span className={`text-sm font-semibold text-foreground ${textWrapClass}`}>{item.code}</span>
+            </div>
+          </td>
+        );
+
       case 'proposalDate':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40 truncate`}>{item.proposalDate}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground ${textWrapClass}`}>{item.proposalDate}</td>;
       case 'dueDate':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40 truncate`}>{item.dueDate}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground ${textWrapClass}`}>{item.dueDate}</td>;
       case 'proposer':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
-            <div className="inline-flex items-center gap-1 max-w-full">
-              <span className="truncate text-foreground font-medium">{item.proposer}</span>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <div className={`flex items-center ${justifyClass} gap-1 max-w-full`}>
+              <span className={`text-foreground font-medium ${textWrapClass}`}>{item.proposer}</span>
               <button
                 type="button"
                 onClick={(e) => e.stopPropagation()}
@@ -602,9 +684,9 @@ const handleDeleteProposal = async (id: string) => {
         );
       case 'department':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
-            <div className="inline-flex items-center gap-1 max-w-full">
-              <span className="truncate text-foreground">{item.department}</span>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <div className={`flex items-center ${justifyClass} gap-1 max-w-full`}>
+              <span className={`text-foreground ${textWrapClass}`}>{item.department}</span>
               <button
                 type="button"
                 onClick={(e) => e.stopPropagation()}
@@ -618,27 +700,27 @@ const handleDeleteProposal = async (id: string) => {
         );
       case 'title':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-foreground truncate border-r border-border/40`} title={item.title}>
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`} title={item.title}>
             {item.title}
           </td>
         );
       case 'reason':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-foreground truncate border-r border-border/40`} title={item.reason}>
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`} title={item.reason}>
             {item.reason}
           </td>
         );
       case 'amount':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} font-semibold tabular-nums text-foreground border-r border-border/40 truncate`}>
+          <td key={colId} style={colStyle} className={`${tdBaseClass} font-semibold tabular-nums text-foreground ${textWrapClass}`}>
             {formatCurrency(item.amount)}
           </td>
         );
       case 'account':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
-            <div className="inline-flex items-center gap-1 max-w-full">
-              <span className="truncate text-foreground">{item.account}</span>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <div className={`flex items-center ${justifyClass} gap-1 max-w-full`}>
+              <span className={`text-foreground ${textWrapClass}`}>{item.account}</span>
               <button
                 type="button"
                 onClick={(e) => e.stopPropagation()}
@@ -652,31 +734,31 @@ const handleDeleteProposal = async (id: string) => {
         );
       case 'beneficiary':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-muted-foreground truncate border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>
             {item.beneficiary || '—'}
           </td>
         );
       case 'isOverBudget':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} text-foreground border-r border-border/40 truncate`}>{item.isOverBudget ? 'Có' : 'Không'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>{item.isOverBudget ? 'Có' : 'Không'}</td>;
       case 'overBudgetReason':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-muted-foreground truncate border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>
             {item.overBudgetReason || '—'}
           </td>
         );
       case 'note':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} text-muted-foreground truncate border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>
             {item.note || '—'}
           </td>
         );
       case 'approvalSteps':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40 truncate`}>{item.approvalSteps}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground truncate`}>{item.approvalSteps}</td>;
       case 'approvalStatus':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>{renderApprovalBadge(item.approvalStatus)}</td>;
+        return <td key={colId} style={colStyle} className={tdBaseClass}>{renderApprovalBadge(item.approvalStatus)}</td>;
       case 'status':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
             <span
               className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-medium border rounded-full ${
                 item.status === 'active'
@@ -689,9 +771,9 @@ const handleDeleteProposal = async (id: string) => {
           </td>
         );
       case 'updatedAt':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} tabular-nums text-foreground border-r border-border/40 truncate`}>{item.updatedAt}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground truncate`}>{item.updatedAt}</td>;
       default:
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>—</td>;
+        return <td key={colId} style={colStyle} className={tdBaseClass}>—</td>;
     }
   };
 
@@ -956,55 +1038,57 @@ const handleDeleteProposal = async (id: string) => {
                             />
                           </th>
 
-                          {/* 2. Sticky Số phiếu */}
-                          <th
-                            style={{ width: codeWidth, minWidth: codeWidth, maxWidth: codeWidth }}
-                            className={`sticky left-[44px] z-[25] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]`}
-                          >
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="truncate">Số phiếu</span>
-                              <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-                            </div>
-                            {/* Resizer Handle */}
-                            <div
-                              className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-20 flex justify-center items-center group/resizer hover:bg-primary/20 ${
-                                resizingColId === 'code' ? 'bg-primary/30' : ''
-                              }`}
-                              onMouseDown={(e) => handleStartResize('code', e)}
-                              title="Kéo để chỉnh kích thước cột Số phiếu"
-                            >
-                              <div className="w-[2px] h-3.5 bg-border group-hover/resizer:bg-primary group-hover/resizer:h-full transition-all" />
-                            </div>
-                          </th>
+                          {/* Dynamic Columns (Fully customizable order, visibility & pinning) */}
+                          {visibleColumns.map((col) => {
+                            const colWidth = col.width || 160;
+                            const colAlign = col.align || 'left';
+                            const alignClass = colAlign === 'center' ? 'text-center' : colAlign === 'right' ? 'text-right' : 'text-left';
+                            const justifyClass = colAlign === 'center' ? 'justify-center' : colAlign === 'right' ? 'justify-end' : 'justify-between';
 
-                          {/* Dynamic Columns */}
-                          {tableColumns
-                            .filter((c) => c.visible && c.id !== 'code')
-                            .map((col) => {
-                              const colWidth = col.width || 160;
-                              return (
-                                <th
-                                  key={col.id}
-                                  style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
-                                  className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none`}
+                            const offsetInfo = columnOffsets.get(col.id);
+                            const isPinned = !!offsetInfo?.isPinned;
+                            const pinnedLeft = offsetInfo?.left || 0;
+                            const isLastPinned = !!offsetInfo?.isLastPinned;
+
+                            const stickyThClass = isPinned
+                              ? `sticky z-[25] bg-muted ${isLastPinned ? 'shadow-[3px_0_6px_-2px_rgba(0,0,0,0.12)]' : ''}`
+                              : 'bg-muted';
+
+                            const thStyle: React.CSSProperties = {
+                              width: colWidth,
+                              minWidth: colWidth,
+                              maxWidth: colWidth,
+                              ...(isPinned ? { left: `${pinnedLeft}px` } : {}),
+                            };
+
+                            return (
+                              <th
+                                key={col.id}
+                                style={thStyle}
+                                className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 bg-muted ${headerPaddingClass} ${alignClass} ${stickyThClass} relative group/th select-none`}
+                              >
+                                <div className={`flex items-center ${justifyClass} gap-1 pr-1`}>
+                                  <span className="truncate">{col.label}</span>
+                                  {isPinned && (
+                                    <span title="Cột đang ghim cố định" className="inline-flex">
+                                      <Pin className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 fill-current shrink-0" />
+                                    </span>
+                                  )}
+                                  <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60 shrink-0" />
+                                </div>
+                                {/* Resizer Handle */}
+                                <div
+                                  className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-20 flex justify-center items-center group/resizer hover:bg-primary/20 ${
+                                    resizingColId === col.id ? 'bg-primary/30' : ''
+                                  }`}
+                                  onMouseDown={(e) => handleStartResize(col.id, e)}
+                                  title={`Kéo để chỉnh kích thước cột ${col.label}`}
                                 >
-                                  <div className="flex items-center justify-between gap-1 pr-1">
-                                    <span className="truncate">{col.label}</span>
-                                    <SlidersHorizontal className="w-3 h-3 text-muted-foreground/60 shrink-0" />
-                                  </div>
-                                  {/* Resizer Handle */}
-                                  <div
-                                    className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-20 flex justify-center items-center group/resizer hover:bg-primary/20 ${
-                                      resizingColId === col.id ? 'bg-primary/30' : ''
-                                    }`}
-                                    onMouseDown={(e) => handleStartResize(col.id, e)}
-                                    title={`Kéo để chỉnh kích thước cột ${col.label}`}
-                                  >
-                                    <div className="w-[2px] h-3.5 bg-border group-hover/resizer:bg-primary group-hover/resizer:h-full transition-all" />
-                                  </div>
-                                </th>
-                              );
-                            })}
+                                  <div className="w-[2px] h-3.5 bg-border group-hover/resizer:bg-primary group-hover/resizer:h-full transition-all" />
+                                </div>
+                              </th>
+                            );
+                          })}
 
                           {/* Sticky Thao tác */}
                           <th
@@ -1026,27 +1110,34 @@ const handleDeleteProposal = async (id: string) => {
                             </td>
                           </tr>
                         ) : (
-                          filteredProposals.map((item) => {
+                          filteredProposals.map((item, index) => {
                             const isSelected = selectedIds.includes(item.id);
                             const isActiveDetail = selectedProposalForDetail?.id === item.id;
+                            const isEven = index % 2 === 1;
+
+                            // 100% solid opaque background to completely prevent text bleed-through during horizontal scroll
                             const stickyBgClass = isActiveDetail
-                              ? 'bg-accent shadow-[inset_3px_0_0_var(--color-primary)]'
+                              ? 'bg-blue-100 dark:bg-blue-950 text-foreground !bg-opacity-100'
                               : isSelected
-                              ? 'bg-primary/10 group-hover:bg-primary/15'
-                              : 'bg-card group-hover:bg-muted/60';
+                              ? 'bg-blue-50 dark:bg-blue-900 text-foreground group-hover:bg-blue-100 dark:group-hover:bg-blue-800 !bg-opacity-100'
+                              : isEven
+                              ? 'bg-slate-50 dark:bg-slate-900 text-foreground group-hover:bg-slate-100 dark:group-hover:bg-slate-850 !bg-opacity-100'
+                              : 'bg-white dark:bg-card text-foreground group-hover:bg-slate-100 dark:group-hover:bg-slate-850 !bg-opacity-100';
+
+                            const rowBgClass = isActiveDetail
+                              ? 'bg-blue-100 dark:bg-blue-950'
+                              : isSelected
+                              ? 'bg-blue-50 dark:bg-blue-900 hover:bg-blue-100 dark:hover:bg-blue-800'
+                              : isEven
+                              ? 'bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                              : 'bg-white dark:bg-card hover:bg-slate-100 dark:hover:bg-slate-800';
 
                             return (
                               <tr
                                 key={item.id}
                                 onClick={() => setSelectedProposalForDetail(item)}
                                 aria-current={isActiveDetail}
-                                className={`group cursor-pointer transition-colors ${
-                                  isActiveDetail
-                                    ? 'bg-primary/[0.07] hover:bg-primary/[0.1]'
-                                    : isSelected
-                                    ? 'bg-primary/5 hover:bg-accent'
-                                    : 'bg-card even:bg-muted/15 hover:bg-accent'
-                                } [&>td]:border-b [&>td]:border-border`}
+                                className={`group cursor-pointer transition-colors ${rowBgClass} [&>td]:border-b [&>td]:border-border`}
                               >
                                 {/* Checkbox */}
                                 <td
@@ -1062,21 +1153,8 @@ const handleDeleteProposal = async (id: string) => {
                                   />
                                 </td>
 
-                                {/* Số phiếu */}
-                                <td
-                                  style={{ width: codeWidth, minWidth: codeWidth, maxWidth: codeWidth }}
-                                  className={`sticky left-[44px] z-[10] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/50 font-semibold text-foreground ${stickyBgClass} shadow-[4px_0_8px_-2px_rgba(0,0,0,0.08)]`}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <FileText className="w-3.5 h-3.5 text-primary/70 shrink-0" />
-                                    <span className="truncate text-sm">{item.code}</span>
-                                  </div>
-                                </td>
-
-                                {/* Dynamic Columns */}
-                                {tableColumns
-                                  .filter((c) => c.visible && c.id !== 'code')
-                                  .map((col) => renderProposalCell(col, item))}
+                                {/* Dynamic Columns (Fully customizable order, visibility & pinning) */}
+                                {visibleColumns.map((col) => renderProposalCell(col, item, stickyBgClass))}
 
                                 {/* Sticky Thao tác */}
                                 <td

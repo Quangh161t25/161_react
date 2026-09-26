@@ -91,21 +91,21 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [username, setUsername] = useState('');
-  const [tempPassword, setTempPassword] = useState('');
+  const [tempPassword, setTempPassword] = useState('123456');
   const [showPassword, setShowPassword] = useState(false);
   const [gender, setGender] = useState<Gender>('Nam');
   const [dob, setDob] = useState('');
-  const [maritalStatus, setMaritalStatus] = useState('Độc thân');
-  const [nationality, setNationality] = useState('Việt Nam');
-  const [ethnicity, setEthnicity] = useState('Kinh');
-  const [religion, setReligion] = useState('Không');
+  const [maritalStatus, setMaritalStatus] = useState('');
+  const [nationality, setNationality] = useState('');
+  const [ethnicity, setEthnicity] = useState('');
+  const [religion, setReligion] = useState('');
   const [hometown, setHometown] = useState('');
 
   // Work State
-  const [role, setRole] = useState('Nhân viên');
-  const [department, setDepartment] = useState('Phòng Kỹ thuật');
-  const [subDepartment, setSubDepartment] = useState('—');
-  const [rank, setRank] = useState<string | number>(1);
+  const [role, setRole] = useState('');
+  const [department, setDepartment] = useState('');
+  const [subDepartment, setSubDepartment] = useState('');
+  const [rank, setRank] = useState<string | number>('');
   const [status, setStatus] = useState<EmployeeStatus>('working');
   const [startDate, setStartDate] = useState('');
   const [officialDate, setOfficialDate] = useState('');
@@ -128,14 +128,14 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [emergencyContactRelation, setEmergencyContactRelation] = useState('');
 
   // Education
-  const [educationLevel, setEducationLevel] = useState('Đại học');
+  const [educationLevel, setEducationLevel] = useState('');
   const [major, setMajor] = useState('');
   const [school, setSchool] = useState('');
 
   // Bank
   const [bankAccount, setBankAccount] = useState('');
   const [bankAccountHolder, setBankAccountHolder] = useState('');
-  const [bankName, setBankName] = useState('Vietcombank');
+  const [bankName, setBankName] = useState('');
   const [bankBranch, setBankBranch] = useState('');
 
   // Insurance & Tax
@@ -155,16 +155,16 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setShowPassword(false);
       setGender(initialData.gender || 'Nam');
       setDob(toInputDate(initialData.dob));
-      setMaritalStatus(initialData.maritalStatus || 'Độc thân');
-      setNationality(initialData.nationality || 'Việt Nam');
-      setEthnicity(initialData.ethnicity || 'Kinh');
-      setReligion(initialData.religion || 'Không');
+      setMaritalStatus(initialData.maritalStatus || '');
+      setNationality(initialData.nationality || '');
+      setEthnicity(initialData.ethnicity || '');
+      setReligion(initialData.religion || '');
       setHometown(initialData.hometown || '');
 
-      setRole(initialData.role || 'Nhân viên');
-      setDepartment(initialData.department || 'Phòng Kỹ thuật');
-      setSubDepartment(initialData.subDepartment || '—');
-      setRank(initialData.rank || 1);
+      setRole(initialData.role || '');
+      setDepartment(initialData.department || '');
+      setSubDepartment(initialData.subDepartment || '');
+      setRank(initialData.rank || '');
       setStatus(initialData.status || 'working');
       setStartDate(toInputDate(initialData.startDate));
       setOfficialDate(toInputDate(initialData.officialDate));
@@ -184,46 +184,46 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setEmergencyContactPhone(initialData.emergencyContactPhone || '');
       setEmergencyContactRelation(initialData.emergencyContactRelation || '');
 
-      setEducationLevel(initialData.educationLevel || 'Đại học');
+      setEducationLevel(initialData.educationLevel || '');
       setMajor(initialData.major || '');
       setSchool(initialData.school || '');
 
       setBankAccount(initialData.bankAccount || '');
       setBankAccountHolder(initialData.bankAccountHolder || '');
-      setBankName(initialData.bankName || 'Vietcombank');
+      setBankName(initialData.bankName || '');
       setBankBranch(initialData.bankBranch || '');
 
       setSocialInsuranceNumber(initialData.socialInsuranceNumber || '');
       setHealthInsuranceNumber(initialData.healthInsuranceNumber || '');
       setTaxCode(initialData.taxCode || '');
     } else {
-      const today = new Date().toISOString().split('T')[0];
       setAvatarUrl('');
       setName('');
       setCode('');
       setUsername('');
       setTempPassword('123456');
+      setShowPassword(false);
       setGender('Nam');
       setDob('');
-      setMaritalStatus('Độc thân');
-      setNationality('Việt Nam');
-      setEthnicity('Kinh');
-      setReligion('Không');
+      setMaritalStatus('');
+      setNationality('');
+      setEthnicity('');
+      setReligion('');
       setHometown('');
 
-      setRole('Nhân viên');
-      setDepartment('Phòng Kỹ thuật');
-      setSubDepartment('—');
-      setRank(1);
+      setRole('');
+      setDepartment('');
+      setSubDepartment('');
+      setRank('');
       setStatus('working');
-      setStartDate(today);
+      setStartDate('');
       setOfficialDate('');
       setResignationDate('');
       setResignationReason('');
 
       setIdCardNumber('');
       setIdCardDate('');
-      setIdCardPlace('Cục Cảnh sát QLHC về TTXH');
+      setIdCardPlace('');
       setPermanentAddress('');
       setCurrentAddress('');
 
@@ -234,13 +234,13 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setEmergencyContactPhone('');
       setEmergencyContactRelation('');
 
-      setEducationLevel('Đại học');
+      setEducationLevel('');
       setMajor('');
       setSchool('');
 
       setBankAccount('');
       setBankAccountHolder('');
-      setBankName('Vietcombank');
+      setBankName('');
       setBankBranch('');
 
       setSocialInsuranceNumber('');
@@ -254,13 +254,6 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
 
   const handleNameChange = (val: string) => {
     setName(val);
-    if (!isEdit && (!username || username === slugify(name))) {
-      const slug = slugify(val);
-      setUsername(slug);
-      if (!email || email.includes('@company.vn')) {
-        setEmail(slug ? `${slug}@company.vn` : '');
-      }
-    }
   };
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -294,8 +287,8 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
     if (!validate()) return;
 
     const finalUsername = username.trim() || slugify(name) || `user_${Date.now().toString().slice(-4)}`;
-    const finalPhone = phone.trim() || '0900 000 000';
-    const finalEmail = email.trim() || `${finalUsername}@company.vn`;
+    const finalPhone = phone.trim();
+    const finalEmail = email.trim();
 
     const payload: Partial<Employee> = {
       name: name.trim(),
@@ -305,7 +298,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       email: finalEmail,
       role,
       department,
-      subDepartment: subDepartment.trim() || '—',
+      subDepartment: subDepartment.trim(),
       gender,
       status,
       dob: fromInputDate(dob),
@@ -625,6 +618,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                         onChange={(e) => setMaritalStatus(e.target.value)}
                         className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       >
+                        <option value="">-- Chọn tình trạng hôn nhân --</option>
                         <option value="Độc thân">Độc thân</option>
                         <option value="Đã kết hôn">Đã kết hôn</option>
                         <option value="Khác">Khác</option>
@@ -794,6 +788,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                         onChange={(e) => setDepartment(e.target.value)}
                         className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       >
+                        <option value="">-- Chọn phòng ban --</option>
                         <option value="Phòng Kỹ thuật">Phòng Kỹ thuật</option>
                         <option value="Phòng Kinh doanh">Phòng Kinh doanh</option>
                         <option value="Phòng Kế toán">Phòng Kế toán</option>
@@ -1308,6 +1303,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                         onChange={(e) => setEducationLevel(e.target.value)}
                         className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       >
+                        <option value="">-- Chọn trình độ học vấn --</option>
                         <option value="Đại học">Đại học</option>
                         <option value="Cao đẳng">Cao đẳng</option>
                         <option value="Thạc sĩ">Thạc sĩ</option>

@@ -24,6 +24,8 @@ import {
   AlertCircle,
   ChartColumn,
   Link2,
+  Pin,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Employee } from '../../types/employee';
 import { EmployeeDetailDrawer } from './EmployeeDetailDrawer';
@@ -41,53 +43,53 @@ interface EmployeePageProps {
 }
 
 export const DEFAULT_EMPLOYEE_COLUMNS: ColumnItem[] = [
-  { id: 'name', label: 'Họ và tên', visible: true, locked: true, width: 220 },
-  { id: 'username', label: 'Tên đăng nhập', visible: true, locked: true, width: 160 },
-  { id: 'password', label: 'Mật khẩu', visible: true, width: 140 },
-  { id: 'phone', label: 'SĐT', visible: true, width: 150 },
-  { id: 'role', label: 'Chức vụ', visible: true, width: 200 },
-  { id: 'department', label: 'Phòng ban', visible: true, width: 200 },
-  { id: 'subDepartment', label: 'Bộ phận', visible: true, width: 180 },
-  { id: 'email', label: 'Email', visible: true, width: 220 },
-  { id: 'gender', label: 'Giới tính', visible: true, width: 110 },
-  { id: 'status', label: 'Trạng thái', visible: true, width: 140 },
-  { id: 'createdAt', label: 'Ngày tạo', visible: false, width: 130 },
-  { id: 'updatedAt', label: 'Cập nhật', visible: false, width: 130 },
-  { id: 'code', label: 'ID', visible: false, width: 110 },
-  { id: 'avatarUrl', label: 'Ảnh đại diện', visible: false, width: 110 },
-  { id: 'dob', label: 'Ngày sinh', visible: false, width: 130 },
-  { id: 'maritalStatus', label: 'Tình trạng hôn nhân', visible: false, width: 160 },
-  { id: 'nationality', label: 'Quốc tịch', visible: false, width: 130 },
-  { id: 'ethnicity', label: 'Dân tộc', visible: false, width: 120 },
-  { id: 'religion', label: 'Tôn giáo', visible: false, width: 120 },
-  { id: 'hometown', label: 'Quê quán', visible: false, width: 170 },
-  { id: 'jobRole', label: 'Chức vụ (Công việc)', visible: false, width: 190 },
-  { id: 'jobDepartment', label: 'Phòng ban (Công việc)', visible: false, width: 190 },
-  { id: 'rank', label: 'Cấp bậc', visible: false, width: 110 },
-  { id: 'startDate', label: 'Ngày vào làm', visible: false, width: 130 },
-  { id: 'officialDate', label: 'Ngày chính thức', visible: false, width: 140 },
-  { id: 'resignationDate', label: 'Ngày nghỉ việc', visible: false, width: 140 },
-  { id: 'resignationReason', label: 'Lý do nghỉ', visible: false, width: 200 },
-  { id: 'idCardNumber', label: 'CMND/CCCD', visible: false, width: 160 },
-  { id: 'idCardDate', label: 'Ngày cấp CCCD', visible: false, width: 130 },
-  { id: 'idCardPlace', label: 'Nơi cấp', visible: false, width: 220 },
-  { id: 'permanentAddress', label: 'Địa chỉ thường trú', visible: false, width: 240 },
-  { id: 'currentAddress', label: 'Chỗ ở hiện tại', visible: false, width: 240 },
-  { id: 'personalEmail', label: 'Email cá nhân', visible: false, width: 220 },
-  { id: 'emergencyContactName', label: 'Người liên hệ khẩn cấp', visible: false, width: 190 },
-  { id: 'emergencyContactPhone', label: 'SĐT khẩn cấp', visible: false, width: 150 },
-  { id: 'emergencyContactRelation', label: 'Quan hệ', visible: false, width: 130 },
-  { id: 'educationLevel', label: 'Trình độ học vấn', visible: false, width: 150 },
-  { id: 'major', label: 'Chuyên ngành', visible: false, width: 180 },
-  { id: 'school', label: 'Trường đào tạo', visible: false, width: 200 },
-  { id: 'bankAccount', label: 'Số tài khoản', visible: false, width: 170 },
-  { id: 'bankAccountHolder', label: 'Chủ tài khoản', visible: false, width: 190 },
-  { id: 'bankName', label: 'Tên ngân hàng', visible: false, width: 170 },
-  { id: 'bankBranch', label: 'Chi nhánh', visible: false, width: 170 },
-  { id: 'socialInsuranceNumber', label: 'Số BHXH', visible: false, width: 150 },
-  { id: 'healthInsuranceNumber', label: 'Số BHYT', visible: false, width: 150 },
-  { id: 'taxCode', label: 'Mã số thuế cá nhân', visible: false, width: 160 },
-  { id: 'isActiveAccount', label: 'Tài khoản hoạt động', visible: false, width: 160 },
+  { id: 'name', label: 'Họ và tên', visible: true, pinned: true, width: 220, align: 'left', wrap: 'truncate' },
+  { id: 'username', label: 'Tên đăng nhập', visible: true, pinned: false, width: 160, align: 'left', wrap: 'truncate' },
+  { id: 'password', label: 'Mật khẩu', visible: true, width: 140, align: 'left', wrap: 'truncate' },
+  { id: 'phone', label: 'SĐT', visible: true, width: 150, align: 'left', wrap: 'truncate' },
+  { id: 'role', label: 'Chức vụ', visible: true, width: 200, align: 'left', wrap: 'truncate' },
+  { id: 'department', label: 'Phòng ban', visible: true, width: 200, align: 'left', wrap: 'truncate' },
+  { id: 'subDepartment', label: 'Bộ phận', visible: true, width: 180, align: 'left', wrap: 'truncate' },
+  { id: 'email', label: 'Email', visible: true, width: 220, align: 'left', wrap: 'truncate' },
+  { id: 'gender', label: 'Giới tính', visible: true, width: 110, align: 'center', wrap: 'truncate' },
+  { id: 'status', label: 'Trạng thái', visible: true, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'createdAt', label: 'Ngày tạo', visible: false, width: 130, align: 'center', wrap: 'truncate' },
+  { id: 'updatedAt', label: 'Cập nhật', visible: false, width: 130, align: 'center', wrap: 'truncate' },
+  { id: 'code', label: 'ID', visible: false, width: 110, align: 'center', wrap: 'truncate' },
+  { id: 'avatarUrl', label: 'Ảnh đại diện', visible: false, width: 110, align: 'center', wrap: 'truncate' },
+  { id: 'dob', label: 'Ngày sinh', visible: false, width: 130, align: 'center', wrap: 'truncate' },
+  { id: 'maritalStatus', label: 'Tình trạng hôn nhân', visible: false, width: 160, align: 'left', wrap: 'truncate' },
+  { id: 'nationality', label: 'Quốc tịch', visible: false, width: 130, align: 'left', wrap: 'truncate' },
+  { id: 'ethnicity', label: 'Dân tộc', visible: false, width: 120, align: 'left', wrap: 'truncate' },
+  { id: 'religion', label: 'Tôn giáo', visible: false, width: 120, align: 'left', wrap: 'truncate' },
+  { id: 'hometown', label: 'Quê quán', visible: false, width: 170, align: 'left', wrap: 'truncate' },
+  { id: 'jobRole', label: 'Chức vụ (Công việc)', visible: false, width: 190, align: 'left', wrap: 'truncate' },
+  { id: 'jobDepartment', label: 'Phòng ban (Công việc)', visible: false, width: 190, align: 'left', wrap: 'truncate' },
+  { id: 'rank', label: 'Cấp bậc', visible: false, width: 110, align: 'center', wrap: 'truncate' },
+  { id: 'startDate', label: 'Ngày vào làm', visible: false, width: 130, align: 'center', wrap: 'truncate' },
+  { id: 'officialDate', label: 'Ngày chính thức', visible: false, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'resignationDate', label: 'Ngày nghỉ việc', visible: false, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'resignationReason', label: 'Lý do nghỉ', visible: false, width: 200, align: 'left', wrap: 'truncate' },
+  { id: 'idCardNumber', label: 'CMND/CCCD', visible: false, width: 160, align: 'center', wrap: 'truncate' },
+  { id: 'idCardDate', label: 'Ngày cấp CCCD', visible: false, width: 130, align: 'center', wrap: 'truncate' },
+  { id: 'idCardPlace', label: 'Nơi cấp', visible: false, width: 220, align: 'left', wrap: 'truncate' },
+  { id: 'permanentAddress', label: 'Địa chỉ thường trú', visible: false, width: 240, align: 'left', wrap: 'truncate' },
+  { id: 'currentAddress', label: 'Chỗ ở hiện tại', visible: false, width: 240, align: 'left', wrap: 'truncate' },
+  { id: 'personalEmail', label: 'Email cá nhân', visible: false, width: 220, align: 'left', wrap: 'truncate' },
+  { id: 'emergencyContactName', label: 'Người liên hệ khẩn cấp', visible: false, width: 190, align: 'left', wrap: 'truncate' },
+  { id: 'emergencyContactPhone', label: 'SĐT khẩn cấp', visible: false, width: 150, align: 'center', wrap: 'truncate' },
+  { id: 'emergencyContactRelation', label: 'Quan hệ', visible: false, width: 130, align: 'left', wrap: 'truncate' },
+  { id: 'educationLevel', label: 'Trình độ học vấn', visible: false, width: 150, align: 'left', wrap: 'truncate' },
+  { id: 'major', label: 'Chuyên ngành', visible: false, width: 180, align: 'left', wrap: 'truncate' },
+  { id: 'school', label: 'Trường đào tạo', visible: false, width: 200, align: 'left', wrap: 'truncate' },
+  { id: 'bankAccount', label: 'Số tài khoản', visible: false, width: 170, align: 'left', wrap: 'truncate' },
+  { id: 'bankAccountHolder', label: 'Chủ tài khoản', visible: false, width: 190, align: 'left', wrap: 'truncate' },
+  { id: 'bankName', label: 'Tên ngân hàng', visible: false, width: 170, align: 'left', wrap: 'truncate' },
+  { id: 'bankBranch', label: 'Chi nhánh', visible: false, width: 170, align: 'left', wrap: 'truncate' },
+  { id: 'socialInsuranceNumber', label: 'Số BHXH', visible: false, width: 150, align: 'center', wrap: 'truncate' },
+  { id: 'healthInsuranceNumber', label: 'Số BHYT', visible: false, width: 150, align: 'center', wrap: 'truncate' },
+  { id: 'taxCode', label: 'Mã số thuế cá nhân', visible: false, width: 160, align: 'center', wrap: 'truncate' },
+  { id: 'isActiveAccount', label: 'Tài khoản hoạt động', visible: false, width: 160, align: 'center', wrap: 'truncate' },
 ];
 
 export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
@@ -130,6 +132,9 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                 ...def,
                 ...p,
                 width: p.width || def.width || 160,
+                pinned: p.pinned !== undefined ? p.pinned : def.pinned,
+                align: p.align || def.align || 'left',
+                wrap: p.wrap || def.wrap || 'truncate',
               });
             }
           });
@@ -315,11 +320,17 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) return;
     const count = selectedIds.length;
-    if (!confirm(`Bạn có chắc chắn muốn xóa ${count} nhân viên đã chọn?`)) return;
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa ${count} nhân viên đã chọn?`)) return;
 
     const idSet = new Set(selectedIds);
     const toDelete = employees.filter((e) => idSet.has(e.id));
-    const identifiersToDelete = toDelete.map((e) => e.code || e.username || e.name);
+    const identifiersToDelete: string[] = [];
+    toDelete.forEach((e) => {
+      if (e.code) identifiersToDelete.push(e.code);
+      if (e.username) identifiersToDelete.push(e.username);
+      if (e.name) identifiersToDelete.push(e.name);
+      if (e.id) identifiersToDelete.push(e.id);
+    });
 
     const updatedList = employees.filter((e) => !idSet.has(e.id));
     setEmployees(updatedList);
@@ -399,9 +410,9 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         username: formData.username || formData.name?.toLowerCase().replace(/\s+/g, '') || '',
         phone: formData.phone || '',
         email: formData.email || '',
-        role: formData.role || 'Nhân viên',
-        department: formData.department || 'Phòng Kỹ thuật',
-        subDepartment: formData.subDepartment || '—',
+        role: formData.role || '',
+        department: formData.department || '',
+        subDepartment: formData.subDepartment || '',
         gender: formData.gender || 'Nam',
         status: formData.status || 'working',
         createdAt: dateStr,
@@ -410,31 +421,31 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
           formData.avatarUrl ||
           `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name || 'User')}&background=1d4ed8&color=fff`,
         dob: formData.dob || '',
-        maritalStatus: formData.maritalStatus || 'Độc thân',
-        nationality: formData.nationality || 'Việt Nam',
-        ethnicity: formData.ethnicity || 'Kinh',
-        religion: formData.religion || 'Không',
+        maritalStatus: formData.maritalStatus || '',
+        nationality: formData.nationality || '',
+        ethnicity: formData.ethnicity || '',
+        religion: formData.religion || '',
         hometown: formData.hometown || '',
-        rank: formData.rank || 1,
-        startDate: formData.startDate || dateStr,
+        rank: formData.rank || '',
+        startDate: formData.startDate || '',
         officialDate: formData.officialDate || '',
         resignationDate: formData.resignationDate || '',
         resignationReason: formData.resignationReason || '',
         idCardNumber: formData.idCardNumber || '',
         idCardDate: formData.idCardDate || '',
-        idCardPlace: formData.idCardPlace || 'Cục Cảnh sát QLHC về TTXH',
+        idCardPlace: formData.idCardPlace || '',
         permanentAddress: formData.permanentAddress || '',
         currentAddress: formData.currentAddress || '',
         personalEmail: formData.personalEmail || '',
         emergencyContactName: formData.emergencyContactName || '',
         emergencyContactPhone: formData.emergencyContactPhone || '',
         emergencyContactRelation: formData.emergencyContactRelation || '',
-        educationLevel: formData.educationLevel || 'Đại học',
+        educationLevel: formData.educationLevel || '',
         major: formData.major || '',
         school: formData.school || '',
         bankAccount: formData.bankAccount || '',
-        bankAccountHolder: formData.bankAccountHolder || formData.name?.toUpperCase() || '',
-        bankName: formData.bankName || 'Vietcombank',
+        bankAccountHolder: formData.bankAccountHolder || (formData.name ? formData.name.toUpperCase() : ''),
+        bankName: formData.bankName || '',
         bankBranch: formData.bankBranch || '',
         socialInsuranceNumber: formData.socialInsuranceNumber || '',
         healthInsuranceNumber: formData.healthInsuranceNumber || '',
@@ -455,7 +466,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       const ok = await employeeService.appendToSheet(created);
       setIsSyncing(false);
       if (ok) {
-        showToast(`Đã thêm nhân viên ${created.name} vào Google Sheet!`);
+        showToast(`Đã thêm nhân viên "${created.name}" vào Google Sheet thành công!`);
       } else {
         showToast('Đã thêm nhân viên vào bộ nhớ tạm.', true);
       }
@@ -479,7 +490,12 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
 
     setIsSyncing(true);
     // Delete ONLY this specific row from Google Sheet
-    const ok = await employeeService.deleteFromSheet([deleted.code || deleted.username || deleted.name]);
+    const ok = await employeeService.deleteFromSheet([
+      deleted.code,
+      deleted.username,
+      deleted.name,
+      deleted.id,
+    ].filter(Boolean) as string[]);
     setIsSyncing(false);
     if (ok) {
       showToast(`Đã xóa ${deleted?.name || 'nhân viên'} và đồng bộ Google Sheet!`);
@@ -662,39 +678,137 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       : 'py-3 px-4';
 
   // Dynamic widths for sticky columns
-  const nameCol = tableColumns.find((c) => c.id === 'name');
-  const nameWidth = nameCol?.width || 220;
+    // Visible columns in order
+  const visibleColumns = useMemo(() => {
+    return tableColumns.filter((c) => c.visible);
+  }, [tableColumns]);
 
-  const usernameCol = tableColumns.find((c) => c.id === 'username');
-  const usernameWidth = usernameCol?.width || 160;
+  // Compute dynamic sticky offsets for pinned columns
+  const columnOffsets = useMemo(() => {
+    const offsets = new Map<string, { isPinned: boolean; left: number; isLastPinned: boolean }>();
+    let currentLeft = 44; // Starts right after sticky Checkbox (width 44px)
+    let lastPinnedId: string | null = null;
 
-  const usernameLeftOffset = 44 + nameWidth;
+    for (let i = visibleColumns.length - 1; i >= 0; i--) {
+      if (visibleColumns[i].pinned) {
+        lastPinnedId = visibleColumns[i].id;
+        break;
+      }
+    }
 
-  const renderEmployeeCell = (col: ColumnItem, emp: Employee) => {
+    for (const col of visibleColumns) {
+      const colWidth = col.width || 160;
+      if (col.pinned) {
+        offsets.set(col.id, {
+          isPinned: true,
+          left: currentLeft,
+          isLastPinned: col.id === lastPinnedId,
+        });
+        currentLeft += colWidth;
+      } else {
+        offsets.set(col.id, {
+          isPinned: false,
+          left: 0,
+          isLastPinned: false,
+        });
+      }
+    }
+    return offsets;
+  }, [visibleColumns]);
+
+  const renderEmployeeCell = (col: ColumnItem, emp: Employee, stickyBgClass: string) => {
     const colId = col.id;
     const colWidth = col.width || 160;
+    const colAlign = col.align || 'left';
+    const isWrap = col.wrap === 'wrap';
+
+    const alignClass =
+      colAlign === 'center'
+        ? 'text-center'
+        : colAlign === 'right'
+        ? 'text-right'
+        : 'text-left';
+
+    const justifyClass =
+      colAlign === 'center'
+        ? 'justify-center'
+        : colAlign === 'right'
+        ? 'justify-end'
+        : 'justify-start';
+
+    const textWrapClass = isWrap
+      ? 'whitespace-normal break-words leading-relaxed'
+      : 'whitespace-nowrap truncate';
+
+    const offsetInfo = columnOffsets.get(col.id);
+    const isPinned = !!offsetInfo?.isPinned;
+    const pinnedLeft = offsetInfo?.left || 0;
+    const isLastPinned = !!offsetInfo?.isLastPinned;
+
+    const stickyTdClass = isPinned
+      ? `sticky z-[10] ${stickyBgClass} ${isLastPinned ? 'shadow-[3px_0_6px_-2px_rgba(0,0,0,0.12)]' : ''}`
+      : '';
+
     const colStyle: React.CSSProperties = {
       width: colWidth,
       minWidth: colWidth,
       maxWidth: colWidth,
+      ...(isPinned ? { left: `${pinnedLeft}px` } : {}),
     };
 
+    const tdBaseClass = `${cellPaddingClass} border-r border-border/40 ${alignClass} ${stickyTdClass}`;
+
     switch (colId) {
+      case 'name':
+        return (
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <div className={`flex items-center ${justifyClass} gap-2 min-w-0`}>
+              <img
+                src={emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=1d4ed8&color=fff`}
+                alt={emp.name}
+                className="w-6 h-6 rounded-full object-cover border border-border shrink-0"
+              />
+              <span className={`font-semibold text-foreground ${textWrapClass}`}>
+                {emp.name}
+              </span>
+            </div>
+          </td>
+        );
+      case 'username':
+        return (
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <div className={`flex items-center ${justifyClass} gap-1 min-w-0`}>
+              <span className={`font-mono text-primary font-medium ${textWrapClass}`}>{emp.username || '—'}</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedEmployeeForDetail(emp);
+                }}
+                title="Xem chi tiết"
+                className="shrink-0 p-0.5 rounded text-primary hover:bg-primary/10"
+              >
+                <Link2 className="w-3 h-3" />
+              </button>
+            </div>
+          </td>
+        );
+
       case 'password':
         return (
           <td
             key={colId}
             style={colStyle}
-            className={`${cellPaddingClass} border-r border-border/40 font-mono text-muted-foreground truncate`}
+            className={`${tdBaseClass} font-mono text-muted-foreground ${textWrapClass}`}
           >
             {emp.password ? emp.password : '••••••••'}
           </td>
         );
       case 'phone':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
-            <span className="flex items-center gap-1 text-foreground truncate">
-              <span className="truncate">{emp.phone}</span>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <span className={`flex items-center ${justifyClass} gap-1 text-foreground ${textWrapClass}`}>
+              <span className={textWrapClass}>{emp.phone}</span>
               <a
                 href={`tel:${emp.phone.replace(/\s+/g, '')}`}
                 onClick={(e) => e.stopPropagation()}
@@ -708,33 +822,41 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         );
       case 'role':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
-            <span className="flex items-center gap-1.5 text-foreground font-medium truncate">
-              <Briefcase className="w-3 h-3 text-primary/70 shrink-0" />
-              <span className="truncate">{emp.role}</span>
-            </span>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            {emp.role ? (
+              <span className={`flex items-center ${justifyClass} gap-1.5 text-foreground font-medium ${textWrapClass}`}>
+                <Briefcase className="w-3 h-3 text-primary/70 shrink-0" />
+                <span className={textWrapClass}>{emp.role}</span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
           </td>
         );
       case 'department':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
-            <span className="flex items-center gap-1.5 text-foreground truncate">
-              <Building2 className="w-3 h-3 text-primary/70 shrink-0" />
-              <span className="truncate">{emp.department}</span>
-            </span>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            {emp.department ? (
+              <span className={`flex items-center ${justifyClass} gap-1.5 text-foreground ${textWrapClass}`}>
+                <Building2 className="w-3 h-3 text-primary/70 shrink-0" />
+                <span className={textWrapClass}>{emp.department}</span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
           </td>
         );
       case 'subDepartment':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>
             {emp.subDepartment || '—'}
           </td>
         );
       case 'email':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
-            <span className="flex items-center gap-1 text-foreground truncate">
-              <span className="truncate">{emp.email}</span>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <span className={`flex items-center ${justifyClass} gap-1 text-foreground ${textWrapClass}`}>
+              <span className={textWrapClass}>{emp.email}</span>
               <a
                 href={`mailto:${emp.email}`}
                 onClick={(e) => e.stopPropagation()}
@@ -748,7 +870,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         );
       case 'gender':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
             <span
               className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border ${
                 emp.gender === 'Nam'
@@ -762,93 +884,97 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         );
       case 'status':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
-            {renderStatusBadge(emp.status)}
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <div className={`flex items-center ${justifyClass}`}>
+              {renderStatusBadge(emp.status)}
+            </div>
           </td>
         );
       case 'createdAt':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 tabular-nums text-muted-foreground truncate`}>{emp.createdAt}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.createdAt}</td>;
       case 'updatedAt':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 tabular-nums text-muted-foreground truncate`}>{emp.updatedAt}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.updatedAt}</td>;
       case 'code':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 font-mono font-semibold text-foreground truncate`}>{emp.code}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono font-semibold text-foreground ${textWrapClass}`}>{emp.code}</td>;
       case 'avatarUrl':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
-            <img
-              src={emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}`}
-              alt=""
-              className="w-7 h-7 rounded-md object-cover border border-border"
-            />
+          <td key={colId} style={colStyle} className={tdBaseClass}>
+            <div className={`flex items-center ${justifyClass}`}>
+              <img
+                src={emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}`}
+                alt=""
+                className="w-7 h-7 rounded-md object-cover border border-border shrink-0"
+              />
+            </div>
           </td>
         );
       case 'dob':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 tabular-nums text-muted-foreground truncate`}>{emp.dob || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.dob || '—'}</td>;
       case 'maritalStatus':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.maritalStatus || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.maritalStatus || '—'}</td>;
       case 'nationality':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.nationality || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.nationality || '—'}</td>;
       case 'ethnicity':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.ethnicity || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.ethnicity || '—'}</td>;
       case 'religion':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.religion || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.religion || '—'}</td>;
       case 'hometown':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.hometown || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.hometown || '—'}</td>;
       case 'jobRole':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-foreground truncate`}>{emp.role}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>{emp.role}</td>;
       case 'jobDepartment':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-foreground truncate`}>{emp.department}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>{emp.department}</td>;
       case 'rank':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>Bậc {emp.rank || 1}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>Bậc {emp.rank || 1}</td>;
       case 'startDate':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 tabular-nums text-muted-foreground truncate`}>{emp.startDate || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.startDate || '—'}</td>;
       case 'officialDate':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 tabular-nums text-muted-foreground truncate`}>{emp.officialDate || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.officialDate || '—'}</td>;
       case 'resignationDate':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 tabular-nums text-destructive font-medium truncate`}>{emp.resignationDate || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-destructive font-medium ${textWrapClass}`}>{emp.resignationDate || '—'}</td>;
       case 'resignationReason':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.resignationReason || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.resignationReason || '—'}</td>;
       case 'idCardNumber':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 font-mono text-foreground truncate`}>{emp.idCardNumber || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono text-foreground ${textWrapClass}`}>{emp.idCardNumber || '—'}</td>;
       case 'idCardDate':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 tabular-nums text-muted-foreground truncate`}>{emp.idCardDate || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.idCardDate || '—'}</td>;
       case 'idCardPlace':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.idCardPlace || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.idCardPlace || '—'}</td>;
       case 'permanentAddress':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.permanentAddress || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.permanentAddress || '—'}</td>;
       case 'currentAddress':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.currentAddress || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.currentAddress || '—'}</td>;
       case 'personalEmail':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.personalEmail || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.personalEmail || '—'}</td>;
       case 'emergencyContactName':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 font-medium text-foreground truncate`}>{emp.emergencyContactName || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} font-medium text-foreground ${textWrapClass}`}>{emp.emergencyContactName || '—'}</td>;
       case 'emergencyContactPhone':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 font-mono text-primary truncate`}>{emp.emergencyContactPhone || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono text-primary ${textWrapClass}`}>{emp.emergencyContactPhone || '—'}</td>;
       case 'emergencyContactRelation':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.emergencyContactRelation || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.emergencyContactRelation || '—'}</td>;
       case 'educationLevel':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.educationLevel || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.educationLevel || '—'}</td>;
       case 'major':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.major || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.major || '—'}</td>;
       case 'school':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.school || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.school || '—'}</td>;
       case 'bankAccount':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 font-mono font-bold text-foreground truncate`}>{emp.bankAccount || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono font-bold text-foreground ${textWrapClass}`}>{emp.bankAccount || '—'}</td>;
       case 'bankAccountHolder':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 font-semibold text-foreground uppercase truncate`}>{emp.bankAccountHolder || emp.name}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} font-semibold text-foreground uppercase ${textWrapClass}`}>{emp.bankAccountHolder || emp.name}</td>;
       case 'bankName':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.bankName || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.bankName || '—'}</td>;
       case 'bankBranch':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 text-muted-foreground truncate`}>{emp.bankBranch || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.bankBranch || '—'}</td>;
       case 'socialInsuranceNumber':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 font-mono text-muted-foreground truncate`}>{emp.socialInsuranceNumber || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono text-muted-foreground ${textWrapClass}`}>{emp.socialInsuranceNumber || '—'}</td>;
       case 'healthInsuranceNumber':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 font-mono text-muted-foreground truncate`}>{emp.healthInsuranceNumber || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono text-muted-foreground ${textWrapClass}`}>{emp.healthInsuranceNumber || '—'}</td>;
       case 'taxCode':
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40 font-mono text-foreground truncate`}>{emp.taxCode || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono text-foreground ${textWrapClass}`}>{emp.taxCode || '—'}</td>;
       case 'isActiveAccount':
         return (
-          <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>
+          <td key={colId} style={colStyle} className={tdBaseClass}>
             <span
               className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border ${
                 emp.status !== 'resigned'
@@ -861,7 +987,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
           </td>
         );
       default:
-        return <td key={colId} style={colStyle} className={`${cellPaddingClass} border-r border-border/40`}>—</td>;
+        return <td key={colId} style={colStyle} className={tdBaseClass}>—</td>;
     }
   };
 
@@ -1272,7 +1398,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                           {/* 1. Sticky Checkbox */}
                           <th
                             style={{ width: 44, minWidth: 44, maxWidth: 44 }}
-                            className={`sticky left-0 z-[25] px-3 bg-muted border-b border-r border-border text-center ${headerPaddingClass}`}
+                            className={`sticky left-0 z-[25] px-3 bg-muted border-b border-r border-border text-center ${headerPaddingClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
                           >
                             <input
                               type="checkbox"
@@ -1282,72 +1408,57 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                             />
                           </th>
 
-                          {/* 2. Sticky Họ và tên */}
-                          <th
-                            style={{ width: nameWidth, minWidth: nameWidth, maxWidth: nameWidth }}
-                            className={`sticky left-[44px] z-[25] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none`}
-                          >
-                            <div className="truncate">Họ và tên</div>
-                            {/* Resizer Handle */}
-                            <div
-                              className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-30 flex justify-center items-center group/resizer hover:bg-primary/20 ${
-                                resizingColId === 'name' ? 'bg-primary/30' : ''
-                              }`}
-                              onMouseDown={(e) => handleStartResize('name', e)}
-                              title="Kéo để chỉnh kích thước cột Họ và tên"
-                            >
-                              <div className="w-[2px] h-3.5 bg-border group-hover/resizer:bg-primary group-hover/resizer:h-full transition-all" />
-                            </div>
-                          </th>
+                          {/* Dynamic Columns (Fully customizable order, visibility & dynamic pinning) */}
+                          {visibleColumns.map((col) => {
+                            const colWidth = col.width || 160;
+                            const colAlign = col.align || 'left';
+                            const alignClass = colAlign === 'center' ? 'text-center' : colAlign === 'right' ? 'text-right' : 'text-left';
+                            const justifyClass = colAlign === 'center' ? 'justify-center' : colAlign === 'right' ? 'justify-end' : 'justify-between';
 
-                          {/* 3. Sticky Tên đăng nhập */}
-                          <th
-                            style={{
-                              left: `${usernameLeftOffset}px`,
-                              width: usernameWidth,
-                              minWidth: usernameWidth,
-                              maxWidth: usernameWidth,
-                            }}
-                            className={`sticky z-[25] bg-muted font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} relative group/th select-none shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
-                          >
-                            <div className="truncate">Tên đăng nhập</div>
-                            {/* Resizer Handle */}
-                            <div
-                              className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-30 flex justify-center items-center group/resizer hover:bg-primary/20 ${
-                                resizingColId === 'username' ? 'bg-primary/30' : ''
-                              }`}
-                              onMouseDown={(e) => handleStartResize('username', e)}
-                              title="Kéo để chỉnh kích thước cột Tên đăng nhập"
-                            >
-                              <div className="w-[2px] h-3.5 bg-border group-hover/resizer:bg-primary group-hover/resizer:h-full transition-all" />
-                            </div>
-                          </th>
+                            const offsetInfo = columnOffsets.get(col.id);
+                            const isPinned = !!offsetInfo?.isPinned;
+                            const pinnedLeft = offsetInfo?.left || 0;
+                            const isLastPinned = !!offsetInfo?.isLastPinned;
 
-                          {/* Dynamic Visible Columns (Filtered and ordered) */}
-                          {tableColumns
-                            .filter((c) => c.visible && c.id !== 'name' && c.id !== 'username')
-                            .map((col) => {
-                              const colWidth = col.width || 160;
-                              return (
-                                <th
-                                  key={col.id}
-                                  style={{ width: colWidth, minWidth: colWidth, maxWidth: colWidth }}
-                                  className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 bg-muted ${headerPaddingClass} relative group/th select-none`}
+                            const stickyThClass = isPinned
+                              ? `sticky z-[25] bg-muted ${isLastPinned ? 'shadow-[3px_0_6px_-2px_rgba(0,0,0,0.12)]' : ''}`
+                              : 'bg-muted';
+
+                            const thStyle: React.CSSProperties = {
+                              width: colWidth,
+                              minWidth: colWidth,
+                              maxWidth: colWidth,
+                              ...(isPinned ? { left: `${pinnedLeft}px` } : {}),
+                            };
+
+                            return (
+                              <th
+                                key={col.id}
+                                style={thStyle}
+                                className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} ${alignClass} ${stickyThClass} relative group/th select-none`}
+                              >
+                                <div className={`flex items-center ${justifyClass} gap-1 pr-1`}>
+                                  <span className="truncate">{col.label}</span>
+                                  {isPinned && (
+                                    <span title="Cột đang ghim cố định" className="inline-flex">
+                                      <Pin className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 fill-current shrink-0" />
+                                    </span>
+                                  )}
+                                  <SlidersHorizontal className="w-3 h-3 text-muted-foreground/50 shrink-0" />
+                                </div>
+                                {/* Resizer Handle */}
+                                <div
+                                  className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-20 flex justify-center items-center group/resizer hover:bg-primary/20 ${
+                                    resizingColId === col.id ? 'bg-primary/30' : ''
+                                  }`}
+                                  onMouseDown={(e) => handleStartResize(col.id, e)}
+                                  title={`Kéo để chỉnh kích thước cột ${col.label}`}
                                 >
-                                  <div className="truncate pr-2">{col.label}</div>
-                                  {/* Resizer Handle */}
-                                  <div
-                                    className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-col-resize select-none z-20 flex justify-center items-center group/resizer hover:bg-primary/20 ${
-                                      resizingColId === col.id ? 'bg-primary/30' : ''
-                                    }`}
-                                    onMouseDown={(e) => handleStartResize(col.id, e)}
-                                    title={`Kéo để chỉnh kích thước cột ${col.label}`}
-                                  >
-                                    <div className="w-[2px] h-3.5 bg-border group-hover/resizer:bg-primary group-hover/resizer:h-full transition-all" />
-                                  </div>
-                                </th>
-                              );
-                            })}
+                                  <div className="w-[2px] h-3.5 bg-border group-hover/resizer:bg-primary group-hover/resizer:h-full transition-all" />
+                                </div>
+                              </th>
+                            );
+                          })}
 
                           {/* Sticky Thao tác Action Header */}
                           <th
@@ -1369,34 +1480,39 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                             </td>
                           </tr>
                         ) : (
-                          filteredEmployees.map((emp) => {
+                          filteredEmployees.map((emp, index) => {
                             const isSelected = selectedIds.includes(emp.id);
                             const isActiveDetail = selectedEmployeeForDetail?.id === emp.id;
+                            const isEven = index % 2 === 1;
 
-                            // Solid opaque background classes for sticky cells to prevent text bleeding
+                            // 100% solid opaque background to completely prevent text bleed-through during horizontal scroll
                             const stickyBgClass = isActiveDetail
-                              ? 'bg-accent shadow-[inset_3px_0_0_var(--color-primary)]'
+                              ? 'bg-blue-100 dark:bg-blue-950 text-foreground !bg-opacity-100'
                               : isSelected
-                              ? 'bg-primary/10 group-hover:bg-primary/15'
-                              : 'bg-card group-hover:bg-muted/60';
+                              ? 'bg-blue-50 dark:bg-blue-900 text-foreground group-hover:bg-blue-100 dark:group-hover:bg-blue-800 !bg-opacity-100'
+                              : isEven
+                              ? 'bg-slate-50 dark:bg-slate-900 text-foreground group-hover:bg-slate-100 dark:group-hover:bg-slate-850 !bg-opacity-100'
+                              : 'bg-white dark:bg-card text-foreground group-hover:bg-slate-100 dark:group-hover:bg-slate-850 !bg-opacity-100';
+
+                            const rowBgClass = isActiveDetail
+                              ? 'bg-blue-100 dark:bg-blue-950'
+                              : isSelected
+                              ? 'bg-blue-50 dark:bg-blue-900 hover:bg-blue-100 dark:hover:bg-blue-800'
+                              : isEven
+                              ? 'bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800'
+                              : 'bg-white dark:bg-card hover:bg-slate-100 dark:hover:bg-slate-800';
 
                             return (
                               <tr
                                 key={emp.id}
                                 onClick={() => setSelectedEmployeeForDetail(emp)}
                                 aria-current={isActiveDetail}
-                                className={`group cursor-pointer transition-colors ${
-                                  isActiveDetail
-                                    ? 'bg-primary/[0.07] hover:bg-primary/[0.1]'
-                                    : isSelected
-                                    ? 'bg-primary/5 hover:bg-accent'
-                                    : 'bg-card even:bg-muted/15 hover:bg-accent'
-                                } [&>td]:border-b [&>td]:border-border`}
+                                className={`group cursor-pointer transition-colors ${rowBgClass} [&>td]:border-b [&>td]:border-border`}
                               >
                                 {/* 1. Sticky Checkbox */}
                                 <td
                                   style={{ width: 44, minWidth: 44, maxWidth: 44 }}
-                                  className={`sticky left-0 z-[10] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${stickyBgClass}`}
+                                  className={`sticky left-0 z-[10] px-3 ${cellPaddingClass.split(' ')[0]} border-r border-border text-center ${stickyBgClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <input
@@ -1407,53 +1523,8 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                                   />
                                 </td>
 
-                                {/* 2. Sticky Họ và tên */}
-                                <td
-                                  style={{ width: nameWidth, minWidth: nameWidth, maxWidth: nameWidth }}
-                                  className={`sticky left-[44px] z-[10] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/60 font-medium text-foreground ${stickyBgClass}`}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <img
-                                      src={emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=1d4ed8&color=fff`}
-                                      alt={emp.name}
-                                      className="w-6 h-6 rounded-full object-cover border border-border shrink-0"
-                                    />
-                                    <span className="truncate font-semibold text-foreground">
-                                      {emp.name}
-                                    </span>
-                                  </div>
-                                </td>
-
-                                {/* 3. Sticky Tên đăng nhập */}
-                                <td
-                                  style={{
-                                    left: `${usernameLeftOffset}px`,
-                                    width: usernameWidth,
-                                    minWidth: usernameWidth,
-                                    maxWidth: usernameWidth,
-                                  }}
-                                  className={`sticky z-[10] px-4 ${cellPaddingClass.split(' ')[0]} border-r border-border/60 font-mono text-primary ${stickyBgClass} shadow-[2px_0_5px_-2px_rgba(0,0,0,0.08)]`}
-                                >
-                                  <div className="flex items-center gap-1 min-w-0">
-                                    <span className="truncate">{emp.username || '—'}</span>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedEmployeeForDetail(emp);
-                                      }}
-                                      title="Xem chi tiết"
-                                      className="shrink-0 p-0.5 rounded text-primary hover:bg-primary/10"
-                                    >
-                                      <Link2 className="w-3 h-3" />
-                                    </button>
-                                  </div>
-                                </td>
-
-                                {/* Dynamic Columns */}
-                                {tableColumns
-                                  .filter((c) => c.visible && c.id !== 'name' && c.id !== 'username')
-                                  .map((col) => renderEmployeeCell(col, emp))}
+                                {/* Dynamic Columns (Fully customizable order, visibility & pinning) */}
+                                {visibleColumns.map((col) => renderEmployeeCell(col, emp, stickyBgClass))}
 
                                 {/* Sticky Thao tác */}
                                 <td
@@ -1478,9 +1549,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                                       title="Xóa nhân viên"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (confirm(`Bạn có chắc chắn muốn xóa nhân viên "${emp.name}"?`)) {
-                                          handleDeleteEmployee(emp.id);
-                                        }
+                                        handleDeleteEmployee(emp.id);
                                       }}
                                       className="p-1 rounded-md text-destructive hover:bg-destructive/10 transition-colors"
                                     >
@@ -1571,9 +1640,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (confirm(`Bạn có chắc chắn muốn xóa nhân viên "${emp.name}"?`)) {
-                                handleDeleteEmployee(emp.id);
-                              }
+                              handleDeleteEmployee(emp.id);
                             }}
                             className="px-2.5 py-1 text-xs rounded-lg border border-destructive/20 hover:bg-destructive/10 text-destructive flex items-center gap-1 font-medium transition-colors"
                           >
