@@ -5,6 +5,7 @@ import {
   Shield,
   History,
   Database,
+  BookOpen,
 } from 'lucide-react';
 import { SystemSection } from '../types/system';
 
@@ -45,6 +46,17 @@ export const SYSTEM_SECTIONS: SystemSection[] = [
         icon: Users,
         iconColor: 'rgb(5, 150, 105)',
         iconBgColor: 'rgba(5, 150, 105, 0.12)',
+      },
+      {
+        id: 'ghi-chu',
+        code: 'GC',
+        title: 'Ghi chú & Wiki',
+        description: 'Soạn bài viết, tài liệu kiến thức & bảng Wiki.',
+        href: '/he-thong/ghi-chu',
+        guideHref: '/he-thong/ghi-chu/huong-dan',
+        icon: BookOpen,
+        iconColor: 'rgb(147, 51, 234)',
+        iconBgColor: 'rgba(147, 51, 234, 0.12)',
       },
     ],
   },

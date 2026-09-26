@@ -7,6 +7,7 @@ import { FinancePage } from './components/finance/FinancePage';
 import { CostProposalPage } from './components/finance/CostProposalPage';
 import { SystemPage } from './components/system/SystemPage';
 import { EmployeePage } from './components/employee/EmployeePage';
+import { NotePage } from './components/notes/NotePage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { GenericPage } from './components/pages/GenericPage';
@@ -48,6 +49,8 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (currentPath === '/') {
       document.title = 'Trang chủ | ERP Doanh Nghiệp';
+    } else if (currentPath === '/ghi-chu' || currentPath === '/he-thong/ghi-chu') {
+      document.title = 'Ghi chú & Wiki | ERP Doanh Nghiệp';
     } else if (currentPath === '/tai-chinh') {
       document.title = 'Tài chính | ERP Doanh Nghiệp';
     } else if (currentPath === '/tai-chinh/de-xuat-chi-phi') {
@@ -92,24 +95,34 @@ const AppContent: React.FC = () => {
       return <DashboardHome onNavigate={(path) => handleNavigate(path)} />;
     }
 
-    // 2. Phân hệ Tài chính
+    // 2. Phân hệ Ghi chú & Wiki bài viết
+    if (currentPath === '/ghi-chu') {
+      return <NotePage onBack={() => handleNavigate('/')} />;
+    }
+
+    // 3. Phân hệ Tài chính
     if (currentPath === '/tai-chinh') {
       return <FinancePage onNavigate={(path) => handleNavigate(path)} />;
     }
 
-    // 3. Trang chi tiết: Đề xuất chi phí
+    // 4. Trang chi tiết: Đề xuất chi phí
     if (currentPath === '/tai-chinh/de-xuat-chi-phi') {
       return <CostProposalPage onBack={() => handleNavigate('/tai-chinh')} />;
     }
 
-    // 4. Phân hệ Hệ thống (Hub)
+    // 5. Phân hệ Hệ thống (Hub)
     if (currentPath === '/he-thong') {
       return <SystemPage onNavigate={(path) => handleNavigate(path)} />;
     }
 
-    // 5. Trang chi tiết: Nhân viên
+    // 6. Trang chi tiết: Nhân viên
     if (currentPath === '/he-thong/nhan-vien') {
       return <EmployeePage onBack={() => handleNavigate('/he-thong')} />;
+    }
+
+    // 7. Trang chi tiết: Ghi chú & Wiki trong Hệ thống
+    if (currentPath === '/he-thong/ghi-chu') {
+      return <NotePage onBack={() => handleNavigate('/he-thong')} />;
     }
 
     // 6. Các trang con khác của Hệ thống

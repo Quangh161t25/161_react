@@ -5,6 +5,7 @@ import {
   Layers,
   Copyright,
   Settings,
+  BookOpen,
 } from 'lucide-react';
 import { NavItem, DashboardModule, UserProfile } from '../types';
 
@@ -20,6 +21,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Tổng quan',
     href: '/tong-quan',
     icon: LayoutDashboard,
+  },
+  {
+    id: 'notes',
+    label: 'Ghi chú & Wiki',
+    href: '/ghi-chu',
+    icon: BookOpen,
   },
   {
     id: 'finance',
@@ -58,6 +65,14 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     href: '/tong-quan',
     icon: LayoutDashboard,
     gradientClass: 'from-sky-600 to-indigo-700 dark:from-sky-500 dark:to-indigo-600',
+  },
+  {
+    id: 'notes',
+    title: 'Ghi chú & Wiki',
+    description: 'Soạn thảo bài viết Web, vẽ bảng dữ liệu Wiki, ảnh & GPS.',
+    href: '/ghi-chu',
+    icon: BookOpen,
+    gradientClass: 'from-purple-600 to-indigo-700 dark:from-purple-500 dark:to-indigo-600',
   },
   {
     id: 'finance',
