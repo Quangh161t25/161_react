@@ -21,15 +21,16 @@ import {
   ShieldCheck,
   AtSign,
   KeyRound,
-  ImagePlus,
   PanelRightClose,
   PanelRight,
   PanelRightOpen,
-  UserPlus,
   ChevronDown,
-  AlertCircle,
   Eye,
   EyeOff,
+  Pencil,
+  Trash2,
+  ZoomIn,
+  Save,
 } from 'lucide-react';
 import { Employee, EmployeeStatus, Gender } from '../../types/employee';
 
@@ -66,15 +67,6 @@ const fromInputDate = (dateStr?: string): string => {
   return dateStr;
 };
 
-const slugify = (text: string): string => {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/[^a-z0-9]/g, '');
-};
-
 export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   isOpen,
   initialData,
@@ -84,7 +76,6 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [widthMode, setWidthMode] = useState<WidthMode>('normal');
   const isEdit = !!initialData;
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const formScrollRef = useRef<HTMLDivElement>(null);
 
   // Form State
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -96,16 +87,16 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [gender, setGender] = useState<Gender>('Nam');
   const [dob, setDob] = useState('');
   const [maritalStatus, setMaritalStatus] = useState('');
-  const [nationality, setNationality] = useState('');
-  const [ethnicity, setEthnicity] = useState('');
-  const [religion, setReligion] = useState('');
+  const [nationality, setNationality] = useState('Việt Nam');
+  const [ethnicity, setEthnicity] = useState('Kinh');
+  const [religion, setReligion] = useState('Không');
   const [hometown, setHometown] = useState('');
 
   // Work State
   const [role, setRole] = useState('');
   const [department, setDepartment] = useState('');
   const [subDepartment, setSubDepartment] = useState('');
-  const [rank, setRank] = useState<string | number>('');
+  const [rank, setRank] = useState<string | number>('Cấp 2');
   const [status, setStatus] = useState<EmployeeStatus>('working');
   const [startDate, setStartDate] = useState('');
   const [officialDate, setOfficialDate] = useState('');
@@ -128,7 +119,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [emergencyContactRelation, setEmergencyContactRelation] = useState('');
 
   // Education
-  const [educationLevel, setEducationLevel] = useState('');
+  const [educationLevel, setEducationLevel] = useState('Đại học');
   const [major, setMajor] = useState('');
   const [school, setSchool] = useState('');
 
@@ -144,6 +135,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [taxCode, setTaxCode] = useState('');
 
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [isPreviewImageOpen, setIsPreviewImageOpen] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -156,15 +148,15 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setGender(initialData.gender || 'Nam');
       setDob(toInputDate(initialData.dob));
       setMaritalStatus(initialData.maritalStatus || '');
-      setNationality(initialData.nationality || '');
-      setEthnicity(initialData.ethnicity || '');
-      setReligion(initialData.religion || '');
+      setNationality(initialData.nationality || 'Việt Nam');
+      setEthnicity(initialData.ethnicity || 'Kinh');
+      setReligion(initialData.religion || 'Không');
       setHometown(initialData.hometown || '');
 
       setRole(initialData.role || '');
       setDepartment(initialData.department || '');
       setSubDepartment(initialData.subDepartment || '');
-      setRank(initialData.rank || '');
+      setRank(initialData.rank || 'Cấp 2');
       setStatus(initialData.status || 'working');
       setStartDate(toInputDate(initialData.startDate));
       setOfficialDate(toInputDate(initialData.officialDate));
@@ -184,12 +176,12 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setEmergencyContactPhone(initialData.emergencyContactPhone || '');
       setEmergencyContactRelation(initialData.emergencyContactRelation || '');
 
-      setEducationLevel(initialData.educationLevel || '');
+      setEducationLevel(initialData.educationLevel || 'Đại học');
       setMajor(initialData.major || '');
       setSchool(initialData.school || '');
 
       setBankAccount(initialData.bankAccount || '');
-      setBankAccountHolder(initialData.bankAccountHolder || '');
+      setBankAccountHolder(initialData.bankAccountHolder || initialData.name || '');
       setBankName(initialData.bankName || '');
       setBankBranch(initialData.bankBranch || '');
 
@@ -206,15 +198,15 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setGender('Nam');
       setDob('');
       setMaritalStatus('');
-      setNationality('');
-      setEthnicity('');
-      setReligion('');
+      setNationality('Việt Nam');
+      setEthnicity('Kinh');
+      setReligion('Không');
       setHometown('');
 
       setRole('');
       setDepartment('');
       setSubDepartment('');
-      setRank('');
+      setRank('Cấp 2');
       setStatus('working');
       setStartDate('');
       setOfficialDate('');
@@ -234,7 +226,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setEmergencyContactPhone('');
       setEmergencyContactRelation('');
 
-      setEducationLevel('');
+      setEducationLevel('Đại học');
       setMajor('');
       setSchool('');
 
@@ -252,128 +244,134 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
 
   if (!isOpen) return null;
 
-  const handleNameChange = (val: string) => {
-    setName(val);
-  };
-
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarUrl(reader.result as string);
+      reader.onload = (loadEvt) => {
+        if (loadEvt.target?.result) {
+          setAvatarUrl(loadEvt.target.result as string);
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const validate = () => {
-    const errors: { [key: string]: string } = {};
-    if (!name.trim()) {
-      errors.name = 'Vui lòng nhập họ và tên';
+  const handleRemoveAvatar = () => {
+    setAvatarUrl('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
-    setFormErrors(errors);
-    if (Object.keys(errors).length > 0) {
-      if (formScrollRef.current) {
-        formScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-      return false;
-    }
-    return true;
   };
 
-  const handleSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!validate()) return;
+  const validate = () => {
+    const errors: { [key: string]: string } = {};
+    if (!name.trim()) errors.name = 'Vui lòng nhập họ và tên';
+    if (!role.trim()) errors.role = 'Vui lòng nhập/chọn chức vụ';
+    if (!phone.trim()) errors.phone = 'Vui lòng nhập số điện thoại';
+    if (!email.trim()) errors.email = 'Vui lòng nhập email công việc';
 
-    const finalUsername = username.trim() || slugify(name) || `user_${Date.now().toString().slice(-4)}`;
-    const finalPhone = phone.trim();
-    const finalEmail = email.trim();
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
 
     const payload: Partial<Employee> = {
       name: name.trim(),
       code: code.trim() || undefined,
-      username: finalUsername,
-      phone: finalPhone,
-      email: finalEmail,
-      role,
-      department,
-      subDepartment: subDepartment.trim(),
+      username: username.trim() || undefined,
+      password: tempPassword.trim() || undefined,
+      avatarUrl: avatarUrl || undefined,
       gender,
-      status,
       dob: fromInputDate(dob),
-      maritalStatus,
-      nationality,
-      ethnicity,
-      religion,
-      hometown: hometown.trim(),
-      rank,
+      maritalStatus: maritalStatus.trim() || undefined,
+      nationality: nationality.trim() || undefined,
+      ethnicity: ethnicity.trim() || undefined,
+      religion: religion.trim() || undefined,
+      hometown: hometown.trim() || undefined,
+
+      role: role.trim(),
+      department: department.trim(),
+      subDepartment: subDepartment.trim() || undefined,
+      rank: rank || undefined,
+      status,
       startDate: fromInputDate(startDate),
       officialDate: fromInputDate(officialDate),
-      resignationDate: status === 'resigned' ? fromInputDate(resignationDate) : undefined,
-      resignationReason: status === 'resigned' ? resignationReason.trim() : undefined,
-      idCardNumber: idCardNumber.trim(),
+      resignationDate: fromInputDate(resignationDate),
+      resignationReason: resignationReason.trim() || undefined,
+
+      idCardNumber: idCardNumber.trim() || undefined,
       idCardDate: fromInputDate(idCardDate),
-      idCardPlace: idCardPlace.trim(),
-      permanentAddress: permanentAddress.trim(),
-      currentAddress: currentAddress.trim(),
-      personalEmail: personalEmail.trim(),
-      emergencyContactName: emergencyContactName.trim(),
-      emergencyContactPhone: emergencyContactPhone.trim(),
-      emergencyContactRelation: emergencyContactRelation.trim(),
-      educationLevel,
-      major: major.trim(),
-      school: school.trim(),
-      bankAccount: bankAccount.trim(),
-      bankAccountHolder: (bankAccountHolder || name).trim().toUpperCase(),
-      bankName,
-      bankBranch: bankBranch.trim(),
-      socialInsuranceNumber: socialInsuranceNumber.trim(),
-      healthInsuranceNumber: healthInsuranceNumber.trim(),
-      taxCode: taxCode.trim(),
-      password: tempPassword.trim() || initialData?.password || '123456',
-      isActiveAccount: status !== 'resigned',
-      avatarUrl:
-        avatarUrl ||
-        initialData?.avatarUrl ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=1d4ed8&color=fff`,
+      idCardPlace: idCardPlace.trim() || undefined,
+      permanentAddress: permanentAddress.trim() || undefined,
+      currentAddress: currentAddress.trim() || undefined,
+
+      email: email.trim(),
+      personalEmail: personalEmail.trim() || undefined,
+      phone: phone.trim(),
+      emergencyContactName: emergencyContactName.trim() || undefined,
+      emergencyContactPhone: emergencyContactPhone.trim() || undefined,
+      emergencyContactRelation: emergencyContactRelation.trim() || undefined,
+
+      educationLevel: educationLevel.trim() || undefined,
+      major: major.trim() || undefined,
+      school: school.trim() || undefined,
+
+      bankAccount: bankAccount.trim() || undefined,
+      bankAccountHolder: (bankAccountHolder || name).trim() || undefined,
+      bankName: bankName.trim() || undefined,
+      bankBranch: bankBranch.trim() || undefined,
+
+      socialInsuranceNumber: socialInsuranceNumber.trim() || undefined,
+      healthInsuranceNumber: healthInsuranceNumber.trim() || undefined,
+      taxCode: taxCode.trim() || undefined,
     };
 
     onSubmit(payload);
   };
 
-  const getDrawerWidthStyle = () => {
+  const getWidthStyle = () => {
     switch (widthMode) {
       case 'narrow':
-        return 'min(540px, -2rem + 100vw)';
+        return 'min(540px, 100vw)';
       case 'wide':
-        return 'min(1024px, -4rem + 100vw)';
+        return 'min(1024px, 100vw)';
       case 'normal':
       default:
         return 'min(768px, -6rem + 100vw)';
     }
   };
 
+  const displayAvatar =
+    avatarUrl ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=1d4ed8&color=fff`;
+
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 transition-opacity animate-in fade-in duration-200"
         onClick={onClose}
       />
 
       {/* Drawer Container */}
       <div
-        className="fixed inset-y-0 right-0 w-full bg-card shadow-ultra flex flex-col h-[100dvh] border-l border-border/40 outline-none transform-gpu animate-in slide-in-from-right duration-300"
+        className="fixed inset-y-0 right-0 w-full bg-card shadow-2xl flex flex-col h-[100dvh] border-l border-border outline-none transform-gpu z-50 transition-[width] duration-200"
         role="dialog"
         aria-modal="true"
-        aria-label={isEdit ? 'Cập nhật nhân viên' : 'Thêm Nhân viên mới'}
+        aria-label={isEdit ? 'Chỉnh sửa Hồ sơ' : 'Thêm mới Nhân sự'}
         tabIndex={-1}
-        style={{ zIndex: 61, width: getDrawerWidthStyle() }}
+        style={{
+          width: getWidthStyle(),
+          transform: 'none',
+        }}
       >
-        {/* Header Bar */}
+        {/* Header */}
         <div
-          className="flex items-center justify-between gap-4 border-b border-border/60 bg-card shrink-0 px-4 py-2 sm:px-5"
+          className="flex items-center justify-between gap-4 border-b border-border bg-card shrink-0"
           style={{
             paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))',
             paddingBottom: '0.5rem',
@@ -381,91 +379,90 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
             paddingRight: 'max(0.75rem, env(safe-area-inset-right, 0px))',
           }}
         >
+          {/* Title */}
           <div className="flex items-center gap-3 min-w-0">
             <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
               <CircleUser className="w-5 h-5" />
             </div>
             <div className="min-w-0">
               <h3 className="text-base font-semibold text-foreground leading-tight truncate">
-                {isEdit ? `Cập nhật nhân viên: ${initialData?.name}` : 'Thêm Nhân viên mới'}
+                {isEdit ? 'Chỉnh sửa Hồ sơ' : 'Thêm mới Nhân sự'}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
-                {isEdit
-                  ? 'Chỉnh sửa hồ sơ thông tin nhân viên'
-                  : 'Thiết lập thông tin nhân sự mới vào hệ thống'}
+                {isEdit ? name || 'Hồ sơ nhân viên' : 'Điền đầy đủ thông tin nhân sự mới'}
               </p>
             </div>
           </div>
 
+          {/* Width Controls & Close */}
           <div className="flex items-center gap-1 shrink-0">
-            {/* Width Controls */}
             <div
               role="group"
               aria-label="Bề rộng ngăn bên"
-              className="flex items-center gap-0.5 shrink-0 rounded-xl border border-border/60 p-0.5"
+              className="flex items-center gap-0.5 shrink-0 rounded-xl border border-border p-0.5"
             >
               <button
                 type="button"
-                onClick={() => setWidthMode('narrow')}
                 aria-pressed={widthMode === 'narrow'}
                 aria-label="Hẹp"
                 title="Hẹp"
-                className={`p-2 rounded-lg transition-colors active:scale-90 ${
+                onClick={() => setWidthMode('narrow')}
+                className={`p-2 rounded-lg transition-colors active:scale-90 hover:bg-muted hover:text-foreground ${
                   widthMode === 'narrow'
                     ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground'
                 }`}
               >
                 <PanelRightClose className="w-4 h-4 stroke-[2.5px]" />
               </button>
               <button
                 type="button"
-                onClick={() => setWidthMode('normal')}
                 aria-pressed={widthMode === 'normal'}
                 aria-label="Chuẩn"
                 title="Chuẩn"
-                className={`p-2 rounded-lg transition-colors active:scale-90 ${
+                onClick={() => setWidthMode('normal')}
+                className={`p-2 rounded-lg transition-colors active:scale-90 hover:bg-muted hover:text-foreground ${
                   widthMode === 'normal'
                     ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground'
                 }`}
               >
                 <PanelRight className="w-4 h-4 stroke-[2.5px]" />
               </button>
               <button
                 type="button"
-                onClick={() => setWidthMode('wide')}
                 aria-pressed={widthMode === 'wide'}
                 aria-label="Rộng"
                 title="Rộng"
-                className={`p-2 rounded-lg transition-colors active:scale-90 ${
+                onClick={() => setWidthMode('wide')}
+                className={`p-2 rounded-lg transition-colors active:scale-90 hover:bg-muted hover:text-foreground ${
                   widthMode === 'wide'
                     ? 'bg-muted text-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    : 'text-muted-foreground'
                 }`}
               >
                 <PanelRightOpen className="w-4 h-4 stroke-[2.5px]" />
               </button>
             </div>
 
-            {/* Close Button */}
             <button
               type="button"
               onClick={onClose}
               aria-label="Đóng"
-              className="p-2.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors active:scale-90 shrink-0 cursor-pointer"
+              title="Đóng"
+              className="p-2.5 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors active:scale-90 shrink-0"
             >
               <X className="w-5 h-5 stroke-[2.5px]" />
             </button>
           </div>
         </div>
 
-        {/* Body Content */}
-        <div ref={formScrollRef} className="flex-1 overflow-y-auto bg-muted/50 p-4 sm:p-5 custom-scrollbar">
+        {/* Scrollable Form Body */}
+        <div className="flex-1 overflow-y-auto bg-muted/40 p-4 sm:p-5 custom-scrollbar">
           <div className="max-w-4xl mx-auto">
             <form id="emp-form" onSubmit={handleSubmit} className="space-y-4">
-              {/* ================= SECTION 1: THÔNG TIN CÁ NHÂN ================= */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-2.5 sm:space-y-3">
+              {/* Section 1: Thông tin cá nhân */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <CircleUser className="w-3.5 h-3.5" />
@@ -473,7 +470,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                   </h4>
                 </div>
 
-                {/* Avatar Upload */}
+                {/* Avatar Uploader */}
                 <div className="flex justify-center mb-4">
                   <div className="w-24">
                     <input
@@ -481,85 +478,95 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                       accept="image/*"
                       className="hidden"
                       type="file"
-                      onChange={handleAvatarUpload}
+                      onChange={handleAvatarFileChange}
                     />
                     <div className="relative group/frame mx-auto" style={{ width: '100%' }}>
                       <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="relative overflow-hidden border-2 transition-all duration-200 mx-auto rounded-full border-dashed cursor-pointer border-border hover:border-primary/40 bg-muted/30 hover:bg-muted/50"
+                        tabIndex={-1}
+                        className="relative overflow-hidden border-2 transition-all duration-200 mx-auto rounded-full border-border/80 shadow-xs"
                         style={{ aspectRatio: '1 / 1' }}
                       >
-                        {avatarUrl ? (
-                          <img
-                            src={avatarUrl}
-                            alt="Avatar"
-                            className="w-full h-full object-cover rounded-full"
-                          />
-                        ) : (
-                          <div
-                            className="absolute inset-0 flex flex-col items-center justify-center p-3 text-center"
-                            style={{ opacity: 1 }}
+                        <div className="absolute inset-0">
+                          <button
+                            type="button"
+                            onClick={() => setIsPreviewImageOpen(true)}
+                            className="absolute inset-0 w-full h-full p-0 border-0 cursor-zoom-in group/preview rounded-full focus:outline-none"
+                            title="Xem lớn"
+                            aria-label="Xem lớn"
                           >
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-1.5 transition-colors bg-muted text-muted-foreground">
-                              <ImagePlus className="w-4.5 h-4.5" />
-                            </div>
-                            <p className="text-[11px] font-medium transition-colors leading-tight text-muted-foreground">
-                              Ảnh đại diện
-                            </p>
-                          </div>
-                        )}
+                            <img
+                              alt="Preview"
+                              className="w-full h-full rounded-full object-cover"
+                              src={displayAvatar}
+                            />
+                            <span className="absolute inset-0 bg-black/0 group-hover/preview:bg-black/30 transition-colors flex items-center justify-center">
+                              <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover/preview:opacity-100 transition-opacity drop-shadow" />
+                            </span>
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Edit Avatar Button */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        title="Đổi ảnh"
+                        aria-label="Đổi ảnh"
+                        className="absolute bottom-0 right-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background shadow-xs text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Delete Avatar Button */}
+                      {avatarUrl && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveAvatar}
+                          title="Xóa ảnh"
+                          aria-label="Xóa ảnh"
+                          className="absolute top-0 right-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background shadow-xs text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
 
+                {/* Grid Fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
                   {/* Họ tên */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_ho_ten"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <CircleUser className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <CircleUser className="w-3 h-3 shrink-0" />
                       Họ tên
-                      <span
-                        aria-hidden="true"
-                        className="text-destructive ml-0.5 not-italic"
-                        style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
-                      >
-                        *
-                      </span>
+                      <span className="text-destructive ml-0.5">*</span>
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ho_ten"
-                        aria-required="true"
-                        name="ho_va_ten"
+                        required
                         value={name}
-                        onChange={(e) => handleNameChange(e.target.value)}
+                        onChange={(e) => {
+                          setName(e.target.value);
+                          if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+                        }}
                         placeholder="VD: Bùi Đức Thắng"
-                        className={`flex h-10 w-full rounded-lg border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-placeholder placeholder:italic ${
+                        className={`flex h-10 w-full rounded-lg border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 ${
                           formErrors.name ? 'border-destructive' : 'border-border'
                         }`}
                       />
                     </div>
                     {formErrors.name && (
-                      <p className="text-[11px] text-destructive mt-1 flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" /> {formErrors.name}
-                      </p>
+                      <span className="text-[11px] text-destructive mt-1 block">
+                        {formErrors.name}
+                      </span>
                     )}
                   </div>
 
                   {/* Giới tính */}
                   <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <span className="text-muted-foreground shrink-0">
-                        <Users className="w-3 h-3" />
-                      </span>
+                      <Users className="w-3 h-3 shrink-0" />
                       Giới tính
                     </label>
                     <div className="inline-flex flex-wrap rounded-lg border border-border bg-muted/30 p-0.5 w-full">
@@ -568,9 +575,9 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                           key={g}
                           type="button"
                           onClick={() => setGender(g)}
-                          className={`inline-flex items-center justify-center rounded-md transition-all duration-200 select-none border px-3.5 py-2 text-xs gap-2 flex-1 min-w-0 ${
+                          className={`inline-flex items-center justify-center rounded-md transition-all duration-200 select-none border px-3.5 py-2 text-xs gap-2 flex-1 min-w-0 cursor-pointer ${
                             gender === g
-                              ? 'bg-background text-foreground shadow-sm border-border ring-1 ring-border/50 font-semibold'
+                              ? 'bg-background text-foreground shadow-xs border-border font-semibold'
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-transparent font-medium'
                           }`}
                         >
@@ -582,146 +589,110 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
 
                   {/* Ngày sinh */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_ngay_sinh"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <User className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <User className="w-3 h-3 shrink-0" />
                       Ngày sinh
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ngay_sinh"
                         type="date"
-                        name="ngay_sinh"
                         value={dob}
                         onChange={(e) => setDob(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Tình trạng hôn nhân */}
-                  <div className="w-full relative">
+                  <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <span className="text-muted-foreground shrink-0">
-                        <Heart className="w-3 h-3" />
-                      </span>
+                      <Heart className="w-3 h-3 shrink-0" />
                       Tình trạng hôn nhân
                     </label>
                     <div className="relative">
                       <select
-                        name="tinh_trang_hon_nhan"
                         value={maritalStatus}
                         onChange={(e) => setMaritalStatus(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 appearance-none cursor-pointer"
                       >
-                        <option value="">-- Chọn tình trạng hôn nhân --</option>
+                        <option value="">Chọn tình trạng hôn nhân</option>
                         <option value="Độc thân">Độc thân</option>
                         <option value="Đã kết hôn">Đã kết hôn</option>
+                        <option value="Ly hôn">Ly hôn</option>
                         <option value="Khác">Khác</option>
                       </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" />
                     </div>
                   </div>
 
                   {/* Quốc tịch */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_quoc_tich"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <MapPin className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="w-3 h-3 shrink-0" />
                       Quốc tịch
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_quoc_tich"
-                        name="quoc_tich"
                         value={nationality}
                         onChange={(e) => setNationality(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-placeholder placeholder:italic"
+                        placeholder="VD: Việt Nam"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Dân tộc */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_dan_toc"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <User className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <User className="w-3 h-3 shrink-0" />
                       Dân tộc
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_dan_toc"
-                        name="dan_toc"
                         value={ethnicity}
                         onChange={(e) => setEthnicity(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-placeholder placeholder:italic"
+                        placeholder="VD: Kinh"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Tôn giáo */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_ton_giao"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <User className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <User className="w-3 h-3 shrink-0" />
                       Tôn giáo
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ton_giao"
-                        name="ton_giao"
                         value={religion}
                         onChange={(e) => setReligion(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-placeholder placeholder:italic"
+                        placeholder="VD: Không"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Quê quán */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_que_quan"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <MapPin className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="w-3 h-3 shrink-0" />
                       Quê quán
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_que_quan"
-                        name="que_quan"
                         value={hometown}
                         onChange={(e) => setHometown(e.target.value)}
-                        placeholder="Tỉnh / Thành phố"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-placeholder placeholder:italic"
+                        placeholder="VD: Hải Phòng"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* ================= SECTION 2: THÔNG TIN CÔNG VIỆC ================= */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-2.5 sm:space-y-3">
+              {/* Section 2: Thông tin công việc */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <Briefcase className="w-3.5 h-3.5" />
@@ -731,383 +702,262 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
                   {/* Chức vụ */}
-                  <div className="w-full relative">
+                  <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <span className="text-muted-foreground shrink-0">
-                        <Briefcase className="w-3 h-3" />
-                      </span>
+                      <Briefcase className="w-3 h-3 shrink-0" />
                       Chức vụ
-                      <span
-                        aria-hidden="true"
-                        className="text-destructive ml-0.5 not-italic"
-                        style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
-                      >
-                        *
-                      </span>
+                      <span className="text-destructive ml-0.5">*</span>
                     </label>
                     <div className="relative">
                       <input
-                        type="text"
-                        list="roles-list"
+                        required
                         value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        placeholder="Chọn hoặc thêm mới"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        onChange={(e) => {
+                          setRole(e.target.value);
+                          if (formErrors.role) setFormErrors({ ...formErrors, role: '' });
+                        }}
+                        placeholder="VD: Trưởng Nhóm Trợ lý"
+                        className={`flex h-10 w-full rounded-lg border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 ${
+                          formErrors.role ? 'border-destructive' : 'border-border'
+                        }`}
                       />
-                      <datalist id="roles-list">
-                        <option value="Giám đốc" />
-                        <option value="Phó giám đốc" />
-                        <option value="Trưởng phòng" />
-                        <option value="Phó phòng" />
-                        <option value="Kế toán trưởng" />
-                        <option value="Chuyên viên" />
-                        <option value="Nhân viên" />
-                        <option value="Thực tập sinh" />
-                      </datalist>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
                     </div>
+                    {formErrors.role && (
+                      <span className="text-[11px] text-destructive mt-1 block">
+                        {formErrors.role}
+                      </span>
+                    )}
                   </div>
 
                   {/* Phòng ban */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_phong_ban"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Building2 className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Building2 className="w-3 h-3 shrink-0" />
                       Phòng ban
                     </label>
                     <div className="relative">
-                      <select
-                        id="emp_phong_ban"
+                      <input
                         value={department}
                         onChange={(e) => setDepartment(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
-                      >
-                        <option value="">-- Chọn phòng ban --</option>
-                        <option value="Phòng Kỹ thuật">Phòng Kỹ thuật</option>
-                        <option value="Phòng Kinh doanh">Phòng Kinh doanh</option>
-                        <option value="Phòng Kế toán">Phòng Kế toán</option>
-                        <option value="Phòng Hành chính Nhân sự">Phòng Hành chính Nhân sự</option>
-                        <option value="Ban Giám Đốc">Ban Giám Đốc</option>
-                        <option value="Phòng Marketing">Phòng Marketing</option>
-                        <option value="Phòng Chăm sóc Khách hàng">Phòng Chăm sóc Khách hàng</option>
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
+                        placeholder="VD: Phòng Ban Giám đốc"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
+                      />
                     </div>
                   </div>
 
                   {/* Bộ phận */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_bo_phan"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Building2 className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Building2 className="w-3 h-3 shrink-0" />
                       Bộ phận
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_bo_phan"
-                        name="bo_phan"
                         value={subDepartment}
                         onChange={(e) => setSubDepartment(e.target.value)}
-                        placeholder="—"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        placeholder="VD: Nhóm trợ lý"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Cấp bậc */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_cap_bac"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Layers className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Layers className="w-3 h-3 shrink-0" />
                       Cấp bậc
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_cap_bac"
-                        name="cap_bac"
-                        type="number"
-                        min="1"
-                        max="10"
                         value={rank}
                         onChange={(e) => setRank(e.target.value)}
-                        placeholder="1"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        placeholder="VD: Cấp 2"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Trạng thái làm việc */}
-                  <div className="w-full relative">
+                  <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <span className="text-muted-foreground shrink-0">
-                        <CircleDot className="w-3 h-3" />
-                      </span>
+                      <CircleDot className="w-3 h-3 shrink-0" />
                       Trạng thái làm việc
                     </label>
                     <div className="relative">
                       <select
                         value={status}
                         onChange={(e) => setStatus(e.target.value as EmployeeStatus)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 appearance-none cursor-pointer"
                       >
                         <option value="working">Đang làm việc</option>
                         <option value="probation">Thử việc</option>
                         <option value="resigned">Đã nghỉ việc</option>
                         <option value="suspended">Tạm hoãn</option>
                       </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" />
                     </div>
                   </div>
 
                   {/* Ngày vào làm */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_ngay_vao_lam"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Briefcase className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Briefcase className="w-3 h-3 shrink-0" />
                       Ngày vào làm
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ngay_vao_lam"
                         type="date"
-                        name="ngay_vao_lam"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Ngày chính thức */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_ngay_chinh_thuc"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Briefcase className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Briefcase className="w-3 h-3 shrink-0" />
                       Ngày chính thức
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ngay_chinh_thuc"
                         type="date"
-                        name="ngay_chinh_thuc"
                         value={officialDate}
                         onChange={(e) => setOfficialDate(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Ngày nghỉ việc */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_ngay_nghi_viec"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Briefcase className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Briefcase className="w-3 h-3 shrink-0" />
                       Ngày nghỉ việc
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ngay_nghi_viec"
                         type="date"
-                        name="ngay_nghi_viec"
                         value={resignationDate}
                         onChange={(e) => setResignationDate(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Lý do nghỉ */}
-                  <div className="w-full relative">
+                  <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <span className="text-muted-foreground shrink-0">
-                        <CircleDot className="w-3 h-3" />
-                      </span>
+                      <CircleDot className="w-3 h-3 shrink-0" />
                       Lý do nghỉ
                     </label>
                     <div className="relative">
-                      <select
+                      <input
                         value={resignationReason}
                         onChange={(e) => setResignationReason(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
-                      >
-                        <option value="">Chọn lý do nghỉ</option>
-                        <option value="Nghỉ việc theo nguyện vọng">Nghỉ việc theo nguyện vọng</option>
-                        <option value="Hết hạn hợp đồng">Hết hạn hợp đồng</option>
-                        <option value="Thay đổi định hướng nghề nghiệp">Thay đổi định hướng nghề nghiệp</option>
-                        <option value="Chuyển nơi ở">Chuyển nơi ở</option>
-                        <option value="Khác">Khác</option>
-                      </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
+                        placeholder="VD: Chuyển công tác, Lý do cá nhân..."
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* ================= SECTION 3: GIẤY TỜ & ĐỊA CHỈ ================= */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-2.5 sm:space-y-3">
+              {/* Section 3: Giấy tờ & địa chỉ */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <IdCard className="w-3.5 h-3.5" />
-                    <span className="truncate">Giấy tờ &amp; địa chỉ</span>
+                    <span className="truncate">Giấy tờ & địa chỉ</span>
                   </h4>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
-                  {/* CMND/CCCD */}
+                  {/* CCCD */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_so_cccd"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <IdCard className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <IdCard className="w-3 h-3 shrink-0" />
                       CMND/CCCD
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_so_cccd"
-                        name="so_cccd"
                         value={idCardNumber}
                         onChange={(e) => setIdCardNumber(e.target.value)}
                         placeholder="VD: 012345678901"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
                   {/* Ngày cấp CCCD */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_ngay_cap_cccd"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <IdCard className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <IdCard className="w-3 h-3 shrink-0" />
                       Ngày cấp CCCD
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ngay_cap_cccd"
                         type="date"
-                        name="ngay_cap_cccd"
                         value={idCardDate}
                         onChange={(e) => setIdCardDate(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
                       />
                     </div>
                   </div>
 
                   {/* Nơi cấp */}
-                  <div className="w-full">
-                    <label
-                      htmlFor="emp_noi_cap_cccd"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <IdCard className="w-3 h-3" />
-                      </span>
+                  <div className="w-full sm:col-span-2">
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <IdCard className="w-3 h-3 shrink-0" />
                       Nơi cấp
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_noi_cap_cccd"
-                        name="noi_cap_cccd"
                         value={idCardPlace}
                         onChange={(e) => setIdCardPlace(e.target.value)}
                         placeholder="VD: Cục Cảnh sát QLHC về TTXH"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
                   {/* Địa chỉ thường trú */}
-                  <div className="col-span-full">
-                    <div className="w-full">
-                      <label
-                        htmlFor="emp_dia_chi_thuong_tru"
-                        className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                      >
-                        <span className="text-muted-foreground shrink-0">
-                          <MapPin className="w-3 h-3" />
-                        </span>
-                        Địa chỉ thường trú
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="emp_dia_chi_thuong_tru"
-                          name="dia_chi_thuong_tru"
-                          value={permanentAddress}
-                          onChange={(e) => setPermanentAddress(e.target.value)}
-                          placeholder="Số nhà, đường, phường/xã, tỉnh/thành"
-                          className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
-                        />
-                      </div>
+                  <div className="w-full sm:col-span-2">
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="w-3 h-3 shrink-0" />
+                      Địa chỉ thường trú
+                    </label>
+                    <div className="relative">
+                      <input
+                        value={permanentAddress}
+                        onChange={(e) => setPermanentAddress(e.target.value)}
+                        placeholder="Số nhà, đường, phường/xã, tỉnh/thành"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                      />
                     </div>
                   </div>
 
                   {/* Chỗ ở hiện tại */}
-                  <div className="col-span-full">
-                    <div className="w-full">
-                      <label
-                        htmlFor="emp_dia_chi_hien_tai"
-                        className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                      >
-                        <span className="text-muted-foreground shrink-0">
-                          <MapPin className="w-3 h-3" />
-                        </span>
-                        Chỗ ở hiện tại
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="emp_dia_chi_hien_tai"
-                          name="dia_chi_hien_tai"
-                          value={currentAddress}
-                          onChange={(e) => setCurrentAddress(e.target.value)}
-                          placeholder="Số nhà, đường, phường/xã, tỉnh/thành"
-                          className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
-                        />
-                      </div>
+                  <div className="w-full sm:col-span-2">
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <MapPin className="w-3 h-3 shrink-0" />
+                      Chỗ ở hiện tại
+                    </label>
+                    <div className="relative">
+                      <input
+                        value={currentAddress}
+                        onChange={(e) => setCurrentAddress(e.target.value)}
+                        placeholder="Số nhà, đường, phường/xã, tỉnh/thành"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* ================= SECTION 4: THÔNG TIN LIÊN HỆ ================= */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-2.5 sm:space-y-3">
+              {/* Section 4: Thông tin liên hệ */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <Mail className="w-3.5 h-3.5" />
@@ -1118,378 +968,279 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
                   {/* Email công việc */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_email"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Mail className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Mail className="w-3 h-3 shrink-0" />
                       Email công việc
-                      <span
-                        aria-hidden="true"
-                        className="text-destructive ml-0.5 not-italic"
-                        style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
-                      >
-                        *
-                      </span>
+                      <span className="text-destructive ml-0.5">*</span>
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_email"
-                        aria-required="true"
                         type="email"
-                        name="email"
+                        required
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
+                        }}
                         placeholder="VD: thang.bui@company.vn"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className={`flex h-10 w-full rounded-lg border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 ${
+                          formErrors.email ? 'border-destructive' : 'border-border'
+                        }`}
                       />
                     </div>
+                    {formErrors.email && (
+                      <span className="text-[11px] text-destructive mt-1 block">
+                        {formErrors.email}
+                      </span>
+                    )}
                   </div>
 
                   {/* Email cá nhân */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_email_ca_nhan"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Mail className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Mail className="w-3 h-3 shrink-0" />
                       Email cá nhân
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_email_ca_nhan"
                         type="email"
-                        name="email_ca_nhan"
                         value={personalEmail}
                         onChange={(e) => setPersonalEmail(e.target.value)}
                         placeholder="VD: ten@gmail.com"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
                   {/* Điện thoại */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_so_dien_thoai"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Phone className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Phone className="w-3 h-3 shrink-0" />
                       Điện thoại
-                      <span
-                        aria-hidden="true"
-                        className="text-destructive ml-0.5 not-italic"
-                        style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}
-                      >
-                        *
-                      </span>
+                      <span className="text-destructive ml-0.5">*</span>
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_so_dien_thoai"
-                        aria-required="true"
-                        name="so_dien_thoai"
+                        required
                         value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="VD: 0929 012 345"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        onChange={(e) => {
+                          setPhone(e.target.value);
+                          if (formErrors.phone) setFormErrors({ ...formErrors, phone: '' });
+                        }}
+                        placeholder="VD: 0929012345"
+                        className={`flex h-10 w-full rounded-lg border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 ${
+                          formErrors.phone ? 'border-destructive' : 'border-border'
+                        }`}
                       />
                     </div>
+                    {formErrors.phone && (
+                      <span className="text-[11px] text-destructive mt-1 block">
+                        {formErrors.phone}
+                      </span>
+                    )}
                   </div>
 
                   {/* Người liên hệ khẩn cấp */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_nguoi_lien_he_khan"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <User className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <User className="w-3 h-3 shrink-0" />
                       Người liên hệ khẩn cấp
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_nguoi_lien_he_khan"
-                        name="nguoi_lien_he_khan"
                         value={emergencyContactName}
                         onChange={(e) => setEmergencyContactName(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        placeholder="VD: Nguyễn Văn A"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
                   {/* SĐT khẩn cấp */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_sdt_khan"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Phone className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Phone className="w-3 h-3 shrink-0" />
                       SĐT khẩn cấp
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_sdt_khan"
-                        name="sdt_khan"
                         value={emergencyContactPhone}
                         onChange={(e) => setEmergencyContactPhone(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        placeholder="VD: 0987654321"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
                   {/* Quan hệ */}
-                  <div className="w-full relative">
+                  <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <span className="text-muted-foreground shrink-0">
-                        <Heart className="w-3 h-3" />
-                      </span>
+                      <Heart className="w-3 h-3 shrink-0" />
                       Quan hệ
                     </label>
                     <div className="relative">
                       <select
                         value={emergencyContactRelation}
                         onChange={(e) => setEmergencyContactRelation(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 appearance-none cursor-pointer"
                       >
                         <option value="">Chọn quan hệ</option>
-                        <option value="Bố">Bố</option>
-                        <option value="Mẹ">Mẹ</option>
-                        <option value="Vợ">Vợ</option>
-                        <option value="Chồng">Chồng</option>
+                        <option value="Bố/Mẹ">Bố/Mẹ</option>
+                        <option value="Vợ/Chồng">Vợ/Chồng</option>
                         <option value="Anh/Chị/Em">Anh/Chị/Em</option>
-                        <option value="Con">Con</option>
-                        <option value="Người thân">Người thân</option>
                         <option value="Khác">Khác</option>
                       </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* ================= SECTION 5: HỌC VẤN & CHỨNG CHỈ ================= */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-2.5 sm:space-y-3">
+              {/* Section 5: Học vấn & Chứng chỉ */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <GraduationCap className="w-3.5 h-3.5" />
-                    <span className="truncate">Học vấn &amp; Chứng chỉ</span>
+                    <span className="truncate">Học vấn & Chứng chỉ</span>
                   </h4>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
                   {/* Trình độ học vấn */}
-                  <div className="w-full relative">
+                  <div className="w-full">
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <span className="text-muted-foreground shrink-0">
-                        <GraduationCap className="w-3 h-3" />
-                      </span>
+                      <GraduationCap className="w-3 h-3 shrink-0" />
                       Trình độ học vấn
                     </label>
                     <div className="relative">
                       <select
                         value={educationLevel}
                         onChange={(e) => setEducationLevel(e.target.value)}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background appearance-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 appearance-none cursor-pointer"
                       >
-                        <option value="">-- Chọn trình độ học vấn --</option>
                         <option value="Đại học">Đại học</option>
                         <option value="Cao đẳng">Cao đẳng</option>
                         <option value="Thạc sĩ">Thạc sĩ</option>
                         <option value="Tiến sĩ">Tiến sĩ</option>
                         <option value="Trung cấp">Trung cấp</option>
-                        <option value="THPT">THPT</option>
-                        <option value="Khác">Khác</option>
+                        <option value="Phổ thông">Phổ thông</option>
                       </select>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" />
                     </div>
                   </div>
 
                   {/* Chuyên ngành */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_chuyen_nganh"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Briefcase className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Briefcase className="w-3 h-3 shrink-0" />
                       Chuyên ngành
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_chuyen_nganh"
-                        name="chuyen_nganh"
                         value={major}
                         onChange={(e) => setMajor(e.target.value)}
                         placeholder="VD: Công nghệ thông tin"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
                   {/* Trường đào tạo */}
-                  <div className="col-span-full">
-                    <div className="w-full">
-                      <label
-                        htmlFor="emp_truong"
-                        className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                      >
-                        <span className="text-muted-foreground shrink-0">
-                          <School className="w-3 h-3" />
-                        </span>
-                        Trường đào tạo
-                      </label>
-                      <div className="relative">
-                        <input
-                          id="emp_truong"
-                          name="truong"
-                          value={school}
-                          onChange={(e) => setSchool(e.target.value)}
-                          placeholder="VD: Đại học Bách Khoa TP.HCM"
-                          className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
-                        />
-                      </div>
+                  <div className="w-full sm:col-span-2">
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <School className="w-3 h-3 shrink-0" />
+                      Trường đào tạo
+                    </label>
+                    <div className="relative">
+                      <input
+                        value={school}
+                        onChange={(e) => setSchool(e.target.value)}
+                        placeholder="VD: Đại học Bách Khoa TP.HCM"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* ================= SECTION 6: TÀI CHÍNH & NGÂN HÀNG ================= */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-2.5 sm:space-y-3">
+              {/* Section 6: Tài chính & Ngân hàng */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <Landmark className="w-3.5 h-3.5" />
-                    <span className="truncate">Tài chính &amp; Ngân hàng</span>
+                    <span className="truncate">Tài chính & Ngân hàng</span>
                   </h4>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
                   {/* Số tài khoản */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_so_tai_khoan"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <CreditCard className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <CreditCard className="w-3 h-3 shrink-0" />
                       Số tài khoản
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_so_tai_khoan"
-                        name="so_tai_khoan"
                         value={bankAccount}
                         onChange={(e) => setBankAccount(e.target.value)}
                         placeholder="VD: 0123456789"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
                   {/* Chủ tài khoản */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_ten_chu_tai_khoan"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <User className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <User className="w-3 h-3 shrink-0" />
                       Chủ tài khoản
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ten_chu_tai_khoan"
-                        name="ten_chu_tai_khoan"
                         value={bankAccountHolder}
-                        onChange={(e) => setBankAccountHolder(e.target.value.toUpperCase())}
-                        placeholder={name ? name.toUpperCase() : 'NGUYEN VAN A'}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground uppercase ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        onChange={(e) => setBankAccountHolder(e.target.value)}
+                        placeholder={name || 'Tên chủ tài khoản'}
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
                   {/* Tên ngân hàng */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_ngan_hang"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Landmark className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Landmark className="w-3 h-3 shrink-0" />
                       Tên ngân hàng
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ngan_hang"
-                        list="bank-names-list"
-                        name="ngan_hang"
                         value={bankName}
                         onChange={(e) => setBankName(e.target.value)}
-                        placeholder="VD: Vietcombank, BIDV"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        placeholder="VD: Vietcombank, BIDV..."
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
-                      <datalist id="bank-names-list">
-                        <option value="Vietcombank" />
-                        <option value="Techcombank" />
-                        <option value="MB Bank" />
-                        <option value="BIDV" />
-                        <option value="VietinBank" />
-                        <option value="VPBank" />
-                        <option value="ACB" />
-                        <option value="TPBank" />
-                        <option value="Sacombank" />
-                        <option value="HDBank" />
-                      </datalist>
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                        <ChevronDown className="w-4 h-4" />
-                      </div>
                     </div>
                   </div>
 
                   {/* Chi nhánh */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_chi_nhanh"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Building2 className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Building2 className="w-3 h-3 shrink-0" />
                       Chi nhánh
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_chi_nhanh"
-                        name="chi_nhanh"
                         value={bankBranch}
                         onChange={(e) => setBankBranch(e.target.value)}
                         placeholder="VD: Chi nhánh Sở Giao Dịch"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* ================= SECTION 7: BẢO HIỂM ================= */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-2.5 sm:space-y-3">
+              {/* Section 7: Bảo hiểm */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <Shield className="w-3.5 h-3.5" />
@@ -1500,77 +1251,56 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
                   {/* Số BHXH */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_so_so_bhxh"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <Shield className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <Shield className="w-3 h-3 shrink-0" />
                       Số BHXH
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_so_so_bhxh"
-                        name="so_so_bhxh"
                         value={socialInsuranceNumber}
                         onChange={(e) => setSocialInsuranceNumber(e.target.value)}
                         placeholder="VD: 0123456789"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
                   {/* Số BHYT */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_so_bhyt"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <ShieldCheck className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <ShieldCheck className="w-3 h-3 shrink-0" />
                       Số BHYT
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_so_bhyt"
-                        name="so_bhyt"
                         value={healthInsuranceNumber}
                         onChange={(e) => setHealthInsuranceNumber(e.target.value)}
                         placeholder="VD: HS4010123456789"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
 
-                  {/* Mã số thuế cá nhân */}
-                  <div className="w-full">
-                    <label
-                      htmlFor="emp_ma_so_thue_ca_nhan"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <IdCard className="w-3 h-3" />
-                      </span>
+                  {/* Mã số thuế */}
+                  <div className="w-full sm:col-span-2">
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <IdCard className="w-3 h-3 shrink-0" />
                       Mã số thuế cá nhân
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_ma_so_thue_ca_nhan"
-                        name="ma_so_thue_ca_nhan"
                         value={taxCode}
                         onChange={(e) => setTaxCode(e.target.value)}
                         placeholder="VD: 0123456789"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground font-mono ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* ================= SECTION 8: TÀI KHOẢN HỆ THỐNG ================= */}
-              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-2.5 sm:space-y-3">
+              {/* Section 8: Tài khoản hệ thống */}
+              <div className="w-full bg-card p-3.5 sm:p-4 md:p-5 rounded-xl border border-border shadow-xs space-y-2.5 sm:space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 sm:pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-1.5 sm:gap-2 text-primary font-bold">
                     <KeyRound className="w-3.5 h-3.5" />
@@ -1578,59 +1308,54 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                   </h4>
                 </div>
 
+                <p className="text-xs text-muted-foreground mb-3">
+                  {isEdit
+                    ? 'Thông tin tài khoản dùng để đăng nhập hệ thống của nhân viên.'
+                    : 'Nhân viên chưa có tài khoản — nhập tên đăng nhập và mật khẩu tạm để tạo.'}
+                </p>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
                   {/* Tên đăng nhập */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_tai_khoan"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <AtSign className="w-3 h-3" />
-                      </span>
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <AtSign className="w-3 h-3 shrink-0" />
                       Tên đăng nhập
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_tai_khoan"
-                        name="tai_khoan"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
-                        placeholder="VD: thang.bd"
-                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic"
+                        placeholder={code ? code : 'VD: thang.bui'}
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 font-mono"
                       />
                     </div>
                   </div>
 
-                  {/* Mật khẩu */}
+                  {/* Mật khẩu tạm */}
                   <div className="w-full">
-                    <label
-                      htmlFor="emp_mat_khau_tam"
-                      className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground"
-                    >
-                      <span className="text-muted-foreground shrink-0">
-                        <KeyRound className="w-3 h-3" />
-                      </span>
-                      Mật khẩu đăng nhập
+                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
+                      <KeyRound className="w-3 h-3 shrink-0" />
+                      {isEdit ? 'Mật khẩu' : 'Mật khẩu tạm'}
                     </label>
                     <div className="relative">
                       <input
-                        id="emp_mat_khau_tam"
                         type={showPassword ? 'text' : 'password'}
-                        name="mat_khau_tam"
                         value={tempPassword}
                         onChange={(e) => setTempPassword(e.target.value)}
-                        placeholder={isEdit ? 'Nhập mật khẩu mới (hoặc giữ nguyên)' : 'Nhập mật khẩu (mặc định: 123456)'}
-                        className="flex h-10 w-full rounded-lg border border-border bg-background pl-3 pr-10 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-placeholder placeholder:italic font-mono"
+                        placeholder="Nhập mật khẩu..."
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 font-mono"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors cursor-pointer"
-                        title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                        tabIndex={-1}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                        title={showPassword ? 'Ẩn' : 'Hiện'}
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -1640,9 +1365,9 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
           </div>
         </div>
 
-        {/* Footer Actions */}
+        {/* Sticky Footer */}
         <div
-          className="bg-card border-t border-border/60 flex flex-col-reverse sm:flex-row items-center shadow-sticky shrink-0 w-full gap-2"
+          className="bg-card border-t border-border flex flex-col-reverse sm:flex-row items-center shrink-0 w-full gap-2 z-10"
           style={{
             paddingTop: '0.5rem',
             paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
@@ -1652,25 +1377,56 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
         >
           <div className="flex items-center justify-between w-full gap-2 flex-wrap">
             <button
-              className="inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 text-xs border-border text-muted-foreground active:scale-95 cursor-pointer"
               type="button"
               onClick={onClose}
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border bg-background hover:bg-muted h-8 px-3 text-xs border-border text-muted-foreground hover:text-foreground cursor-pointer"
             >
               Hủy
             </button>
             <div className="flex items-center gap-2">
               <button
-                className="inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-8 px-3 text-xs bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95 cursor-pointer"
-                type="button"
-                onClick={() => handleSubmit()}
+                type="submit"
+                form="emp-form"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-lg font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-8 px-3 text-xs bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 cursor-pointer"
               >
-                <UserPlus className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-                {isEdit ? 'Lưu thay đổi' : 'Thêm'}
+                <Save className="w-3.5 h-3.5 mr-1.5 shrink-0" />
+                Lưu
               </button>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      {isPreviewImageOpen && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setIsPreviewImageOpen(false)}
+        >
+          <div
+            className="relative max-w-md w-full bg-card rounded-2xl overflow-hidden shadow-2xl border border-border p-4 flex flex-col items-center gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-full flex items-center justify-between pb-2 border-b border-border">
+              <h4 className="text-sm font-bold text-foreground truncate">
+                {name || 'Ảnh đại diện'}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setIsPreviewImageOpen(false)}
+                className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <img
+              src={displayAvatar}
+              alt="Avatar Full"
+              className="w-64 h-64 sm:w-80 sm:h-80 object-cover rounded-xl shadow-md border border-border"
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 };
