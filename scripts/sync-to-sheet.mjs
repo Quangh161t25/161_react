@@ -734,6 +734,38 @@ const EMPLOYEES_RAW = [
 ];
 
 function employeeTo47Row(e) {
+  let bankAccountsList = e.bankAccounts;
+  if (!Array.isArray(bankAccountsList) || bankAccountsList.length === 0) {
+    if (e.bankAccount || e.bankName) {
+      bankAccountsList = [
+        {
+          id: 'ba_1',
+          bankName: e.bankName || '',
+          accountNumber: e.bankAccount || '',
+          accountHolder: e.bankAccountHolder || (e.name ? e.name.toUpperCase() : ''),
+          branch: e.bankBranch || '',
+          isPrimary: true,
+        },
+      ];
+    } else {
+      bankAccountsList = [];
+    }
+  }
+
+  const primaryBank =
+    bankAccountsList.find((b) => b.isPrimary) || bankAccountsList[0] || {};
+  const bankAccount = primaryBank.accountNumber || e.bankAccount || '';
+  const bankAccountHolder =
+    primaryBank.accountHolder || e.bankAccountHolder || (e.name ? e.name.toUpperCase() : '');
+  const bankName = primaryBank.bankName || e.bankName || '';
+  const bankBranch = primaryBank.branch || e.bankBranch || '';
+
+  const bankAccountsJson = JSON.stringify(bankAccountsList);
+  const hobbies = e.hobbies || '';
+  const dislikes = e.dislikes || '';
+  const socialMedia = typeof e.socialMedia === 'string' ? e.socialMedia : JSON.stringify(e.socialMedia || '');
+  const notes = e.notes || '';
+
   return [
     e.name || '',
     e.username || '',
@@ -774,16 +806,76 @@ function employeeTo47Row(e) {
     e.educationLevel || 'Đại học',
     e.major || '',
     e.school || '',
-    e.bankAccount || '',
-    e.bankAccountHolder || (e.name ? e.name.toUpperCase() : ''),
-    e.bankName || '',
-    e.bankBranch || '',
+    bankAccount,
+    bankAccountHolder,
+    bankName,
+    bankBranch,
     e.socialInsuranceNumber || '',
     e.healthInsuranceNumber || '',
     e.taxCode || '',
-    e.isActiveAccount || 'Hoạt động'
+    e.isActiveAccount || 'Hoạt động',
+    bankAccountsJson,
+    hobbies,
+    dislikes,
+    socialMedia,
+    notes,
   ];
 }
+
+const EMPLOYEE_HEADERS_52 = [
+  'Họ và tên',
+  'Tên đăng nhập',
+  'Mật khẩu',
+  'SĐT',
+  'Chức vụ',
+  'Phòng ban',
+  'Bộ phận',
+  'Email',
+  'Giới tính',
+  'Trạng thái',
+  'Ngày tạo',
+  'Cập nhật',
+  'Mã NV (ID)',
+  'Ảnh đại diện',
+  'Ngày sinh',
+  'Tình trạng hôn nhân',
+  'Quốc tịch',
+  'Dân tộc',
+  'Tôn giáo',
+  'Quê quán',
+  'Chức vụ (Công việc)',
+  'Phòng ban (Công việc)',
+  'Cấp bậc',
+  'Ngày vào làm',
+  'Ngày chính thức',
+  'Ngày nghỉ việc',
+  'Lý do nghỉ',
+  'CMND/CCCD',
+  'Ngày cấp CCCD',
+  'Nơi cấp',
+  'Địa chỉ thường trú',
+  'Chỗ ở hiện tại',
+  'Email cá nhân',
+  'Người liên hệ khẩn cấp',
+  'SĐT khẩn cấp',
+  'Quan hệ',
+  'Trình độ học vấn',
+  'Chuyên ngành',
+  'Trường đào tạo',
+  'Số tài khoản',
+  'Chủ tài khoản',
+  'Tên ngân hàng',
+  'Chi nhánh',
+  'Số BHXH',
+  'Số BHYT',
+  'Mã số thuế cá nhân',
+  'Tài khoản hoạt động',
+  'Danh sách ngân hàng (JSON)',
+  'Sở thích',
+  'Không thích',
+  'Mạng xã hội',
+  'Ghi chú',
+];
 
 async function syncAll() {
   const creds = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, 'utf8'));
@@ -880,19 +972,19 @@ async function syncAll() {
   });
   console.log(`✓ Synced "HeThong" tab with ${systemRows.length} records (6 columns).`);
 
-  // 6. Populate "NhanVien" (47 columns, 9 rows)
+  // 6. Populate "NhanVien" (52 columns, 9 rows)
   const empRows = EMPLOYEES_RAW.map(e => employeeTo47Row(e));
 
   await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AZ1000:clear`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   });
-  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AU${empRows.length + 1}?valueInputOption=USER_ENTERED`, {
+  await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/NhanVien!A1:AZ${empRows.length + 1}?valueInputOption=USER_ENTERED`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ values: [EMPLOYEE_HEADERS_47, ...empRows] })
+    body: JSON.stringify({ values: [EMPLOYEE_HEADERS_52, ...empRows] })
   });
-  console.log(`✓ Synced "NhanVien" tab with ${empRows.length} records (47 columns including Mật khẩu).`);
+  console.log(`✓ Synced "NhanVien" tab with ${empRows.length} records (52 columns including Ngân hàng JSON, Sở thích, Không thích, Mạng xã hội, Ghi chú).`);
 
   // Also update local mock data cache files
   const mockCostProposalsUi = [...COST_PROPOSALS].sort((a, b) => b.code.localeCompare(a.code)).map((p, idx) => ({

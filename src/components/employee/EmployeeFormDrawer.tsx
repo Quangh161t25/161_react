@@ -37,9 +37,18 @@ import {
   ThumbsDown,
   FileText,
   Sparkles,
+  Loader2,
+  Upload,
+  Clipboard,
 } from 'lucide-react';
-import { Employee, EmployeeStatus, Gender, EmployeeBankAccount } from '../../types/employee';
-import { VIETNAM_BANKS } from '../../data/employees';
+import { catboxService } from '../../services/catboxService';
+import {
+  Employee,
+  EmployeeStatus,
+  Gender,
+  EmployeeBankAccount,
+  VIETNAM_BANKS,
+} from '../../types/employee';
 
 interface EmployeeFormDrawerProps {
   isOpen: boolean;
@@ -74,6 +83,25 @@ const fromInputDate = (dateStr?: string): string => {
   return dateStr;
 };
 
+// Generate username slug from Vietnamese Full Name (e.g. "Bùi Đức Thắng" -> "thang.bui")
+const generateUsernameFromName = (fullName: string): string => {
+  if (!fullName || !fullName.trim()) return '';
+  const normalized = fullName
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, (m) => (m === 'Đ' ? 'd' : 'd'))
+    .toLowerCase()
+    .trim();
+
+  const parts = normalized.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+
+  const lastName = parts[0];
+  const firstName = parts[parts.length - 1];
+  return `${firstName}.${lastName}`;
+};
+
 export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   isOpen,
   initialData,
@@ -89,6 +117,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [username, setUsername] = useState('');
+  const [isUsernameCustom, setIsUsernameCustom] = useState(false);
   const [tempPassword, setTempPassword] = useState('123456');
   const [showPassword, setShowPassword] = useState(false);
   const [gender, setGender] = useState<Gender>('Nam');
@@ -126,7 +155,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
   const [emergencyContactRelation, setEmergencyContactRelation] = useState('');
 
   // Education
-  const [educationLevel, setEducationLevel] = useState('Đại học');
+  const [educationLevel, setEducationLevel] = useState('');
   const [major, setMajor] = useState('');
   const [school, setSchool] = useState('');
 
@@ -146,6 +175,11 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
 
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isPreviewImageOpen, setIsPreviewImageOpen] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarToast, setAvatarToast] = useState<{
+    type: 'info' | 'success' | 'warning';
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -186,9 +220,10 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setEmergencyContactPhone(initialData.emergencyContactPhone || '');
       setEmergencyContactRelation(initialData.emergencyContactRelation || '');
 
-      setEducationLevel(initialData.educationLevel || 'Đại học');
+      setEducationLevel(initialData.educationLevel || '');
       setMajor(initialData.major || '');
       setSchool(initialData.school || '');
+      setIsUsernameCustom(!!initialData.username);
 
       // Multi-bank accounts loading
       if (initialData.bankAccounts && initialData.bankAccounts.length > 0) {
@@ -281,9 +316,10 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       setEmergencyContactPhone('');
       setEmergencyContactRelation('');
 
-      setEducationLevel('Đại học');
+      setEducationLevel('');
       setMajor('');
       setSchool('');
+      setIsUsernameCustom(false);
 
       setBankAccounts([
         {
@@ -308,18 +344,143 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
     setFormErrors({});
   }, [initialData, isOpen]);
 
-  if (!isOpen) return null;
+  const isUrlOrDataUri = (str: string) => {
+    if (!str) return false;
+    const s = str.trim();
+    return /^(https?:\/\/|data:image\/)/i.test(s) && !/\s/.test(s);
+  };
 
-  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  const processAvatarFile = async (file: File) => {
+    setIsUploadingAvatar(true);
+    setAvatarToast({ type: 'info', message: '☁️ Đang tải ảnh lên Catbox...' });
+    try {
+      const catboxUrl = await catboxService.uploadFile(file);
+      setAvatarUrl(catboxUrl);
+      setAvatarToast({ type: 'success', message: '✅ Đã lưu ảnh đại diện lên Catbox!' });
+      setTimeout(() => setAvatarToast(null), 3000);
+    } catch (err) {
+      console.warn('Catbox upload failed, falling back to local base64:', err);
       const reader = new FileReader();
       reader.onload = (loadEvt) => {
         if (loadEvt.target?.result) {
           setAvatarUrl(loadEvt.target.result as string);
+          setAvatarToast({ type: 'warning', message: '⚠️ Đã lưu ảnh tạm thời (lỗi mạng Catbox)' });
+          setTimeout(() => setAvatarToast(null), 3000);
         }
       };
       reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const processAvatarTextUrl = (text: string): boolean => {
+    const trimmed = text.trim();
+    if (isUrlOrDataUri(trimmed)) {
+      setAvatarUrl(trimmed);
+      setAvatarToast({ type: 'success', message: '✅ Đã áp dụng link ảnh đại diện!' });
+      setTimeout(() => setAvatarToast(null), 3000);
+      return true;
+    }
+    return false;
+  };
+
+  // Global Ctrl + V listener when Drawer is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInputOrTextarea =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
+      // Check if clipboard contains an image file
+      const items = e.clipboardData?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.startsWith('image/')) {
+            const file = items[i].getAsFile();
+            if (file) {
+              e.preventDefault();
+              processAvatarFile(file);
+              return;
+            }
+          }
+        }
+      }
+
+      // If user is not currently typing in a text field, check if clipboard has an image link URL
+      if (!isInputOrTextarea) {
+        const text = e.clipboardData?.getData('text');
+        if (text && isUrlOrDataUri(text.trim())) {
+          e.preventDefault();
+          processAvatarTextUrl(text);
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processAvatarFile(file);
+  };
+
+  const handleClipboardPasteButtonClick = async () => {
+    try {
+      if (navigator.clipboard?.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imageType = item.types.find((t) => t.startsWith('image/'));
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            const file = new File([blob], `avatar_${Date.now()}.png`, { type: imageType });
+            await processAvatarFile(file);
+            return;
+          }
+        }
+      }
+      if (navigator.clipboard?.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && processAvatarTextUrl(text)) {
+          return;
+        }
+      }
+      setAvatarToast({ type: 'info', message: '💡 Nhấn tổ hợp phím Ctrl + V để dán trực tiếp.' });
+      setTimeout(() => setAvatarToast(null), 3000);
+    } catch {
+      setAvatarToast({ type: 'info', message: '💡 Nhấn phím Ctrl + V để dán ảnh hoặc link.' });
+      setTimeout(() => setAvatarToast(null), 3000);
+    }
+  };
+
+  const handleAvatarContainerPaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            processAvatarFile(file);
+            return;
+          }
+        }
+      }
+    }
+    const text = e.clipboardData?.getData('text');
+    if (text && processAvatarTextUrl(text)) {
+      e.preventDefault();
     }
   };
 
@@ -378,8 +539,6 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
     const errors: { [key: string]: string } = {};
     if (!name.trim()) errors.name = 'Vui lòng nhập họ và tên';
     if (!role.trim()) errors.role = 'Vui lòng nhập/chọn chức vụ';
-    if (!phone.trim()) errors.phone = 'Vui lòng nhập số điện thoại';
-    if (!email.trim()) errors.email = 'Vui lòng nhập email công việc';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -598,8 +757,30 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                 </div>
 
                 {/* Avatar Uploader */}
-                <div className="flex justify-center mb-4">
-                  <div className="w-24">
+                <div className="flex flex-col items-center mb-4">
+                  {/* Toast notification */}
+                  {avatarToast && (
+                    <div
+                      className={`mb-2 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 shadow-xs transition-all animate-in fade-in slide-in-from-top-1 ${
+                        avatarToast.type === 'success'
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                          : avatarToast.type === 'warning'
+                          ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                          : 'bg-primary/10 text-primary border border-primary/20'
+                      }`}
+                    >
+                      <span>{avatarToast.message}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAvatarToast(null)}
+                        className="ml-1 opacity-70 hover:opacity-100"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="w-24 relative">
                     <input
                       ref={fileInputRef}
                       accept="image/*"
@@ -609,54 +790,113 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                     />
                     <div className="relative group/frame mx-auto" style={{ width: '100%' }}>
                       <div
-                        tabIndex={-1}
-                        className="relative overflow-hidden border-2 transition-all duration-200 mx-auto rounded-full border-border/80 shadow-xs"
+                        tabIndex={0}
+                        onPaste={handleAvatarContainerPaste}
+                        title="Nhấp vào đây và nhấn Ctrl + V để dán ảnh hoặc dán link ảnh"
+                        className="relative overflow-hidden border-2 transition-all duration-200 mx-auto rounded-full border-border/80 shadow-xs cursor-pointer focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:outline-none"
                         style={{ aspectRatio: '1 / 1' }}
                       >
                         <div className="absolute inset-0">
-                          <button
-                            type="button"
-                            onClick={() => setIsPreviewImageOpen(true)}
-                            className="absolute inset-0 w-full h-full p-0 border-0 cursor-zoom-in group/preview rounded-full focus:outline-none"
-                            title="Xem lớn"
-                            aria-label="Xem lớn"
-                          >
-                            <img
-                              alt="Preview"
-                              className="w-full h-full rounded-full object-cover"
-                              src={displayAvatar}
-                            />
-                            <span className="absolute inset-0 bg-black/0 group-hover/preview:bg-black/30 transition-colors flex items-center justify-center">
-                              <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover/preview:opacity-100 transition-opacity drop-shadow" />
-                            </span>
-                          </button>
+                          {isUploadingAvatar ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-black/60 backdrop-blur-xs text-white p-2 text-center">
+                              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                              <span className="text-[9px] font-medium mt-1">Đang tải lên Catbox...</span>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setIsPreviewImageOpen(true)}
+                              className="absolute inset-0 w-full h-full p-0 border-0 cursor-zoom-in group/preview rounded-full focus:outline-none"
+                              title="Xem lớn (Hoặc nhấn Ctrl+V để dán ảnh)"
+                              aria-label="Xem lớn"
+                            >
+                              <img
+                                alt="Preview"
+                                className="w-full h-full rounded-full object-cover"
+                                src={displayAvatar}
+                              />
+                              <span className="absolute inset-0 bg-black/0 group-hover/preview:bg-black/30 transition-colors flex items-center justify-center">
+                                <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover/preview:opacity-100 transition-opacity drop-shadow" />
+                              </span>
+                            </button>
+                          )}
                         </div>
                       </div>
 
-                      {/* Edit Avatar Button */}
+                      {/* Edit Avatar Button (Browse file) */}
                       <button
                         type="button"
+                        disabled={isUploadingAvatar}
                         onClick={() => fileInputRef.current?.click()}
-                        title="Đổi ảnh"
+                        title="Chọn ảnh từ máy tính (Tự động tải lên Catbox)"
                         aria-label="Đổi ảnh"
-                        className="absolute bottom-0 right-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background shadow-xs text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                        className="absolute bottom-0 right-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background shadow-xs text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors cursor-pointer disabled:opacity-50"
                       >
                         <Pencil className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Quick Paste Button from Clipboard */}
+                      <button
+                        type="button"
+                        disabled={isUploadingAvatar}
+                        onClick={handleClipboardPasteButtonClick}
+                        title="Dán từ Clipboard (ảnh hoặc link ảnh - Ctrl + V)"
+                        aria-label="Dán từ Clipboard"
+                        className="absolute bottom-0 left-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background shadow-xs text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors cursor-pointer disabled:opacity-50"
+                      >
+                        <Clipboard className="w-3.5 h-3.5" />
                       </button>
 
                       {/* Delete Avatar Button */}
                       {avatarUrl && (
                         <button
                           type="button"
+                          disabled={isUploadingAvatar}
                           onClick={handleRemoveAvatar}
                           title="Xóa ảnh"
                           aria-label="Xóa ảnh"
-                          className="absolute top-0 right-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background shadow-xs text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-colors cursor-pointer"
+                          className="absolute top-0 right-0 inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-background shadow-xs text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-colors cursor-pointer disabled:opacity-50"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
+                  </div>
+
+                  {/* Status & Quick Paste/URL input */}
+                  <div className="flex flex-col items-center mt-2.5 gap-1.5 w-full max-w-xs">
+                    {avatarUrl.startsWith('https://files.catbox.moe') && (
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center justify-center gap-1 text-center whitespace-nowrap">
+                        <Upload className="w-2.5 h-2.5" /> Lưu trên Catbox
+                      </span>
+                    )}
+
+                    {/* Input dán URL ảnh trực tiếp & nút Dán */}
+                    <div className="flex items-center gap-1.5 w-full">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          placeholder="Dán link ảnh hoặc Ctrl+V..."
+                          value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
+                          onChange={(e) => setAvatarUrl(e.target.value)}
+                          onPaste={handleAvatarContainerPaste}
+                          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClipboardPasteButtonClick}
+                        title="Dán từ Clipboard (ảnh hoặc link)"
+                        className="px-2.5 py-1.5 rounded-lg border border-border bg-muted/60 hover:bg-primary/10 hover:text-primary hover:border-primary/40 text-muted-foreground text-xs font-medium transition-colors flex items-center gap-1 shrink-0"
+                      >
+                        <Clipboard className="w-3.5 h-3.5" />
+                        <span>Dán</span>
+                      </button>
+                    </div>
+
+                    <span className="text-[10px] text-muted-foreground text-center">
+                      💡 Nhấn <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono border border-border text-foreground font-semibold">Ctrl + V</kbd> để dán ảnh hoặc dán link ảnh
+                    </span>
                   </div>
                 </div>
 
@@ -674,8 +914,12 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                         required
                         value={name}
                         onChange={(e) => {
-                          setName(e.target.value);
+                          const val = e.target.value;
+                          setName(val);
                           if (formErrors.name) setFormErrors({ ...formErrors, name: '' });
+                          if (!isUsernameCustom && !isEdit) {
+                            setUsername(generateUsernameFromName(val));
+                          }
                         }}
                         placeholder="VD: Bùi Đức Thắng"
                         className={`flex h-10 w-full rounded-lg border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 ${
@@ -1098,28 +1342,16 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
                       <Mail className="w-3 h-3 shrink-0" />
                       Email công việc
-                      <span className="text-destructive ml-0.5">*</span>
                     </label>
                     <div className="relative">
                       <input
                         type="email"
-                        required
                         value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value);
-                          if (formErrors.email) setFormErrors({ ...formErrors, email: '' });
-                        }}
+                        onChange={(e) => setEmail(e.target.value)}
                         placeholder="VD: thang.bui@company.vn"
-                        className={`flex h-10 w-full rounded-lg border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 ${
-                          formErrors.email ? 'border-destructive' : 'border-border'
-                        }`}
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
-                    {formErrors.email && (
-                      <span className="text-[11px] text-destructive mt-1 block">
-                        {formErrors.email}
-                      </span>
-                    )}
                   </div>
 
                   {/* Email cá nhân */}
@@ -1144,27 +1376,15 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                     <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
                       <Phone className="w-3 h-3 shrink-0" />
                       Điện thoại
-                      <span className="text-destructive ml-0.5">*</span>
                     </label>
                     <div className="relative">
                       <input
-                        required
                         value={phone}
-                        onChange={(e) => {
-                          setPhone(e.target.value);
-                          if (formErrors.phone) setFormErrors({ ...formErrors, phone: '' });
-                        }}
+                        onChange={(e) => setPhone(e.target.value)}
                         placeholder="VD: 0929012345"
-                        className={`flex h-10 w-full rounded-lg border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 ${
-                          formErrors.phone ? 'border-destructive' : 'border-border'
-                        }`}
+                        className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60"
                       />
                     </div>
-                    {formErrors.phone && (
-                      <span className="text-[11px] text-destructive mt-1 block">
-                        {formErrors.phone}
-                      </span>
-                    )}
                   </div>
 
                   {/* Người liên hệ khẩn cấp */}
@@ -1245,12 +1465,14 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                         onChange={(e) => setEducationLevel(e.target.value)}
                         className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 appearance-none cursor-pointer"
                       >
+                        <option value="">Chọn trình độ học vấn</option>
                         <option value="Đại học">Đại học</option>
                         <option value="Cao đẳng">Cao đẳng</option>
                         <option value="Thạc sĩ">Thạc sĩ</option>
                         <option value="Tiến sĩ">Tiến sĩ</option>
                         <option value="Trung cấp">Trung cấp</option>
                         <option value="Phổ thông">Phổ thông</option>
+                        <option value="Khác">Khác</option>
                       </select>
                       <ChevronDown className="w-4 h-4 text-muted-foreground pointer-events-none absolute right-3 top-1/2 -translate-y-1/2" />
                     </div>
@@ -1604,14 +1826,34 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3.5">
                   {/* Tên đăng nhập */}
                   <div className="w-full">
-                    <label className="text-xs font-medium leading-none mb-1.5 flex items-center gap-1.5 text-muted-foreground">
-                      <AtSign className="w-3 h-3 shrink-0" />
-                      Tên đăng nhập
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-medium leading-none flex items-center gap-1.5 text-muted-foreground">
+                        <AtSign className="w-3 h-3 shrink-0" />
+                        Tên đăng nhập
+                      </label>
+                      {name.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const gen = generateUsernameFromName(name);
+                            setUsername(gen);
+                            setIsUsernameCustom(false);
+                          }}
+                          className="text-[11px] text-primary hover:underline flex items-center gap-1 cursor-pointer font-medium"
+                          title="Tự động tạo tên đăng nhập theo Họ tên"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          Tạo theo tên
+                        </button>
+                      )}
+                    </div>
                     <div className="relative">
                       <input
                         value={username}
-                        onChange={(e) => setUsername(e.target.value)}
+                        onChange={(e) => {
+                          setUsername(e.target.value);
+                          setIsUsernameCustom(true);
+                        }}
                         placeholder={code ? code : 'VD: thang.bui'}
                         className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 placeholder:text-muted-foreground/60 font-mono"
                       />

@@ -69,29 +69,16 @@
   scrollbar-width: none;
 }
 
-/* Clear text selection readability */
-::selection {
-  background-color: rgba(37, 99, 235, 0.25);
-  color: inherit;
+/* Text selection highlight: Vivid yellow with dark contrast text */
+::selection,
+*::selection {
+  background-color: #fde047 !important;
+  color: #0f172a !important;
 }
 
-.bg-primary,
-.bg-primary *,
-[class*="bg-primary"],
-[class*="bg-primary"] * {
-  &::selection {
-    background-color: rgba(255, 255, 255, 0.35);
-    color: #ffffff;
-  }
-}
-
-.bg-destructive,
-.bg-destructive *,
-[class*="bg-destructive"],
-[class*="bg-destructive"] * {
-  &::selection {
-    background-color: rgba(255, 255, 255, 0.35);
-    color: #ffffff;
-  }
+::-moz-selection,
+*::-moz-selection {
+  background-color: #fde047 !important;
+  color: #0f172a !important;
 }
 

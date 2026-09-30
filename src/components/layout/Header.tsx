@@ -16,6 +16,7 @@ import { NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../data/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { FINANCE_SECTIONS } from '../../data/finance';
 import { SYSTEM_SECTIONS } from '../../data/system';
+import { WORK_SECTIONS } from '../../data/tasks';
 import { ChangePasswordModal } from '../auth/ChangePasswordModal';
 
 interface HeaderProps {
@@ -75,6 +76,48 @@ export const Header: React.FC<HeaderProps> = ({
       { label: 'Trang chủ', href: '/', isCurrent: false, isHome: true },
     ];
 
+    if (activePath === '/cong-viec') {
+      crumbs.push({
+        label: 'Công việc',
+        href: '/cong-viec',
+        isCurrent: true,
+        isHome: false,
+      });
+      return crumbs;
+    }
+
+    if (activePath.startsWith('/cong-viec/')) {
+      crumbs.push({
+        label: 'Công việc',
+        href: '/cong-viec',
+        isCurrent: false,
+        isHome: false,
+      });
+
+      const cleanPath = activePath.split('?')[0];
+      const allWorkItems = WORK_SECTIONS.flatMap((s) => s.items);
+      const subItem = allWorkItems.find((i) => i.href.split('?')[0] === cleanPath);
+
+      let subLabel = subItem ? subItem.title : 'Chi tiết công việc';
+      if (cleanPath === '/cong-viec/danh-sach') {
+        if (activePath.includes('view=my_tasks')) {
+          subLabel = 'Công việc của tôi';
+        } else if (activePath.includes('view=calendar')) {
+          subLabel = 'Lịch công tác & Deadline';
+        } else {
+          subLabel = 'Danh sách công việc';
+        }
+      }
+
+      crumbs.push({
+        label: subLabel,
+        href: activePath,
+        isCurrent: true,
+        isHome: false,
+      });
+      return crumbs;
+    }
+
     if (activePath === '/tai-chinh') {
       crumbs.push({
         label: 'Tài chính',
@@ -95,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       // Find subpage title
       const allFinanceItems = FINANCE_SECTIONS.flatMap((s) => s.items);
-      const subItem = allFinanceItems.find((i) => i.href === activePath);
+      const subItem = allFinanceItems.find((i) => i.href === activePath.split('?')[0]);
       crumbs.push({
         label: subItem ? subItem.title : 'Chi tiết',
         href: activePath,
@@ -125,7 +168,7 @@ export const Header: React.FC<HeaderProps> = ({
 
       const allSystemItems = SYSTEM_SECTIONS.flatMap((s) => s.items);
       const isGuide = activePath.endsWith('/huong-dan');
-      const baseHref = activePath.replace(/\/huong-dan$/, '');
+      const baseHref = activePath.split('?')[0].replace(/\/huong-dan$/, '');
       const subItem = allSystemItems.find((i) => i.href === baseHref);
 
       if (isGuide && subItem) {
@@ -152,8 +195,18 @@ export const Header: React.FC<HeaderProps> = ({
       return crumbs;
     }
 
+    if (activePath === '/ho-so') {
+      crumbs.push({
+        label: 'Hồ sơ cá nhân',
+        href: '/ho-so',
+        isCurrent: true,
+        isHome: false,
+      });
+      return crumbs;
+    }
+
     const allNav = [...NAV_ITEMS, ...BOTTOM_NAV_ITEMS];
-    const navItem = allNav.find((item) => item.href === activePath);
+    const navItem = allNav.find((item) => item.href === activePath.split('?')[0]);
     if (navItem) {
       crumbs.push({
         label: navItem.label,

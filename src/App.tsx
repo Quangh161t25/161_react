@@ -5,12 +5,25 @@ import { MainLayout } from './components/layout/MainLayout';
 import { DashboardHome } from './components/dashboard/DashboardHome';
 import { FinancePage } from './components/finance/FinancePage';
 import { CostProposalPage } from './components/finance/CostProposalPage';
+import { CashTransactionPage } from './components/finance/CashTransactionPage';
+import { FinanceCategoryPage } from './components/finance/categories/FinanceCategoryPage';
+import { FinanceAccountPage } from './components/finance/accounts/FinanceAccountPage';
+import { CounterpartyPage } from './components/finance/counterparties/CounterpartyPage';
+import { ApprovalThresholdPage } from './components/finance/thresholds/ApprovalThresholdPage';
 import { SystemPage } from './components/system/SystemPage';
 import { EmployeePage } from './components/employee/EmployeePage';
 import { NotePage } from './components/notes/NotePage';
+import { LearningPage } from './components/learning/LearningPage';
 import { SettingsPage } from './components/settings/SettingsPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { GenericPage } from './components/pages/GenericPage';
+import { WorkPage } from './components/work/WorkPage';
+import { TaskListPage } from './components/work/tasks/TaskListPage';
+import { ProjectListPage } from './components/work/projects/ProjectListPage';
+import { WorkflowListPage } from './components/work/workflows/WorkflowListPage';
+import { WorkReportPage } from './components/work/reports/WorkReportPage';
+import { PasswordPage } from './components/password/PasswordPage';
+import { CalendarPage } from './components/calendar/CalendarPage';
 import { DASHBOARD_MODULES, NAV_ITEMS, BOTTOM_NAV_ITEMS } from './data/navigation';
 import { FINANCE_SECTIONS } from './data/finance';
 import { SYSTEM_SECTIONS } from './data/system';
@@ -49,12 +62,38 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (currentPath === '/') {
       document.title = 'Trang chủ | ERP Doanh Nghiệp';
+    } else if (currentPath === '/cong-viec') {
+      document.title = 'Công việc & Dự án | ERP Doanh Nghiệp';
+    } else if (currentPath.startsWith('/cong-viec/danh-sach')) {
+      document.title = 'Danh sách công việc | ERP Doanh Nghiệp';
+    } else if (currentPath.startsWith('/cong-viec/du-an')) {
+      document.title = 'Quản lý Dự án | ERP Doanh Nghiệp';
+    } else if (currentPath.startsWith('/cong-viec/quy-trinh')) {
+      document.title = 'Quy trình công việc | ERP Doanh Nghiệp';
+    } else if (currentPath.startsWith('/cong-viec/kpi-bao-cao')) {
+      document.title = 'Báo cáo KPI & Hiệu suất | ERP Doanh Nghiệp';
+    } else if (currentPath === '/lich') {
+      document.title = 'Lịch & Sự kiện Toàn hệ thống | ERP Doanh Nghiệp';
+    } else if (currentPath === '/mat-khau') {
+      document.title = 'Quản lý Mật khẩu & Két Tài khoản | ERP Doanh Nghiệp';
     } else if (currentPath === '/ghi-chu' || currentPath === '/he-thong/ghi-chu') {
-      document.title = 'Ghi chú & Wiki | ERP Doanh Nghiệp';
+      document.title = 'Ghi chú | ERP Doanh Nghiệp';
+    } else if (currentPath === '/hoc-hoi') {
+      document.title = 'Học hỏi & Kiến thức | ERP Doanh Nghiệp';
     } else if (currentPath === '/tai-chinh') {
       document.title = 'Tài chính | ERP Doanh Nghiệp';
+    } else if (currentPath === '/tai-chinh/thu-chi') {
+      document.title = 'Thu chi & Dòng tiền | Tài chính | ERP Doanh Nghiệp';
     } else if (currentPath === '/tai-chinh/de-xuat-chi-phi') {
       document.title = 'Đề xuất chi phí | ERP Doanh Nghiệp';
+    } else if (currentPath === '/tai-chinh/danh-muc-tai-chinh') {
+      document.title = 'Danh mục tài chính | ERP Doanh Nghiệp';
+    } else if (currentPath === '/tai-chinh/tai-khoan') {
+      document.title = 'Tài khoản tài chính | ERP Doanh Nghiệp';
+    } else if (currentPath === '/tai-chinh/doi-tuong-thu-chi') {
+      document.title = 'Đối tượng thu chi | ERP Doanh Nghiệp';
+    } else if (currentPath === '/tai-chinh/nguong-duyet') {
+      document.title = 'Ngưỡng duyệt chi phí | ERP Doanh Nghiệp';
     } else if (currentPath === '/he-thong') {
       document.title = 'Hệ thống | ERP Doanh Nghiệp';
     } else if (currentPath === '/he-thong/nhan-vien') {
@@ -95,9 +134,66 @@ const AppContent: React.FC = () => {
       return <DashboardHome onNavigate={(path) => handleNavigate(path)} />;
     }
 
-    // 2. Phân hệ Ghi chú & Wiki bài viết
+    // 1b. Phân hệ Công việc (Work Hub)
+    if (currentPath === '/cong-viec') {
+      return <WorkPage onNavigate={(path) => handleNavigate(path)} />;
+    }
+
+    // 1c. Công việc: Danh sách công việc
+    if (currentPath.startsWith('/cong-viec/danh-sach')) {
+      const isMyTasks = currentPath.includes('view=my_tasks');
+      const isCalendar = currentPath.includes('view=calendar');
+      return (
+        <TaskListPage
+          onBack={() => handleNavigate('/cong-viec')}
+          initialViewMode={isCalendar ? 'calendar' : isMyTasks ? 'kanban' : 'table'}
+        />
+      );
+    }
+
+    // 1d. Công việc: Quản lý Dự án
+    if (currentPath.startsWith('/cong-viec/du-an')) {
+      return (
+        <ProjectListPage
+          onBack={() => handleNavigate('/cong-viec')}
+          onSelectTask={() => handleNavigate('/cong-viec/danh-sach')}
+        />
+      );
+    }
+
+    // 1e. Công việc: Quy trình mẫu
+    if (currentPath.startsWith('/cong-viec/quy-trinh')) {
+      return <WorkflowListPage onBack={() => handleNavigate('/cong-viec')} />;
+    }
+
+    // 1f. Công việc: Báo cáo & KPI
+    if (currentPath.startsWith('/cong-viec/kpi-bao-cao')) {
+      return <WorkReportPage onBack={() => handleNavigate('/cong-viec')} />;
+    }
+
+    // 1b. Phân hệ Lịch toàn hệ thống
+    if (currentPath === '/lich') {
+      return (
+        <CalendarPage
+          onBack={() => handleNavigate('/')}
+          onNavigate={(path) => handleNavigate(path)}
+        />
+      );
+    }
+
+    // 1g. Phân hệ Quản lý Mật khẩu
+    if (currentPath === '/mat-khau') {
+      return <PasswordPage onBack={() => handleNavigate('/')} />;
+    }
+
+    // 2. Phân hệ Ghi chú
     if (currentPath === '/ghi-chu') {
       return <NotePage onBack={() => handleNavigate('/')} />;
+    }
+
+    // 2b. Phân hệ Học hỏi & Kiến thức
+    if (currentPath === '/hoc-hoi') {
+      return <LearningPage onBack={() => handleNavigate('/')} />;
     }
 
     // 3. Phân hệ Tài chính
@@ -110,6 +206,36 @@ const AppContent: React.FC = () => {
       return <CostProposalPage onBack={() => handleNavigate('/tai-chinh')} />;
     }
 
+    // 4b. Trang chi tiết: Thu chi
+    if (currentPath === '/tai-chinh/thu-chi') {
+      return (
+        <CashTransactionPage
+          onBack={() => handleNavigate('/tai-chinh')}
+          onNavigateToModule={(path) => handleNavigate(path)}
+        />
+      );
+    }
+
+    // 4c. Trang chi tiết: Danh mục tài chính
+    if (currentPath === '/tai-chinh/danh-muc-tai-chinh') {
+      return <FinanceCategoryPage onBack={() => handleNavigate('/tai-chinh')} />;
+    }
+
+    // 4d. Trang chi tiết: Tài khoản
+    if (currentPath === '/tai-chinh/tai-khoan') {
+      return <FinanceAccountPage onBack={() => handleNavigate('/tai-chinh')} />;
+    }
+
+    // 4e. Trang chi tiết: Đối tượng thu chi
+    if (currentPath === '/tai-chinh/doi-tuong-thu-chi') {
+      return <CounterpartyPage onBack={() => handleNavigate('/tai-chinh')} />;
+    }
+
+    // 4f. Trang chi tiết: Ngưỡng duyệt
+    if (currentPath === '/tai-chinh/nguong-duyet') {
+      return <ApprovalThresholdPage onBack={() => handleNavigate('/tai-chinh')} />;
+    }
+
     // 5. Phân hệ Hệ thống (Hub)
     if (currentPath === '/he-thong') {
       return <SystemPage onNavigate={(path) => handleNavigate(path)} />;
@@ -120,7 +246,7 @@ const AppContent: React.FC = () => {
       return <EmployeePage onBack={() => handleNavigate('/he-thong')} />;
     }
 
-    // 7. Trang chi tiết: Ghi chú & Wiki trong Hệ thống
+    // 7. Trang chi tiết: Ghi chú trong Hệ thống
     if (currentPath === '/he-thong/ghi-chu') {
       return <NotePage onBack={() => handleNavigate('/he-thong')} />;
     }

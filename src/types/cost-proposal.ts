@@ -18,13 +18,17 @@ export interface CostProposal {
   code: string;
   proposalDate: string;
   dueDate: string;
+  proposerId?: string;
+  proposerCode?: string;
   proposer: string;
+  beneficiaryId?: string;
+  beneficiaryCode?: string;
+  beneficiary?: string;
   department: string;
   title: string;
   reason: string;
   amount: number;
   account: string;
-  beneficiary?: string;
   isOverBudget: boolean;
   overBudgetReason?: string;
   note?: string;

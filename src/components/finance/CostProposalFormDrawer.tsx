@@ -21,6 +21,18 @@ import {
 } from 'lucide-react';
 import { CostProposal, ProposalLineItem } from '../../types/cost-proposal';
 import { useAuth } from '../../context/AuthContext';
+import { employeeService } from '../../services/employeeService';
+import {
+  financeAccountService,
+  counterpartyService,
+  financeCategoryService,
+} from '../../services/financeMasterService';
+import { Employee } from '../../types/employee';
+import {
+  FinanceAccount,
+  Counterparty,
+  FinanceCategory,
+} from '../../types/financeMaster';
 
 interface CostProposalFormDrawerProps {
   initialData?: CostProposal | null;
@@ -30,17 +42,6 @@ interface CostProposalFormDrawerProps {
 }
 
 type DrawerWidthMode = 'narrow' | 'normal' | 'wide';
-
-const USERS_LIST = [
-  'Lê Minh Công',
-  'Dương Thị Kim Oanh',
-  'Trần Quang Huy',
-  'Nguyễn Văn Thành',
-  'Bùi Thị Lan',
-  'Lê Hoàng Nam',
-  'Trịnh Thị Ngọc',
-  'Đinh Công Vinh',
-];
 
 const DEPARTMENTS_LIST = [
   'Ban Giám Đốc',
@@ -52,33 +53,6 @@ const DEPARTMENTS_LIST = [
   'Phòng Kinh doanh',
 ];
 
-const ACCOUNTS_LIST = [
-  'Vietcombank - Tài khoản chính',
-  'Techcombank - Chi lương',
-  'Quỹ tiền mặt',
-  'BIDV - Tài khoản chi phí dự án',
-];
-
-const BENEFICIARIES_LIST = [
-  'Công ty TNHH In ấn Quảng cáo Sài Gòn',
-  'DNTN Văn phòng phẩm Hồng Hà',
-  'Công ty Điện Lực TP.HCM',
-  'Công ty Cấp Nước Sài Gòn',
-  'Bảo hiểm xã hội TP.HCM',
-  'Công ty TNHH Giải pháp Phần mềm ABC',
-];
-
-const CATEGORIES_LIST = [
-  'Quảng cáo',
-  'Văn phòng phẩm',
-  'Điện nước & Dịch vụ',
-  'Bảo hiểm & Phúc lợi',
-  'Lương & Thưởng',
-  'Tiếp khách',
-  'Công tác phí',
-  'Chi phí khác',
-];
-
 export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
   initialData,
   isOpen,
@@ -87,6 +61,20 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const [widthMode, setWidthMode] = useState<DrawerWidthMode>('normal');
+
+  // Master Data States
+  const [employees, setEmployees] = useState<Employee[]>(() =>
+    employeeService.getInitialEmployees()
+  );
+  const [masterAccounts, setMasterAccounts] = useState<FinanceAccount[]>(() =>
+    financeAccountService.getInitialAccounts()
+  );
+  const [masterCounterparties, setMasterCounterparties] = useState<Counterparty[]>(() =>
+    counterpartyService.getInitialCounterparties()
+  );
+  const [masterCategories, setMasterCategories] = useState<FinanceCategory[]>(() =>
+    financeCategoryService.getInitialCategories()
+  );
 
   // Form Fields
   const [proposalDate, setProposalDate] = useState<string>('');
@@ -119,6 +107,16 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
   const [isBeneficiaryDropdownOpen, setIsBeneficiaryDropdownOpen] = useState(false);
   const [activeCategoryDropdownIndex, setActiveCategoryDropdownIndex] = useState<number | null>(null);
+
+  // Reload master data whenever drawer opens
+  useEffect(() => {
+    if (isOpen) {
+      setEmployees(employeeService.getInitialEmployees());
+      setMasterAccounts(financeAccountService.getInitialAccounts());
+      setMasterCounterparties(counterpartyService.getInitialCounterparties());
+      setMasterCategories(financeCategoryService.getInitialCategories());
+    }
+  }, [isOpen]);
 
   // Populate data when editing or opening
   useEffect(() => {
@@ -458,20 +456,22 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
                     </button>
 
                     {isProposerDropdownOpen && (
-                      <div className="absolute left-0 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg py-1 z-30 max-h-48 overflow-y-auto">
-                        {USERS_LIST.map((u) => (
+                      <div className="absolute left-0 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg py-1 z-30 max-h-56 overflow-y-auto">
+                        {employees.map((emp) => (
                           <button
-                            key={u}
+                            key={emp.id}
                             type="button"
                             onClick={() => {
-                              setProposer(u);
+                              setProposer(emp.name);
+                              if (emp.department) setDepartment(emp.department);
                               setIsProposerDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors ${
-                              proposer === u ? 'font-semibold text-primary bg-primary/5' : 'text-foreground'
+                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors flex items-center justify-between ${
+                              proposer === emp.name ? 'font-semibold text-primary bg-primary/5' : 'text-foreground'
                             }`}
                           >
-                            {u}
+                            <span className="truncate font-medium">{emp.name}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground shrink-0 ml-2">[{emp.code}]</span>
                           </button>
                         ))}
                       </div>
@@ -565,20 +565,21 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
                     </button>
 
                     {isAccountDropdownOpen && (
-                      <div className="absolute left-0 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg py-1 z-30 max-h-48 overflow-y-auto">
-                        {ACCOUNTS_LIST.map((acc) => (
+                      <div className="absolute left-0 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg py-1 z-30 max-h-56 overflow-y-auto">
+                        {masterAccounts.map((acc) => (
                           <button
-                            key={acc}
+                            key={acc.id}
                             type="button"
                             onClick={() => {
-                              setAccount(acc);
+                              setAccount(acc.accountName);
                               setIsAccountDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors ${
-                              account === acc ? 'font-semibold text-primary bg-primary/5' : 'text-foreground'
+                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors flex items-center justify-between ${
+                              account === acc.accountName ? 'font-semibold text-primary bg-primary/5' : 'text-foreground'
                             }`}
                           >
-                            {acc}
+                            <span className="truncate font-medium">{acc.accountName}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground shrink-0 ml-2">[{acc.code}]</span>
                           </button>
                         ))}
                       </div>
@@ -603,20 +604,21 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
                     </button>
 
                     {isBeneficiaryDropdownOpen && (
-                      <div className="absolute left-0 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg py-1 z-30 max-h-48 overflow-y-auto">
-                        {BENEFICIARIES_LIST.map((b) => (
+                      <div className="absolute left-0 top-full mt-1 w-full bg-card border border-border rounded-xl shadow-lg py-1 z-30 max-h-56 overflow-y-auto">
+                        {masterCounterparties.map((b) => (
                           <button
-                            key={b}
+                            key={b.id}
                             type="button"
                             onClick={() => {
-                              setBeneficiary(b);
+                              setBeneficiary(b.name);
                               setIsBeneficiaryDropdownOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors ${
-                              beneficiary === b ? 'font-semibold text-primary bg-primary/5' : 'text-foreground'
+                            className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors flex items-center justify-between ${
+                              beneficiary === b.name ? 'font-semibold text-primary bg-primary/5' : 'text-foreground'
                             }`}
                           >
-                            {b}
+                            <span className="truncate font-medium">{b.name}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground shrink-0 ml-2">[{b.code}]</span>
                           </button>
                         ))}
                       </div>
@@ -736,20 +738,25 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
                                 </button>
 
                                 {activeCategoryDropdownIndex === idx && (
-                                  <div className="absolute left-1.5 top-full mt-1 w-44 bg-card border border-border rounded-xl shadow-lg py-1 z-30 max-h-40 overflow-y-auto">
-                                    {CATEGORIES_LIST.map((cat) => (
-                                      <button
-                                        key={cat}
-                                        type="button"
-                                        onClick={() => {
-                                          handleUpdateLineItem(idx, 'category', cat);
-                                          setActiveCategoryDropdownIndex(null);
-                                        }}
-                                        className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors"
-                                      >
-                                        {cat}
-                                      </button>
-                                    ))}
+                                  <div className="absolute left-1.5 top-full mt-1 w-56 bg-card border border-border rounded-xl shadow-lg py-1 z-30 max-h-52 overflow-y-auto">
+                                    {masterCategories
+                                      .filter((c) => c.status === 'active' && (c.type === 'expense' || !c.type))
+                                      .map((cat) => (
+                                        <button
+                                          key={cat.id}
+                                          type="button"
+                                          onClick={() => {
+                                            handleUpdateLineItem(idx, 'category', cat.name);
+                                            setActiveCategoryDropdownIndex(null);
+                                          }}
+                                          className={`w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors flex items-center justify-between ${
+                                            item.category === cat.name ? 'font-semibold text-primary bg-primary/5' : 'text-foreground'
+                                          }`}
+                                        >
+                                          <span className="truncate font-medium">{cat.name}</span>
+                                          <span className="text-[10px] font-mono text-muted-foreground shrink-0 ml-2">[{cat.code}]</span>
+                                        </button>
+                                      ))}
                                   </div>
                                 )}
                               </td>

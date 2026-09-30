@@ -542,7 +542,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Quốc tịch
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.nationality || 'Việt Nam'}
+                      {employee.nationality || '—'}
                     </p>
                   </div>
 
@@ -552,7 +552,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Dân tộc
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.ethnicity || 'Kinh'}
+                      {employee.ethnicity || '—'}
                     </p>
                   </div>
 
@@ -562,7 +562,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Tôn giáo
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.religion || 'Không'}
+                      {employee.religion || '—'}
                     </p>
                   </div>
 

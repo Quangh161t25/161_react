@@ -33,12 +33,21 @@ import {
   CheckSquare,
   User,
   Table,
+  Users,
+  UserPlus,
+  Sparkles,
+  Search,
+  Check,
+  Loader2,
 } from 'lucide-react';
-import { Note, NoteCategory, NoteStatus, NoteAttachment } from '../../types/note';
+import { catboxService } from '../../services/catboxService';
+import { Note, NoteCategory, NoteStatus, NoteAttachment, NoteParticipant } from '../../types/note';
 import { NOTE_CATEGORIES, NOTE_COLOR_THEMES, PRESET_TAGS } from '../../data/notes';
 import { TimePickerInput } from '../common/TimePickerInput';
 import { useAuth } from '../../context/AuthContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
+import { employeeService } from '../../services/employeeService';
+import { Employee } from '../../types/employee';
 
 interface NoteFormDrawerProps {
   isOpen: boolean;
@@ -95,13 +104,37 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
 
+  // Participants & Diary Activity
+  const [participants, setParticipants] = useState<NoteParticipant[]>([]);
+  const [activity, setActivity] = useState('');
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [customParticipantName, setCustomParticipantName] = useState('');
+  const [allEmployees] = useState<Employee[]>(() =>
+    employeeService.getInitialEmployees()
+  );
+
   // Attachments & Images
   const [attachments, setAttachments] = useState<NoteAttachment[]>([]);
   const [images, setImages] = useState<string[]>([]);
   const [pasteToast, setPasteToast] = useState<string | null>(null);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [isUploadingGallery, setIsUploadingGallery] = useState(false);
 
   // Validation
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+
+  // Filtered employees for picker
+  const filteredEmployees = useMemo(() => {
+    const q = employeeSearch.toLowerCase().trim();
+    if (!q) return allEmployees;
+    return allEmployees.filter(
+      (emp) =>
+        emp.name.toLowerCase().includes(q) ||
+        (emp.code && emp.code.toLowerCase().includes(q)) ||
+        (emp.department && emp.department.toLowerCase().includes(q)) ||
+        (emp.role && emp.role.toLowerCase().includes(q))
+    );
+  }, [allEmployees, employeeSearch]);
 
   // Dynamic tags from existing notes + database
   const availableTags = useMemo(() => {
@@ -138,6 +171,9 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setTags(initialData.tags || []);
       setAttachments(initialData.attachments || []);
       setImages(initialData.images || []);
+
+      setParticipants(initialData.participants || []);
+      setActivity(initialData.activity || '');
     } else {
       const now = new Date();
       const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -163,6 +199,11 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setTags([]);
       setAttachments([]);
       setImages([]);
+
+      setParticipants([]);
+      setActivity('');
+      setEmployeeSearch('');
+      setCustomParticipantName('');
 
       // Auto fetch GPS location if creating new note
       if (isOpen && typeof navigator !== 'undefined' && navigator.geolocation) {
@@ -245,10 +286,20 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     }
   };
 
-  // Cover & Gallery Uploads
-  const handleCoverFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Cover & Gallery Uploads via Catbox.moe
+  const handleCoverFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    setIsUploadingCover(true);
+    setPasteToast('☁️ Đang tải ảnh bìa lên Catbox...');
+    try {
+      const catboxUrl = await catboxService.uploadFile(file);
+      setCoverUrl(catboxUrl);
+      setPasteToast('☁️ Đã lưu ảnh bìa lên Catbox thành công!');
+      setTimeout(() => setPasteToast(null), 3000);
+    } catch (err) {
+      console.warn('Catbox cover upload failed, fallback to local data URL:', err);
       const reader = new FileReader();
       reader.onload = (evt) => {
         if (evt.target?.result) {
@@ -256,30 +307,55 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
         }
       };
       reader.readAsDataURL(file);
+    } finally {
+      setIsUploadingCover(false);
     }
   };
 
-  const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files && files.length > 0) {
-      Array.from(files).forEach((file) => {
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          if (evt.target?.result) {
-            const url = evt.target.result as string;
-            setImages((prev) => [...prev, url]);
-            const newAttach: NoteAttachment = {
-              id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-              name: file.name,
-              url,
-              type: 'image',
-              size: `${(file.size / 1024).toFixed(1)} KB`,
-            };
-            setAttachments((prev) => [...prev, newAttach]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+    if (!files || files.length === 0) return;
+
+    setIsUploadingGallery(true);
+    setPasteToast('☁️ Đang tải ảnh lên Catbox...');
+    try {
+      const fileList = Array.from(files);
+      for (const file of fileList) {
+        try {
+          const url = await catboxService.uploadFile(file);
+          setImages((prev) => [...prev, url]);
+          const newAttach: NoteAttachment = {
+            id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            name: file.name,
+            url,
+            type: 'image',
+            size: `${(file.size / 1024).toFixed(1)} KB`,
+          };
+          setAttachments((prev) => [...prev, newAttach]);
+        } catch (fileErr) {
+          console.warn('Catbox upload failed for file, fallback to local:', fileErr);
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            if (evt.target?.result) {
+              const localUrl = evt.target.result as string;
+              setImages((prev) => [...prev, localUrl]);
+              const newAttach: NoteAttachment = {
+                id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                name: file.name,
+                url: localUrl,
+                type: 'image',
+                size: `${(file.size / 1024).toFixed(1)} KB`,
+              };
+              setAttachments((prev) => [...prev, newAttach]);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+      setPasteToast('✅ Đã lưu ảnh vào thư viện đính kèm (Catbox)!');
+      setTimeout(() => setPasteToast(null), 3000);
+    } finally {
+      setIsUploadingGallery(false);
     }
   };
 
@@ -289,40 +365,44 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   };
 
   // Clipboard Paste Image Handler (Ctrl + V)
-  const processPastedImage = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      if (evt.target?.result) {
-        const dataUrl = evt.target.result as string;
-        
-        // Add to images gallery
-        setImages((prev) => [...prev, dataUrl]);
+  const processPastedImage = async (file: File) => {
+    setPasteToast('☁️ Đang tải ảnh Clipboard lên Catbox...');
+    let url = '';
+    try {
+      url = await catboxService.uploadFile(file);
+    } catch (err) {
+      console.warn('Catbox upload failed for pasted image, fallback to local:', err);
+      url = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => resolve((evt.target?.result as string) || '');
+        reader.readAsDataURL(file);
+      });
+    }
 
-        // Add to attachments
-        const newAttach: NoteAttachment = {
-          id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-          name: `Anh_dan_${Date.now().toString().slice(-4)}.png`,
-          url: dataUrl,
-          type: 'image',
-          size: `${(file.size / 1024).toFixed(1)} KB`,
-        };
-        setAttachments((prev) => [...prev, newAttach]);
+    if (url) {
+      setImages((prev) => [...prev, url]);
+      const newAttach: NoteAttachment = {
+        id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        name: `Anh_dan_${Date.now().toString().slice(-4)}.png`,
+        url,
+        type: 'image',
+        size: `${(file.size / 1024).toFixed(1)} KB`,
+      };
+      setAttachments((prev) => [...prev, newAttach]);
 
-        // If cursor inside textarea, insert markdown
-        const textarea = contentTextareaRef.current;
-        if (textarea && document.activeElement === textarea) {
-          const start = textarea.selectionStart;
-          const end = textarea.selectionEnd;
-          const imgMarkdown = `\n![Hình ảnh đính kèm](${dataUrl})\n`;
-          const newContent = content.substring(0, start) + imgMarkdown + content.substring(end);
-          setContent(newContent);
-        }
-
-        setPasteToast('✅ Đã dán ảnh từ Clipboard (Ctrl + V) thành công!');
-        setTimeout(() => setPasteToast(null), 3500);
+      // If cursor inside textarea, insert markdown
+      const textarea = contentTextareaRef.current;
+      if (textarea && document.activeElement === textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const imgMarkdown = `\n![Hình ảnh đính kèm](${url})\n`;
+        const newContent = content.substring(0, start) + imgMarkdown + content.substring(end);
+        setContent(newContent);
       }
-    };
-    reader.readAsDataURL(file);
+
+      setPasteToast('✅ Đã tải ảnh lên Catbox & chèn vào bài viết (Ctrl + V)!');
+      setTimeout(() => setPasteToast(null), 3500);
+    }
   };
 
   // Window-level Ctrl+V listener when Drawer is open
@@ -434,6 +514,57 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     }, 50);
   };
 
+  // Participant Handlers
+  const handleToggleEmployeeParticipant = (emp: Employee) => {
+    const isAlready = participants.some(
+      (p) => (p.id && p.id === emp.id) || (p.code && p.code === emp.code) || p.name === emp.name
+    );
+    if (isAlready) {
+      setParticipants((prev) =>
+        prev.filter(
+          (p) =>
+            !(
+              (p.id && p.id === emp.id) ||
+              (p.code && p.code === emp.code) ||
+              p.name === emp.name
+            )
+        )
+      );
+    } else {
+      const newPart: NoteParticipant = {
+        id: emp.id,
+        code: emp.code,
+        name: emp.name,
+        avatarUrl: emp.avatarUrl,
+        role: emp.role,
+        department: emp.department,
+      };
+      setParticipants((prev) => [...prev, newPart]);
+    }
+  };
+
+  const handleAddCustomParticipant = () => {
+    const trimmed = customParticipantName.trim();
+    if (!trimmed) return;
+    if (!participants.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
+      setParticipants((prev) => [
+        ...prev,
+        {
+          id: 'custom_' + Date.now(),
+          name: trimmed,
+          role: 'Khách / Bạn bè',
+        },
+      ]);
+    }
+    setCustomParticipantName('');
+  };
+
+  const handleRemoveParticipant = (idOrName: string) => {
+    setParticipants((prev) =>
+      prev.filter((p) => (p.id || p.name) !== idOrName && p.name !== idOrName)
+    );
+  };
+
   const validate = () => {
     const errors: { [key: string]: string } = {};
     if (!title.trim()) errors.title = 'Vui lòng nhập tiêu đề bài viết/ghi chú';
@@ -463,6 +594,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       authorAvatar: authorAvatar || currentUser?.avatarUrl || undefined,
       attachments: attachments.length > 0 ? attachments : undefined,
       images: images.length > 0 ? images : undefined,
+      participants: participants.length > 0 ? participants : undefined,
+      activity: activity.trim() || undefined,
     };
 
     onSubmit(payload);
@@ -973,12 +1106,258 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               </div>
             </div>
 
-            {/* 3. THỜI GIAN, VỊ TRÍ & ẢNH ĐÍNH KÈM */}
+            {/* 3. ĐỐI TƯỢNG NHÂN VIÊN & ĐI CÙNG AI (NHẬT KÝ) */}
+            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                    3. Đối tượng nhân viên & Đi cùng ai (Nhật ký)
+                  </h4>
+                  {participants.length > 0 && (
+                    <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+                      {participants.length} người
+                    </span>
+                  )}
+                </div>
+
+                {/* Diary template button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!category) setCategory('Nhật ký & Hoạt động');
+                    if (!activity) setActivity('Đi cà phê & Trò chuyện');
+                    if (!title) setTitle(`Nhật ký ngày ${noteDate || new Date().toLocaleDateString('vi-VN')}`);
+                    if (!content) {
+                      const names = participants.map((p) => p.name).join(', ') || 'Bạn bè / Đồng nghiệp';
+                      setContent(`## 📖 Nhật ký Hoạt động\n- **Thời gian:** ${noteTime || '09:00'}, ngày ${noteDate || new Date().toLocaleDateString('vi-VN')}\n- **Địa điểm:** ${location || 'Tại quán cà phê / Ngoài trời'}\n- **Đi cùng:** ${names}\n\n### 🌟 Hôm nay làm gì & Có gì vui:\n1. Gặp mặt trò chuyện và chia sẻ câu chuyện cùng mọi người.\n2. Cùng nhau thưởng thức đồ uống và thư giãn.\n3. Những kỷ niệm và khoảnh khắc đáng nhớ trong ngày.\n\n> [!NOTE]\n> Hãy ghi lại cảm xúc và trải nghiệm tuyệt vời cùng bạn bè!`);
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium border border-emerald-500/30 transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5" /> Dùng mẫu Nhật ký đi chơi
+                </button>
+              </div>
+
+              {/* Activity input & suggestions */}
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                  Hoạt động / Đi đâu làm gì
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ví dụ: Đi uống cà phê cuối tuần, Ăn tối liên hoan, Khảo sát mặt bằng..."
+                  value={activity}
+                  onChange={(e) => setActivity(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+
+                {/* Activity suggestion chips */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  <span className="text-[11px] text-muted-foreground mr-1">Gợi ý nhanh:</span>
+                  {[
+                    '☕ Đi uống cà phê',
+                    '🍜 Ăn uống liên hoan',
+                    '⚽ Thể thao & Dã ngoại',
+                    '💼 Họp nhóm & Trao đổi',
+                    '🏢 Khảo sát / Gặp đối tác',
+                    '🏖️ Du lịch / Nghỉ dưỡng',
+                    '🎬 Đi xem phim / Giải trí',
+                  ].map((act) => (
+                    <button
+                      key={act}
+                      type="button"
+                      onClick={() => setActivity(act)}
+                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
+                        activity === act
+                          ? 'bg-primary text-primary-foreground font-semibold border-primary'
+                          : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                      }`}
+                    >
+                      {act}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Selected Participants Chips */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Danh sách nhân viên / người đi cùng ({participants.length})
+                  </label>
+                  {participants.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setParticipants([])}
+                      className="text-[11px] text-rose-500 hover:underline"
+                    >
+                      Xóa tất cả
+                    </button>
+                  )}
+                </div>
+
+                {participants.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-border bg-background/60 mb-3">
+                    {participants.map((p, idx) => {
+                      const avatar =
+                        p.avatarUrl ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1d4ed8&color=fff`;
+                      return (
+                        <div
+                          key={p.id || p.code || idx}
+                          className="inline-flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-primary/10 border border-primary/25 text-foreground text-xs shadow-2xs group hover:border-primary/50 transition-all"
+                        >
+                          <img
+                            src={avatar}
+                            alt={p.name}
+                            className="w-6 h-6 rounded-full object-cover border border-background shrink-0"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-xs text-foreground truncate max-w-[140px] sm:max-w-[200px]">
+                              {p.name}
+                            </span>
+                            {(p.role || p.department) && (
+                              <span className="text-[10px] text-muted-foreground truncate max-w-[140px] sm:max-w-[200px]">
+                                {p.role || p.department}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveParticipant(p.id || p.name)}
+                            className="p-1 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-1"
+                            title="Bỏ chọn"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 text-center rounded-xl border border-dashed border-border bg-muted/20 text-xs text-muted-foreground mb-3">
+                    Chưa chọn nhân sự nào đi cùng. Hãy chọn từ danh sách bên dưới hoặc nhập thêm người ngoài.
+                  </div>
+                )}
+
+                {/* Add participant controls */}
+                <div className="space-y-3">
+                  {/* Search employee */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm nhân viên trong công ty để thêm..."
+                      value={employeeSearch}
+                      onChange={(e) => setEmployeeSearch(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+
+                  {/* Employee Picker List */}
+                  <div className="rounded-xl border border-border bg-background overflow-hidden">
+                    <div className="max-h-48 overflow-y-auto p-2 divide-y divide-border/40 space-y-1">
+                      {filteredEmployees.length > 0 ? (
+                        filteredEmployees.map((emp) => {
+                          const isSelected = participants.some(
+                            (p) =>
+                              (p.id && p.id === emp.id) ||
+                              (p.code && p.code === emp.code) ||
+                              p.name === emp.name
+                          );
+                          const avatar =
+                            emp.avatarUrl ||
+                            `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=1d4ed8&color=fff`;
+
+                          return (
+                            <button
+                              key={emp.id || emp.code}
+                              type="button"
+                              onClick={() => handleToggleEmployeeParticipant(emp)}
+                              className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                                isSelected
+                                  ? 'bg-primary/10 border border-primary/30 text-primary'
+                                  : 'hover:bg-muted/60 text-foreground'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <img
+                                  src={avatar}
+                                  alt={emp.name}
+                                  className="w-7 h-7 rounded-full object-cover border border-border shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <div className="text-xs font-semibold truncate flex items-center gap-1.5">
+                                    <span>{emp.name}</span>
+                                    {emp.code && (
+                                      <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.2 rounded">
+                                        {emp.code}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground truncate">
+                                    {emp.role} {emp.department ? `• ${emp.department}` : ''}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 ml-2">
+                                {isSelected ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/20 px-2 py-0.5 rounded-full">
+                                    <Check className="w-3 h-3" /> Đã chọn
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full group-hover:text-foreground">
+                                    <Plus className="w-3 h-3" /> Chọn
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="p-3 text-center text-xs text-muted-foreground">
+                          Không tìm thấy nhân viên phù hợp với từ khóa "{employeeSearch}".
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Add External Friend / Guest */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <input
+                      type="text"
+                      placeholder="Hoặc nhập tên người ngoài / bạn bè (Ví dụ: Anh Nam - Đối tác)..."
+                      value={customParticipantName}
+                      onChange={(e) => setCustomParticipantName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCustomParticipant();
+                        }
+                      }}
+                      className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCustomParticipant}
+                      disabled={!customParticipantName.trim()}
+                      className="px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1 shrink-0"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" /> Thêm người ngoài
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 4. THỜI GIAN, VỊ TRÍ & ẢNH ĐÍNH KÈM */}
             <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
               <div className="flex items-center gap-2 border-b border-border/60 pb-3">
                 <Calendar className="w-4 h-4 text-primary" />
                 <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  3. Thời gian, Vị trí & Ảnh đính kèm
+                  4. Thời gian, Vị trí & Ảnh đính kèm
                 </h4>
               </div>
 
@@ -1061,9 +1440,11 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                       <button
                         type="button"
                         onClick={() => coverInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg bg-white/90 text-foreground text-xs font-medium hover:bg-white flex items-center gap-1.5 shadow-md"
+                        disabled={isUploadingCover}
+                        className="px-3 py-1.5 rounded-lg bg-white/90 text-foreground text-xs font-medium hover:bg-white flex items-center gap-1.5 shadow-md disabled:opacity-60"
                       >
-                        <Upload className="w-3.5 h-3.5" /> Thay ảnh
+                        {isUploadingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                        {isUploadingCover ? 'Đang tải lên...' : 'Thay ảnh'}
                       </button>
                       <button
                         type="button"
@@ -1079,9 +1460,11 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                     <button
                       type="button"
                       onClick={() => coverInputRef.current?.click()}
-                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-dashed border-border hover:border-primary/50 bg-muted/30 hover:bg-primary/5 text-xs text-muted-foreground hover:text-primary transition-all flex items-center justify-center gap-2"
+                      disabled={isUploadingCover}
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-dashed border-border hover:border-primary/50 bg-muted/30 hover:bg-primary/5 text-xs text-muted-foreground hover:text-primary transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                     >
-                      <ImageIcon className="w-4 h-4" /> Tải ảnh bìa từ máy
+                      {isUploadingCover ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <ImageIcon className="w-4 h-4" />}
+                      {isUploadingCover ? 'Đang tải lên Catbox...' : 'Tải ảnh bìa từ máy'}
                     </button>
                     <div className="flex-1 w-full relative">
                       <input
@@ -1112,9 +1495,11 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   <button
                     type="button"
                     onClick={() => galleryInputRef.current?.click()}
-                    className="px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all flex items-center gap-1"
+                    disabled={isUploadingGallery}
+                    className="px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all flex items-center gap-1 disabled:opacity-60"
                   >
-                    <Plus className="w-3 h-3" /> Tải thêm ảnh
+                    {isUploadingGallery ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    {isUploadingGallery ? 'Đang tải lên Catbox...' : 'Tải thêm ảnh'}
                   </button>
                 </div>
 

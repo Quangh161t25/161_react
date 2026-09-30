@@ -50,8 +50,8 @@ export const SYSTEM_SECTIONS: SystemSection[] = [
       {
         id: 'ghi-chu',
         code: 'GC',
-        title: 'Ghi chú & Wiki',
-        description: 'Soạn bài viết, tài liệu kiến thức & bảng Wiki.',
+        title: 'Ghi chú',
+        description: 'Soạn bài viết, nhật ký hoạt động & tài liệu.',
         href: '/he-thong/ghi-chu',
         guideHref: '/he-thong/ghi-chu/huong-dan',
         icon: BookOpen,

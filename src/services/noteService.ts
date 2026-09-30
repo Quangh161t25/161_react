@@ -1,5 +1,4 @@
 import { Note } from '../types/note';
-import { MOCK_NOTES } from '../data/notes';
 
 const STORAGE_KEY = 'erp_notes_cache';
 const LAST_SYNC_KEY = 'erp_notes_last_sync';
@@ -10,14 +9,20 @@ export const noteService = {
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          // Loại bỏ các ghi chú mẫu giả định cũ (id dạng note-001 ... note-040) nếu còn sót trong cache
+          return parsed.filter((n: Note) => !/^note-0\d{2}$/.test(n.id));
         }
       }
     } catch (e) {
       console.warn('Could not read notes from cache:', e);
     }
-    return MOCK_NOTES;
+    return [];
+  },
+
+  resetToMockNotes(): Note[] {
+    this.saveToCache([]);
+    return [];
   },
 
   saveToCache(notes: Note[]): void {
@@ -42,11 +47,11 @@ export const noteService = {
       const res = await fetch('/api/sheets/notes');
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+      if (data.success && Array.isArray(data.data)) {
         this.saveToCache(data.data);
         return data.data;
       }
-      throw new Error(data.error || 'Empty data returned');
+      return this.getInitialNotes();
     } catch (err) {
       console.warn('Failed to fetch notes from Google Sheet, fallback to cache:', err);
       return this.getInitialNotes();

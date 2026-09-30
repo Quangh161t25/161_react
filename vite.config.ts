@@ -25,15 +25,11 @@ function sheetsApiPlugin(): Plugin {
           };
         }
 
-        let body = '';
-        req.on('data', (chunk) => {
-          body += chunk;
-        });
-        req.on('end', async () => {
+        const processRequest = async (rawBody: string) => {
           try {
-            (req as any).body = body ? JSON.parse(body) : {};
+            (req as any).body = rawBody ? JSON.parse(rawBody) : {};
           } catch {
-            (req as any).body = body;
+            (req as any).body = rawBody;
           }
 
           try {
@@ -46,7 +42,19 @@ function sheetsApiPlugin(): Plugin {
               res.end(JSON.stringify({ success: false, error: err.message }));
             }
           }
-        });
+        };
+
+        if (req.method === 'GET' || req.method === 'HEAD' || (req as any).readableEnded) {
+          await processRequest('');
+        } else {
+          let body = '';
+          req.on('data', (chunk) => {
+            body += chunk;
+          });
+          req.on('end', () => {
+            processRequest(body);
+          });
+        }
       });
     },
   };

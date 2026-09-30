@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -16,16 +16,19 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsRight,
-  RefreshCw,
   CheckCircle2,
   AlertCircle,
   ChartColumn,
   Pin,
-  SlidersHorizontal,
   Printer,
   MapPin,
   Calendar,
   ImageIcon,
+  Sparkles,
+  Users,
+  ArrowDownWideNarrow,
+  ArrowUpNarrowWide,
+  ArrowUpDown,
 } from 'lucide-react';
 import { Note, NoteCategory, NoteStatus } from '../../types/note';
 import { NOTE_CATEGORIES } from '../../data/notes';
@@ -42,16 +45,20 @@ import {
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { stripMarkdown } from './MarkdownRenderer';
+import { useAutoSync } from '../../hooks/useAutoSync';
+import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 
 interface NotePageProps {
   onBack: () => void;
 }
 
-// Ordered columns: Tiêu đề -> Nội dung -> Chuyên mục -> Thẻ -> Trạng thái -> Ngày -> Giờ -> Vị trí -> Đính kèm -> Tác giả
+// Ordered columns: Tiêu đề -> Nội dung -> Chuyên mục -> Hoạt động -> Đi cùng ai -> Thẻ -> Trạng thái -> Ngày -> Giờ -> Vị trí -> Đính kèm -> Tác giả
 export const DEFAULT_NOTE_COLUMNS: ColumnItem[] = [
   { id: 'title', label: 'Tiêu đề', visible: true, pinned: true, width: 260, align: 'left', wrap: 'truncate' },
-  { id: 'content', label: 'Nội dung bài viết', visible: true, pinned: false, width: 380, align: 'left', wrap: 'truncate' },
+  { id: 'content', label: 'Nội dung bài viết', visible: true, pinned: false, width: 360, align: 'left', wrap: 'truncate' },
   { id: 'category', label: 'Chuyên mục', visible: true, pinned: false, width: 160, align: 'center', wrap: 'truncate' },
+  { id: 'activity', label: 'Hoạt động (Nhật ký)', visible: true, width: 160, align: 'left', wrap: 'truncate' },
+  { id: 'participants', label: 'Đi cùng ai / Tham gia', visible: true, width: 200, align: 'left', wrap: 'truncate' },
   { id: 'tags', label: 'Thẻ (Tags)', visible: true, width: 180, align: 'left', wrap: 'truncate' },
   { id: 'status', label: 'Trạng thái', visible: true, width: 130, align: 'center', wrap: 'truncate' },
   { id: 'noteDate', label: 'Ngày thực hiện', visible: true, width: 130, align: 'center', wrap: 'truncate' },
@@ -64,6 +71,41 @@ export const DEFAULT_NOTE_COLUMNS: ColumnItem[] = [
   { id: 'updatedAt', label: 'Cập nhật', visible: false, width: 130, align: 'center', wrap: 'truncate' },
 ];
 
+// Helper to convert note date and time into a comparable timestamp (milliseconds)
+export function getNoteDateTimeTimestamp(note: Note): number {
+  const dateStr = (note.noteDate || note.createdAt || note.updatedAt || '').trim();
+  let y = 1970, m = 1, d = 1;
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+    const parts = dateStr.slice(0, 10).split('-');
+    y = parseInt(parts[0], 10) || 1970;
+    m = parseInt(parts[1], 10) || 1;
+    d = parseInt(parts[2], 10) || 1;
+  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
+    const parts = dateStr.split('/');
+    d = parseInt(parts[0], 10) || 1;
+    m = parseInt(parts[1], 10) || 1;
+    y = parseInt(parts[2], 10) || 1970;
+  } else if (dateStr) {
+    const parsed = new Date(dateStr);
+    if (!isNaN(parsed.getTime())) {
+      y = parsed.getFullYear();
+      m = parsed.getMonth() + 1;
+      d = parsed.getDate();
+    }
+  }
+
+  let hour = 0, minute = 0;
+  if (note.noteTime && /^\d{1,2}:\d{2}/.test(note.noteTime.trim())) {
+    const timeParts = note.noteTime.trim().split(':');
+    hour = parseInt(timeParts[0], 10) || 0;
+    minute = parseInt(timeParts[1], 10) || 0;
+  }
+
+  const dt = new Date(y, m - 1, d, hour, minute, 0, 0);
+  return isNaN(dt.getTime()) ? 0 : dt.getTime();
+}
+
 export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   const { currentUser } = useAuth();
   const { formatDate, formatTime } = useSettings();
@@ -73,17 +115,33 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedTag, setSelectedTag] = useState('all');
+  const [selectedParticipant, setSelectedParticipant] = useState('all');
   const [onlyPinned, setOnlyPinned] = useState(false);
+
+  // Interactive Sorting State: Default to Date & Time Descending (Lớn tới Nhỏ)
+  const [sortField, setSortField] = useState<string>('dateTime');
+  const [sortDirection, setSortDirection] = useState<'desc' | 'asc'>('desc');
 
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [isParticipantDropdownOpen, setIsParticipantDropdownOpen] = useState(false);
 
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Smart Realtime Auto-Sync Hook (25s interval, focus refresh, instant badge)
+  const { isSyncing, lastSyncTime, triggerManualSync } = useAutoSync<Note[]>({
+    syncFn: () => noteService.fetchFromSheet(),
+    onDataReceived: (liveNotes) => {
+      if (Array.isArray(liveNotes)) {
+        setNotes(liveNotes);
+      }
+    },
+    intervalMs: 25000,
+  });
 
   // Detail & Edit Drawers
   const [selectedNoteForDetail, setSelectedNoteForDetail] = useState<Note | null>(null);
@@ -218,42 +276,25 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     [tableColumns]
   );
 
-  // Background Sheets Sync on Load
-  useEffect(() => {
-    let isMounted = true;
-    const loadFromSheet = async () => {
-      try {
-        const sheetNotes = await noteService.fetchFromSheet();
-        if (isMounted && sheetNotes && sheetNotes.length > 0) {
-          setNotes(sheetNotes);
-        }
-      } catch (err) {
-        console.warn('Note background sync initial load notice:', err);
-      }
-    };
-    loadFromSheet();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  // Sync handler
+  // Manual Sync handler delegating to smart auto-sync
   const handleManualSync = async () => {
-    setIsSyncing(true);
     setSyncToastMessage(null);
     setSyncError(null);
     try {
-      const sheetNotes = await noteService.fetchFromSheet();
-      if (sheetNotes && sheetNotes.length > 0) {
+      const sheetNotes = await triggerManualSync();
+      if (Array.isArray(sheetNotes)) {
         setNotes(sheetNotes);
-        setSyncToastMessage(`Đã đồng bộ thành công ${sheetNotes.length} bài viết ghi chú từ Google Sheet!`);
+        setSyncToastMessage(
+          sheetNotes.length > 0
+            ? `Đã đồng bộ thành công ${sheetNotes.length} bài viết ghi chú từ Google Sheet!`
+            : 'Đã đồng bộ với Google Sheet (danh sách ghi chú trống).'
+        );
       } else {
         setSyncToastMessage('Dữ liệu ghi chú đã cập nhật mới nhất!');
       }
     } catch (err: any) {
       setSyncError(err?.message || 'Lỗi đồng bộ với Google Sheets');
     } finally {
-      setIsSyncing(false);
       setTimeout(() => {
         setSyncToastMessage(null);
         setSyncError(null);
@@ -268,6 +309,19 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     return Array.from(set);
   }, [notes]);
 
+  // Distinct participants list
+  const allUniqueParticipants = useMemo(() => {
+    const map = new Map<string, { name: string; avatarUrl?: string; role?: string }>();
+    notes.forEach((n) => {
+      (n.participants || []).forEach((p) => {
+        if (p.name && !map.has(p.name)) {
+          map.set(p.name, { name: p.name, avatarUrl: p.avatarUrl, role: p.role });
+        }
+      });
+    });
+    return Array.from(map.values());
+  }, [notes]);
+
   // Filtered Notes
   const filteredNotes = useMemo(() => {
     return notes.filter((n) => {
@@ -280,7 +334,20 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         const matchTags = (n.tags || []).some((t) => t.toLowerCase().includes(q));
         const matchLoc = n.location?.toLowerCase().includes(q) || n.coordinates?.toLowerCase().includes(q);
         const matchAuthor = n.author?.toLowerCase().includes(q);
-        if (!matchTitle && !matchSummary && !matchContent && !matchTags && !matchLoc && !matchAuthor) {
+        const matchActivity = n.activity?.toLowerCase().includes(q);
+        const matchParticipants = (n.participants || []).some(
+          (p) => p.name?.toLowerCase().includes(q) || (p.role && p.role.toLowerCase().includes(q))
+        );
+        if (
+          !matchTitle &&
+          !matchSummary &&
+          !matchContent &&
+          !matchTags &&
+          !matchLoc &&
+          !matchAuthor &&
+          !matchActivity &&
+          !matchParticipants
+        ) {
           return false;
         }
       }
@@ -300,6 +367,14 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         return false;
       }
 
+      // Participant Filter
+      if (
+        selectedParticipant !== 'all' &&
+        !(n.participants || []).some((p) => p.name === selectedParticipant)
+      ) {
+        return false;
+      }
+
       // Pinned
       if (onlyPinned && !n.isPinned) {
         return false;
@@ -307,16 +382,74 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
 
       return true;
     });
-  }, [notes, searchQuery, selectedCategory, selectedStatus, selectedTag, onlyPinned]);
+  }, [notes, searchQuery, selectedCategory, selectedStatus, selectedTag, selectedParticipant, onlyPinned]);
 
-  // Sort notes: pinned first, then newest
+  // Handle Interactive Column Sorting
+  const handleSortColumn = (colId: string) => {
+    let targetField = colId;
+    if (colId === 'noteDate' || colId === 'noteTime') {
+      targetField = 'dateTime';
+    }
+
+    if (sortField === targetField) {
+      // Toggle direction
+      setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+    } else {
+      setSortField(targetField);
+      // Default dateTime to desc (lớn tới nhỏ), other text columns to asc
+      setSortDirection(targetField === 'dateTime' ? 'desc' : 'asc');
+    }
+  };
+
+  // Sort notes: Strictly by selected field, default to Date & Time descending (lớn tới nhỏ)
   const sortedNotes = useMemo(() => {
     return [...filteredNotes].sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || '');
+      let diff = 0;
+
+      if (sortField === 'dateTime' || sortField === 'noteDate' || sortField === 'noteTime') {
+        const timeA = getNoteDateTimeTimestamp(a);
+        const timeB = getNoteDateTimeTimestamp(b);
+        diff = sortDirection === 'desc' ? timeB - timeA : timeA - timeB;
+      } else if (sortField === 'title') {
+        const titleA = a.title || '';
+        const titleB = b.title || '';
+        diff = sortDirection === 'desc' ? titleB.localeCompare(titleA) : titleA.localeCompare(titleB);
+      } else if (sortField === 'category') {
+        const catA = a.category || '';
+        const catB = b.category || '';
+        diff = sortDirection === 'desc' ? catB.localeCompare(catA) : catA.localeCompare(catB);
+      } else if (sortField === 'author') {
+        const authA = a.author || '';
+        const authB = b.author || '';
+        diff = sortDirection === 'desc' ? authB.localeCompare(authA) : authA.localeCompare(authB);
+      } else if (sortField === 'status') {
+        const stA = a.status || '';
+        const stB = b.status || '';
+        diff = sortDirection === 'desc' ? stB.localeCompare(stA) : stA.localeCompare(stB);
+      } else if (sortField === 'location') {
+        const locA = a.location || '';
+        const locB = b.location || '';
+        diff = sortDirection === 'desc' ? locB.localeCompare(locA) : locA.localeCompare(locB);
+      } else if (sortField === 'activity') {
+        const actA = a.activity || '';
+        const actB = b.activity || '';
+        diff = sortDirection === 'desc' ? actB.localeCompare(actA) : actA.localeCompare(actB);
+      } else {
+        // Fallback to code or id
+        const idA = a.code || a.id || '';
+        const idB = b.code || b.id || '';
+        diff = sortDirection === 'desc' ? idB.localeCompare(idA) : idA.localeCompare(idB);
+      }
+
+      if (diff !== 0) return diff;
+
+      // Fallback secondary sort: Date & Time descending
+      const fallbackTimeDiff = getNoteDateTimeTimestamp(b) - getNoteDateTimeTimestamp(a);
+      if (fallbackTimeDiff !== 0) return fallbackTimeDiff;
+
+      return (b.id || '').localeCompare(a.id || '');
     });
-  }, [filteredNotes]);
+  }, [filteredNotes, sortField, sortDirection]);
 
   // Paginated Notes
   const totalPages = Math.max(1, Math.ceil(sortedNotes.length / pageSize));
@@ -329,30 +462,40 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   const handleSaveNote = async (formData: Partial<Note>) => {
     if (editingNote) {
       // Update
+      const matchId = editingNote.id;
+      const matchCode = editingNote.code;
       const updatedList = notes.map((n) =>
-        n.id === editingNote.id ? ({ ...n, ...formData, updatedAt: new Date().toISOString().split('T')[0] } as Note) : n
+        n.id === matchId || (matchCode && n.code === matchCode)
+          ? ({ ...n, ...formData, code: matchCode || n.code, updatedAt: new Date().toISOString().split('T')[0] } as Note)
+          : n
       );
       setNotes(updatedList);
       noteService.saveToLocalCache(updatedList);
-      if (selectedNoteForDetail?.id === editingNote.id) {
-        setSelectedNoteForDetail(updatedList.find((n) => n.id === editingNote.id) || null);
+      if (selectedNoteForDetail?.id === matchId || (matchCode && selectedNoteForDetail?.code === matchCode)) {
+        setSelectedNoteForDetail(updatedList.find((n) => n.id === matchId || (matchCode && n.code === matchCode)) || null);
       }
       setIsFormDrawerOpen(false);
       setEditingNote(null);
       // Background sync
-      const target = updatedList.find((n) => n.id === editingNote.id);
+      const target = updatedList.find((n) => n.id === matchId || (matchCode && n.code === matchCode));
       if (target) {
         noteService.updateInSheet(target).catch((e) => console.warn('Sync update failed', e));
       }
     } else {
-      // Create
+      // Create - find max existing NOTE-xxx number to avoid code collisions
+      const maxNum = notes.reduce((max, n) => {
+        const m = (n.code || '').match(/NOTE-(\d+)/i);
+        return m ? Math.max(max, parseInt(m[1], 10)) : max;
+      }, 0);
+      const newCode = `NOTE-${String(maxNum + 1).padStart(3, '0')}`;
+
       const newNote: Note = {
         id: 'note_' + Date.now(),
-        code: `NOTE-${String(notes.length + 1).padStart(3, '0')}`,
+        code: newCode,
         title: formData.title || 'Ghi chú mới',
         summary: formData.summary,
         content: formData.content || '',
-        category: formData.category || 'Biên bản cuộc họp',
+        category: formData.category || 'Nhật ký & Hoạt động',
         status: formData.status || 'published',
         isPinned: formData.isPinned || false,
         color: formData.color || 'blue',
@@ -362,6 +505,8 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         noteTime: formData.noteTime,
         location: formData.location,
         coordinates: formData.coordinates,
+        activity: formData.activity || '',
+        participants: formData.participants || [],
         tags: formData.tags || [],
         attachments: formData.attachments || [],
         author: formData.author || currentUser?.name || currentUser?.username || 'admin',
@@ -456,12 +601,30 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
 
   // Export CSV
   const handleExportCSV = () => {
-    const headers = ['Mã', 'Tiêu đề', 'Nội dung', 'Chuyên mục', 'Trạng thái', 'Ghim', 'Thẻ', 'Ngày', 'Giờ', 'Địa điểm', 'Số đính kèm', 'Tác giả', 'Ngày tạo'];
+    const headers = [
+      'Mã',
+      'Tiêu đề',
+      'Nội dung',
+      'Chuyên mục',
+      'Hoạt động',
+      'Đi cùng ai / Đối tượng',
+      'Trạng thái',
+      'Ghim',
+      'Thẻ',
+      'Ngày',
+      'Giờ',
+      'Địa điểm',
+      'Số đính kèm',
+      'Tác giả',
+      'Ngày tạo',
+    ];
     const rows = sortedNotes.map((n) => [
       n.code || n.id,
       `"${(n.title || '').replace(/"/g, '""')}"`,
       `"${stripMarkdown(n.content || '').replace(/"/g, '""')}"`,
       `"${n.category}"`,
+      `"${(n.activity || '').replace(/"/g, '""')}"`,
+      `"${(n.participants || []).map((p) => p.name).join('; ')}"`,
       `"${n.status}"`,
       n.isPinned ? 'Có' : 'Không',
       `"${(n.tags || []).join(', ')}"`,
@@ -523,12 +686,21 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     }
     const lower = cat.toLowerCase();
     let colorClass = 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
-    if (lower.includes('cuộc họp')) colorClass = 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
-    if (lower.includes('kỹ thuật')) colorClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
-    if (lower.includes('kế hoạch')) colorClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
-    if (lower.includes('ý tưởng')) colorClass = 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
-    if (lower.includes('quy trình')) colorClass = 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20';
-    if (lower.includes('khảo sát')) colorClass = 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20';
+    if (lower.includes('nhật ký') || lower.includes('hoạt động') || lower.includes('đi chơi')) {
+      colorClass = 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20';
+    } else if (lower.includes('cuộc họp')) {
+      colorClass = 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
+    } else if (lower.includes('kỹ thuật')) {
+      colorClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
+    } else if (lower.includes('kế hoạch')) {
+      colorClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
+    } else if (lower.includes('ý tưởng')) {
+      colorClass = 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20';
+    } else if (lower.includes('quy trình')) {
+      colorClass = 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20';
+    } else if (lower.includes('khảo sát')) {
+      colorClass = 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20';
+    }
 
     return (
       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${colorClass}`}>
@@ -645,6 +817,59 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
             {renderCategoryBadge(note.category)}
           </td>
         );
+
+      case 'activity':
+        return (
+          <td key={colId} style={tdStyle} className={tdBaseClass}>
+            {note.activity ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 max-w-full truncate">
+                <Sparkles className="w-3 h-3 shrink-0" />
+                <span className="truncate">{note.activity}</span>
+              </span>
+            ) : (
+              <span className="text-muted-foreground text-xs">—</span>
+            )}
+          </td>
+        );
+
+      case 'participants': {
+        const parts = note.participants || [];
+        return (
+          <td key={colId} style={tdStyle} className={tdBaseClass}>
+            {parts.length > 0 ? (
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                <div className="flex -space-x-1.5 overflow-hidden shrink-0">
+                  {parts.slice(0, 3).map((p, idx) => (
+                    <img
+                      key={p.id || idx}
+                      src={
+                        p.avatarUrl ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff`
+                      }
+                      alt={p.name}
+                      title={`${p.name}${p.role ? ` (${p.role})` : ''}`}
+                      className="inline-block h-6 w-6 rounded-full ring-2 ring-background object-cover shrink-0"
+                    />
+                  ))}
+                </div>
+                <div
+                  className="min-w-0 flex-1 truncate text-xs text-foreground font-medium"
+                  title={parts.map((p) => p.name).join(', ')}
+                >
+                  {parts.map((p) => p.name).join(', ')}
+                </div>
+                {parts.length > 3 && (
+                  <span className="text-[10px] font-semibold text-muted-foreground shrink-0 bg-muted px-1.5 py-0.5 rounded-full">
+                    +{parts.length - 3}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-muted-foreground text-xs">—</span>
+            )}
+          </td>
+        );
+      }
 
       case 'status':
         return (
@@ -1037,6 +1262,76 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                     </div>
                   )}
 
+                  {/* Filter: Participant / Đi cùng ai */}
+                  {allUniqueParticipants.length > 0 && (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsParticipantDropdownOpen(!isParticipantDropdownOpen)}
+                        className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                          selectedParticipant !== 'all'
+                            ? 'bg-primary/10 border-primary text-primary'
+                            : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        <span>
+                          {selectedParticipant === 'all'
+                            ? 'Đi cùng ai'
+                            : selectedParticipant}
+                        </span>
+                        <ChevronDown className="w-3 h-3 ml-0.5 opacity-60" />
+                      </button>
+
+                      {isParticipantDropdownOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-30"
+                            onClick={() => setIsParticipantDropdownOpen(false)}
+                          />
+                          <div className="absolute left-0 top-full mt-1 w-56 max-h-60 overflow-y-auto rounded-xl border border-border bg-card shadow-lg z-40 p-1.5 space-y-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedParticipant('all');
+                                setIsParticipantDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                                selectedParticipant === 'all' ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
+                              }`}
+                            >
+                              Tất cả người tham gia
+                            </button>
+                            {allUniqueParticipants.map((p) => (
+                              <button
+                                key={p.name}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedParticipant(p.name);
+                                  setIsParticipantDropdownOpen(false);
+                                }}
+                                className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                                  selectedParticipant === p.name ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
+                                }`}
+                              >
+                                <img
+                                  src={
+                                    p.avatarUrl ||
+                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff`
+                                  }
+                                  alt=""
+                                  className="w-5 h-5 rounded-full object-cover shrink-0"
+                                />
+                                <span className="truncate flex-1 text-left">{p.name}</span>
+                                {p.role && <span className="text-[10px] text-muted-foreground truncate">{p.role}</span>}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
                   {/* Filter: Pinned Only */}
                   <button
                     type="button"
@@ -1049,6 +1344,42 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                   >
                     <Pin className={`w-3.5 h-3.5 ${onlyPinned ? 'fill-current' : ''}`} />
                     <span>Ghim</span>
+                  </button>
+
+                  {/* Sort Order Toggle Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (sortField !== 'dateTime') {
+                        setSortField('dateTime');
+                        setSortDirection('desc');
+                      } else {
+                        setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'));
+                      }
+                    }}
+                    title={`Đang sắp xếp: ${
+                      sortField === 'dateTime'
+                        ? `Ngày & Giờ (${sortDirection === 'desc' ? 'Lớn → Nhỏ / Mới nhất' : 'Nhỏ → Lớn / Cũ nhất'})`
+                        : `${sortField} (${sortDirection})`
+                    }. Bấm để đổi chiều.`}
+                    className={`h-8 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                      sortField === 'dateTime'
+                        ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-2xs'
+                        : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
+                  >
+                    {sortDirection === 'desc' ? (
+                      <ArrowDownWideNarrow className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    ) : (
+                      <ArrowUpNarrowWide className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    )}
+                    <span>
+                      {sortField === 'dateTime'
+                        ? sortDirection === 'desc'
+                          ? 'Ngày & Giờ (Lớn → Nhỏ)'
+                          : 'Ngày & Giờ (Nhỏ → Lớn)'
+                        : `Xếp theo: ${sortField}`}
+                    </span>
                   </button>
                 </div>
 
@@ -1067,19 +1398,12 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                     </button>
                   )}
 
-                  {/* Google Sheets Live Sync */}
-                  <button
-                    type="button"
-                    onClick={handleManualSync}
-                    disabled={isSyncing}
-                    title="Đồng bộ 2 chiều với Google Sheet"
-                    className="h-8 px-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    <span className="hidden sm:inline">
-                      {isSyncing ? 'Đang đồng bộ...' : 'Google Sheet'}
-                    </span>
-                  </button>
+                  {/* Google Sheets Realtime Smart Sync Badge */}
+                  <RealtimeSyncBadge
+                    isSyncing={isSyncing}
+                    lastSyncTime={lastSyncTime}
+                    onSync={handleManualSync}
+                  />
 
                   {/* Print */}
                   <button
@@ -1237,20 +1561,38 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                               ...(isPinned ? { left: `${pinnedLeft}px` } : {}),
                             };
 
+                            const isCurrentSort =
+                              sortField === col.id ||
+                              ((col.id === 'noteDate' || col.id === 'noteTime') && sortField === 'dateTime');
+
                             return (
                               <th
                                 key={col.id}
                                 style={thStyle}
-                                className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-4 ${headerPaddingClass} ${alignClass} ${stickyThClass} relative group/th select-none`}
+                                className={`font-semibold text-foreground border-b border-r border-border whitespace-nowrap px-3 ${headerPaddingClass} ${alignClass} ${stickyThClass} relative group/th select-none`}
                               >
-                                <div className={`flex items-center ${justifyClass} gap-1 pr-1`}>
+                                <div
+                                  onClick={() => handleSortColumn(col.id)}
+                                  title={`Sắp xếp theo ${col.label} (Bấm để đổi chiều)`}
+                                  className={`flex items-center ${justifyClass} gap-1 pr-1 cursor-pointer hover:text-primary transition-colors py-0.5 rounded ${
+                                    isCurrentSort ? 'text-primary font-bold' : ''
+                                  }`}
+                                >
                                   <span className="truncate">{col.label}</span>
+                                  {isCurrentSort ? (
+                                    sortDirection === 'desc' ? (
+                                      <ArrowDownWideNarrow className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    ) : (
+                                      <ArrowUpNarrowWide className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    )
+                                  ) : (
+                                    <ArrowUpDown className="w-3 h-3 text-muted-foreground/30 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                                  )}
                                   {isPinned && (
                                     <span title="Cột đang ghim cố định" className="inline-flex">
                                       <Pin className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 fill-current shrink-0" />
                                     </span>
                                   )}
-                                  <SlidersHorizontal className="w-3 h-3 text-muted-foreground/50 shrink-0" />
                                 </div>
                                 {/* Resizer Handle */}
                                 <div
@@ -1445,6 +1787,40 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
 
                           {/* Meta elements */}
                           <div className="space-y-2 pt-2 border-t border-border/60 text-xs">
+                            {/* Activity & Participants for Diary */}
+                            {(note.activity || (note.participants && note.participants.length > 0)) && (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {note.activity && (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 max-w-full truncate">
+                                    <Sparkles className="w-3 h-3 shrink-0" />
+                                    <span className="truncate">{note.activity}</span>
+                                  </span>
+                                )}
+                                {note.participants && note.participants.length > 0 && (
+                                  <div className="flex items-center gap-1 bg-muted/60 px-1.5 py-0.5 rounded-md border border-border/60 text-[11px] text-muted-foreground">
+                                    <Users className="w-3 h-3 text-primary shrink-0" />
+                                    <div className="flex -space-x-1 overflow-hidden">
+                                      {note.participants.slice(0, 3).map((p, idx) => (
+                                        <img
+                                          key={p.id || idx}
+                                          src={
+                                            p.avatarUrl ||
+                                            `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff`
+                                          }
+                                          alt={p.name}
+                                          title={p.name}
+                                          className="inline-block h-4 w-4 rounded-full ring-1 ring-background object-cover shrink-0"
+                                        />
+                                      ))}
+                                    </div>
+                                    <span className="truncate max-w-[110px]" title={note.participants.map((p) => p.name).join(', ')}>
+                                      {note.participants.map((p) => p.name).join(', ')}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             {/* Tags */}
                             {note.tags && note.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1">

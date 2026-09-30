@@ -25,13 +25,14 @@ export const EmployeeStatsTab: React.FC<EmployeeStatsTabProps> = ({ employees })
 
   // Group by department
   const deptStats = employees.reduce((acc, curr) => {
-    acc[curr.department] = (acc[curr.department] || 0) + 1;
+    const dept = curr.department || 'Chưa phân bổ';
+    acc[dept] = (acc[dept] || 0) + 1;
     return acc;
   }, {} as { [dept: string]: number });
 
   // Group by education
   const eduStats = employees.reduce((acc, curr) => {
-    const level = curr.educationLevel || 'Đại học';
+    const level = curr.educationLevel || 'Chưa cập nhật';
     acc[level] = (acc[level] || 0) + 1;
     return acc;
   }, {} as { [edu: string]: number });

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   Pin,
   Trash2,
@@ -21,7 +21,6 @@ import {
   SlidersHorizontal,
   Funnel,
   List,
-  RefreshCw,
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
@@ -30,11 +29,20 @@ import { CostProposalDetailDrawer } from './CostProposalDetailDrawer';
 import { CostProposalFormDrawer } from './CostProposalFormDrawer';
 import { googleSheetsService } from '../../services/googleSheetsService';
 import { useAuth } from '../../context/AuthContext';
+import { employeeService } from '../../services/employeeService';
+import {
+  financeAccountService,
+  counterpartyService,
+} from '../../services/financeMasterService';
+import { Employee } from '../../types/employee';
+import { FinanceAccount, Counterparty } from '../../types/financeMaster';
 import {
   ColumnCustomizerPopover,
   ColumnItem,
   TableDensity,
 } from '../common/ColumnCustomizerPopover';
+import { useAutoSync } from '../../hooks/useAutoSync';
+import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 
 interface CostProposalPageProps {
   onBack: () => void;
@@ -65,14 +73,101 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
   const [proposals, setProposals] = useState<CostProposal[]>(() =>
     googleSheetsService.getInitialProposals()
   );
+
+  // Master Data States
+  const [employees, setEmployees] = useState<Employee[]>(() =>
+    employeeService.getInitialEmployees()
+  );
+  const [masterAccounts, setMasterAccounts] = useState<FinanceAccount[]>(() =>
+    financeAccountService.getInitialAccounts()
+  );
+  const [masterCounterparties, setMasterCounterparties] = useState<Counterparty[]>(() =>
+    counterpartyService.getInitialCounterparties()
+  );
+
+  const getResolvedProposer = useCallback(
+    (proposerStr?: string) => {
+      if (!proposerStr) return { name: '—', code: '', department: '' };
+      const clean = proposerStr.trim();
+      const emp = employees.find(
+        (e) => e.name === clean || e.code === clean || e.id === clean
+      );
+      return {
+        name: emp ? emp.name : clean,
+        code: emp ? emp.code : '',
+        department: emp ? emp.department : '',
+      };
+    },
+    [employees]
+  );
+
+  const getResolvedAccount = useCallback(
+    (accountStr?: string) => {
+      if (!accountStr) return { name: '—', code: '' };
+      const clean = accountStr.trim();
+      const acc = masterAccounts.find(
+        (a) =>
+          a.accountName === clean ||
+          a.code === clean ||
+          a.id === clean ||
+          `${a.accountName} (${a.accountNumber})` === clean
+      );
+      return {
+        name: acc ? acc.accountName : clean,
+        code: acc ? acc.code : '',
+      };
+    },
+    [masterAccounts]
+  );
+
+  const getResolvedBeneficiary = useCallback(
+    (beneficiaryStr?: string) => {
+      if (!beneficiaryStr) return { name: '—', code: '' };
+      const clean = beneficiaryStr.trim();
+      const cp = masterCounterparties.find(
+        (c) => c.name === clean || c.code === clean || c.id === clean
+      );
+      if (cp) return { name: cp.name, code: cp.code };
+      const emp = employees.find(
+        (e) => e.name === clean || e.code === clean || e.id === clean
+      );
+      if (emp) return { name: emp.name, code: emp.code };
+      return { name: clean, code: '' };
+    },
+    [masterCounterparties, employees]
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Smart Realtime Auto-Sync Hook (25s interval, focus refresh, instant badge)
+  const [isMutating, setIsMutating] = useState(false);
+  const { isSyncing: isAutoSyncing, lastSyncTime, triggerManualSync } = useAutoSync<CostProposal[]>({
+    syncFn: async () => {
+      const [liveProposals, liveEmps, liveAccs, liveCps] = await Promise.all([
+        googleSheetsService.fetchFromSheet().catch(() => []),
+        employeeService.fetchFromSheet().catch(() => []),
+        financeAccountService.fetchFromSheet().catch(() => []),
+        counterpartyService.fetchFromSheet().catch(() => []),
+      ]);
+      if (liveEmps?.length) setEmployees(liveEmps);
+      if (liveAccs?.length) setMasterAccounts(liveAccs);
+      if (liveCps?.length) setMasterCounterparties(liveCps);
+      return Array.isArray(liveProposals) ? liveProposals : [];
+    },
+    onDataReceived: (liveProposals) => {
+      if (Array.isArray(liveProposals)) {
+        setProposals(liveProposals);
+      }
+    },
+    intervalMs: 25000,
+  });
+  const isSyncing = isAutoSyncing || isMutating;
+  const setIsSyncing = setIsMutating;
 
   // Resizing state
   const [resizingColId, setResizingColId] = useState<string | null>(null);
@@ -205,43 +300,36 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
     }
   };
 
-  // Initial load from Google Sheets on mount
-  useEffect(() => {
-    let isMounted = true;
-    const loadFromSheet = async () => {
-      setIsSyncing(true);
-      try {
-        const liveData = await googleSheetsService.fetchFromSheet();
-        if (isMounted && liveData && liveData.length > 0) {
-          setProposals(liveData);
-        }
-      } catch (e) {
-        console.warn('Initial sheet load failed:', e);
-      } finally {
-        if (isMounted) setIsSyncing(false);
-      }
-    };
-    loadFromSheet();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
   // Filtered list
   const filteredProposals = useMemo(() => {
     return proposals.filter((p) => {
+      const q = searchQuery.toLowerCase().trim();
+      const resolvedProp = getResolvedProposer(p.proposer);
+      const resolvedAcc = getResolvedAccount(p.account);
+      const resolvedBen = getResolvedBeneficiary(p.beneficiary);
+
       const matchQuery =
-        p.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.proposer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.department.toLowerCase().includes(searchQuery.toLowerCase());
+        !q ||
+        p.code.toLowerCase().includes(q) ||
+        p.title.toLowerCase().includes(q) ||
+        p.proposer.toLowerCase().includes(q) ||
+        resolvedProp.name.toLowerCase().includes(q) ||
+        (resolvedProp.code && resolvedProp.code.toLowerCase().includes(q)) ||
+        p.department.toLowerCase().includes(q) ||
+        p.account.toLowerCase().includes(q) ||
+        resolvedAcc.name.toLowerCase().includes(q) ||
+        (resolvedAcc.code && resolvedAcc.code.toLowerCase().includes(q)) ||
+        (p.beneficiary && p.beneficiary.toLowerCase().includes(q)) ||
+        resolvedBen.name.toLowerCase().includes(q) ||
+        (resolvedBen.code && resolvedBen.code.toLowerCase().includes(q)) ||
+        p.reason.toLowerCase().includes(q);
 
       const matchStatus =
         statusFilter === 'all' || p.approvalStatus === statusFilter;
 
       return matchQuery && matchStatus;
     });
-  }, [proposals, searchQuery, statusFilter]);
+  }, [proposals, searchQuery, statusFilter, getResolvedProposer, getResolvedAccount, getResolvedBeneficiary]);
 
   // Current index for detail drawer navigation
   const currentDetailIndex = useMemo(() => {
@@ -522,19 +610,19 @@ const handleDeleteProposal = async (id: string) => {
 
   // Manual Sync trigger from Google Sheet
   const handleManualSync = async () => {
-    setIsSyncing(true);
     try {
-      const data = await googleSheetsService.fetchFromSheet();
-      if (data && data.length > 0) {
-        setProposals(data);
-        showToast(`Đã đồng bộ ${data.length} đề xuất từ Google Sheet!`);
+      const data = await triggerManualSync();
+      if (Array.isArray(data)) {
+        showToast(
+          data.length > 0
+            ? `Đã đồng bộ ${data.length} đề xuất từ Google Sheet!`
+            : 'Đã đồng bộ với Google Sheet (chưa có đề xuất nào).'
+        );
       } else {
         showToast('Google Sheet đã được đồng bộ mới nhất!');
       }
     } catch {
       showToast('Không thể kết nối với Google Sheet.', true);
-    } finally {
-      setIsSyncing(false);
     }
   };
 
@@ -694,11 +782,15 @@ const handleDeleteProposal = async (id: string) => {
         return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground ${textWrapClass}`}>{item.proposalDate}</td>;
       case 'dueDate':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground ${textWrapClass}`}>{item.dueDate}</td>;
-      case 'proposer':
+      case 'proposer': {
+        const resolvedProp = getResolvedProposer(item.proposer);
         return (
           <td key={colId} style={colStyle} className={tdBaseClass}>
             <div className={`flex items-center ${justifyClass} gap-1 max-w-full`}>
-              <span className={`text-foreground font-medium ${textWrapClass}`}>{item.proposer}</span>
+              <span className={`text-foreground font-medium ${textWrapClass}`}>{resolvedProp.name}</span>
+              {resolvedProp.code && (
+                <span className="text-[10px] font-mono text-primary/80 shrink-0">[{resolvedProp.code}]</span>
+              )}
               <button
                 type="button"
                 onClick={(e) => e.stopPropagation()}
@@ -710,6 +802,7 @@ const handleDeleteProposal = async (id: string) => {
             </div>
           </td>
         );
+      }
       case 'department':
         return (
           <td key={colId} style={colStyle} className={tdBaseClass}>
@@ -744,11 +837,15 @@ const handleDeleteProposal = async (id: string) => {
             {formatCurrency(item.amount)}
           </td>
         );
-      case 'account':
+      case 'account': {
+        const resolvedAcc = getResolvedAccount(item.account);
         return (
           <td key={colId} style={colStyle} className={tdBaseClass}>
             <div className={`flex items-center ${justifyClass} gap-1 max-w-full`}>
-              <span className={`text-foreground ${textWrapClass}`}>{item.account}</span>
+              <span className={`text-foreground ${textWrapClass}`}>{resolvedAcc.name}</span>
+              {resolvedAcc.code && (
+                <span className="text-[10px] font-mono text-primary/80 shrink-0">[{resolvedAcc.code}]</span>
+              )}
               <button
                 type="button"
                 onClick={(e) => e.stopPropagation()}
@@ -760,12 +857,18 @@ const handleDeleteProposal = async (id: string) => {
             </div>
           </td>
         );
-      case 'beneficiary':
+      }
+      case 'beneficiary': {
+        const resolvedBen = getResolvedBeneficiary(item.beneficiary);
         return (
-          <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>
-            {item.beneficiary || '—'}
+          <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>
+            <span className="font-medium">{resolvedBen.name || '—'}</span>
+            {resolvedBen.code && (
+              <span className="text-[10px] font-mono text-primary/80 ml-1 shrink-0">[{resolvedBen.code}]</span>
+            )}
           </td>
         );
+      }
       case 'isOverBudget':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>{item.isOverBudget ? 'Có' : 'Không'}</td>;
       case 'overBudgetReason':
@@ -978,18 +1081,12 @@ const handleDeleteProposal = async (id: string) => {
                       <span>Xóa ({selectedIds.length})</span>
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={handleManualSync}
-                    disabled={isSyncing}
-                    title="Đồng bộ 2 chiều với Google Sheet: H161 react"
-                    className="h-8 px-2 flex items-center gap-1.5 border rounded-lg transition-all bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
-                    <span className="hidden md:inline">
-                      {isSyncing ? 'Đang đồng bộ...' : 'Google Sheet'}
-                    </span>
-                  </button>
+                  {/* Google Sheets Realtime Smart Sync Badge */}
+                  <RealtimeSyncBadge
+                    isSyncing={isSyncing}
+                    lastSyncTime={lastSyncTime}
+                    onSync={handleManualSync}
+                  />
 
                   <button
                     type="button"

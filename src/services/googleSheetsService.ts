@@ -1,24 +1,24 @@
 import { CostProposal } from '../types/cost-proposal';
-import { MOCK_COST_PROPOSALS } from '../data/cost-proposals';
 
 const STORAGE_KEY = 'erp_cost_proposals_cache';
 const LAST_SYNC_KEY = 'erp_cost_proposals_last_sync';
 
 export const googleSheetsService = {
-  // Load cached proposals from localStorage if available, otherwise MOCK
+  // Load cached proposals from localStorage if available, otherwise empty
   getInitialProposals(): CostProposal[] {
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          // Lọc bỏ dữ liệu mẫu cũ (mã DX2609-0001 đến DX2609-0009) nếu còn sót trong cache
+          return parsed.filter((p: CostProposal) => !/^DX2609-000[1-9]$/.test(p.code));
         }
       }
     } catch (e) {
       console.warn('Could not read proposals from localStorage cache:', e);
     }
-    return MOCK_COST_PROPOSALS;
+    return [];
   },
 
   // Save list to local cache
@@ -43,11 +43,11 @@ export const googleSheetsService = {
         throw new Error(`HTTP error ${res.status}`);
       }
       const data = await res.json();
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+      if (data.success && Array.isArray(data.data)) {
         this.saveToCache(data.data);
         return data.data;
       }
-      throw new Error(data.error || 'Empty data returned');
+      return this.getInitialProposals();
     } catch (err) {
       console.warn('Failed to fetch proposals from Google Sheet API, using local cache:', err);
       return this.getInitialProposals();

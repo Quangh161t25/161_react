@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ERP PassVault</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-brand">
+        <div class="brand-logo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">ERP PassVault</h1>
+          <span class="brand-sub" id="vault-count-badge">0 tài khoản</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-quick-add" class="btn-action-primary" title="Thêm tài khoản mới">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Thêm</span>
+        </button>
+        <button id="btn-open-erp" class="icon-btn" title="Mở ERP Web App">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </button>
+        <button id="btn-lock-vault" class="icon-btn" title="Khóa & Ẩn mật khẩu">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="tab-passwords">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="7.5" cy="15.5" r="5.5"></circle>
+          <path d="m21 2-9.6 9.6"></path>
+          <path d="m15.5 7.5 3 3L22 7l-3-3"></path>
+        </svg>
+        <span>Tài khoản</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-generator">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+        </svg>
+        <span>Tạo Pass</span>
+      </button>
+      <button class="nav-tab" data-tab="tab-sync">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+        </svg>
+        <span>Đồng bộ ERP</span>
+      </button>
+    </nav>
+
+    <!-- TAB 1: PASSWORDS LIST -->
+    <div id="tab-passwords" class="tab-content active">
+      <!-- Active Domain Banner -->
+      <div id="domain-match-box" class="domain-match-box hidden">
+        <div class="domain-info">
+          <span class="domain-icon">🌐</span>
+          <div class="domain-text">
+            <span class="domain-label">Trang web:</span>
+            <strong id="active-tab-domain" class="domain-name">...</strong>
+          </div>
+        </div>
+        <div class="domain-actions">
+          <button id="btn-show-domain-only" class="badge-btn">Khớp trang</button>
+          <button id="btn-add-for-domain" class="badge-btn primary">+ Lưu web này</button>
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="search-section">
+        <div class="search-input-wrapper">
+          <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="search-input" placeholder="Tìm tài khoản, website, email, user...">
+          <button id="btn-clear-search" class="clear-search hidden">&times;</button>
+        </div>
+        <div class="categories-scroll" id="category-pills">
+          <button class="cat-pill active" data-cat="all">Tất cả</button>
+          <button class="cat-pill" data-cat="work">Công việc</button>
+          <button class="cat-pill" data-cat="email">Email</button>
+          <button class="cat-pill" data-cat="web">Website</button>
+          <button class="cat-pill" data-cat="social">Mạng XH</button>
+          <button class="cat-pill" data-cat="server">Server</button>
+          <button class="cat-pill" data-cat="finance">Tài chính</button>
+          <button class="cat-pill" data-cat="software">Phần mềm</button>
+        </div>
+      </div>
+
+      <!-- Password Items List Container -->
+      <div id="password-list-container" class="password-list custom-scrollbar">
+        <!-- Injected dynamically via JS -->
+      </div>
+    </div>
+
+    <!-- TAB 2: GENERATOR -->
+    <div id="tab-generator" class="tab-content">
+      <div class="generator-box custom-scrollbar">
+        <div class="gen-output-card">
+          <div id="generated-password-display" class="gen-text font-mono">••••••••••••••••</div>
+          <div class="gen-actions">
+            <button id="btn-refresh-gen" class="action-btn" title="Tạo mật khẩu mới">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+              </svg>
+            </button>
+            <button id="btn-copy-gen" class="action-btn primary" title="Sao chép">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="strength-meter">
+          <div class="strength-bar-bg">
+            <div id="strength-bar-fill" class="strength-bar-fill"></div>
+          </div>
+          <span id="strength-label" class="strength-text">Rất mạnh (100%)</span>
+        </div>
+
+        <div class="gen-controls">
+          <div class="control-row">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Độ dài ký tự:</span>
+              <strong id="gen-length-val" style="color: var(--accent-primary);">16</strong>
+            </div>
+            <input type="range" id="slider-length" min="8" max="64" value="16">
+          </div>
+
+          <div class="checkbox-grid">
+            <label class="check-label">
+              <input type="checkbox" id="check-upper" checked>
+              <span>Chữ hoa (A-Z)</span>
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="check-lower" checked>
+              <span>Chữ thường (a-z)</span>
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="check-numbers" checked>
+              <span>Chữ số (0-9)</span>
+            </label>
+            <label class="check-label">
+              <input type="checkbox" id="check-symbols" checked>
+              <span>Ký tự đặc biệt (!@#$)</span>
+            </label>
+            <label class="check-label full-width">
+              <input type="checkbox" id="check-exclude-ambiguous">
+              <span>Tránh ký tự dễ nhầm (0, O, l, 1, I)</span>
+            </label>
+          </div>
+        </div>
+
+        <button id="btn-fill-gen-to-page" class="btn btn-primary full-width" style="margin-top: 4px;">
+          ⚡ Điền mật khẩu này vào trang hiện tại
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB 3: SYNC & SETTINGS -->
+    <div id="tab-sync" class="tab-content">
+      <div class="sync-box custom-scrollbar">
+        <div class="sync-card">
+          <div class="sync-header">
+            <h3>Đồng bộ với ERP Web App</h3>
+            <span id="sync-time-badge" class="sync-time">Chưa đồng bộ</span>
+          </div>
+          <p class="sync-desc">
+            Dán mã <strong>Sync Token</strong> từ mục <strong>Cài đặt Đồng bộ</strong> trên Web ERP để cập nhật ngay danh sách tài khoản mới nhất.
+          </p>
+          <div class="sync-input-group">
+            <textarea id="sync-token-input" placeholder="Dán mã Sync Token JSON từ Web ERP vào đây..."></textarea>
+            <button id="btn-apply-sync-token" class="btn btn-primary full-width">
+              Áp dụng & Cập nhật Vault
+            </button>
+          </div>
+        </div>
+
+        <div class="sync-card">
+          <h3>Nhập / Xuất dữ liệu</h3>
+          <div class="btn-group-grid">
+            <button id="btn-export-vault" class="btn btn-outline">
+              Xuất tệp JSON
+            </button>
+            <label class="btn btn-outline file-btn">
+              <span>Nhập tệp JSON</span>
+              <input type="file" id="file-import-vault" accept=".json" style="display:none;">
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL / DRAWER: ADD / EDIT ACCOUNT -->
+    <div id="account-form-modal" class="form-modal hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modal-form-title">Thêm tài khoản mới</h3>
+          <button id="btn-modal-close" class="modal-close-btn">&times;</button>
+        </div>
+        <form id="vault-account-form" class="modal-body custom-scrollbar">
+          <input type="hidden" id="form-item-id">
+
+          <div class="form-group">
+            <label>Tên dịch vụ / Tiêu đề *</label>
+            <input type="text" id="form-title" placeholder="VD: Google Workspace, Facebook, Github..." required>
+          </div>
+
+          <div class="form-group">
+            <label>Địa chỉ Website / URL</label>
+            <input type="text" id="form-url" placeholder="https://example.com">
+          </div>
+
+          <div class="form-group">
+            <label>Danh mục</label>
+            <select id="form-category">
+              <option value="web">Website cá nhân / Dịch vụ</option>
+              <option value="work">Công việc & ERP</option>
+              <option value="email">Hộp thư Email</option>
+              <option value="social">Mạng xã hội</option>
+              <option value="server">Máy chủ & Cloud</option>
+              <option value="finance">Tài chính & Ngân hàng</option>
+              <option value="software">Bản quyền phần mềm</option>
+              <option value="other">Khác</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Tên đăng nhập / Email *</label>
+            <input type="text" id="form-username" placeholder="user@company.com" required>
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label style="margin: 0;">Mật khẩu *</label>
+              <button type="button" id="btn-form-gen-pass" class="link-btn">✨ Tạo nhanh</button>
+            </div>
+            <div class="input-with-action">
+              <input type="password" id="form-password" placeholder="Nhập mật khẩu..." required>
+              <button type="button" id="btn-form-toggle-pass" class="input-inner-btn" title="Hiện/ẩn mật khẩu">👁️</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Mã PIN / 2FA / Ghi chú bảo mật</label>
+            <input type="text" id="form-pin" placeholder="PIN: 1234 hoặc lưu ý 2FA...">
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" id="btn-modal-cancel" class="btn btn-outline">Hủy</button>
+            <button type="submit" id="btn-modal-save" class="btn btn-primary">Lưu tài khoản</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast-message" class="toast hidden"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

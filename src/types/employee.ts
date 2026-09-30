@@ -1,5 +1,28 @@
 export type EmployeeStatus = 'working' | 'probation' | 'resigned' | 'suspended';
-export type Gender = 'Nam' | 'Nữ' | 'Khác';
+export type Gender = 'Nam' | 'Nữ' | 'Khác' | '';
+
+export const VIETNAM_BANKS: string[] = [
+  'Vietcombank (Ngân hàng Ngoại thương)',
+  'Techcombank (Ngân hàng Kỹ thương)',
+  'MB Bank (Ngân hàng Quân đội)',
+  'BIDV (Ngân hàng Đầu tư và Phát triển)',
+  'VietinBank (Ngân hàng Công thương)',
+  'Agribank (Ngân hàng Nông nghiệp & PTNT)',
+  'VPBank (Ngân hàng Việt Nam Thịnh vượng)',
+  'ACB (Ngân hàng Á Châu)',
+  'TPBank (Ngân hàng Tiên Phong)',
+  'VIB (Ngân hàng Quốc tế)',
+  'Sacombank (Ngân hàng Sài Gòn Thương Tín)',
+  'HDBank (Ngân hàng Phát triển TP.HCM)',
+  'SHB (Ngân hàng Sài Gòn - Hà Nội)',
+  'OCB (Ngân hàng Phương Đông)',
+  'MSB (Ngân hàng Hàng Hải)',
+  'SeABank (Ngân hàng Đông Nam Á)',
+  'LPBank (Ngân hàng Bưu điện Liên Việt)',
+  'Timo Digital Bank',
+  'Cake by VPBank',
+  'Khác...',
+];
 
 export interface EmployeeBankAccount {
   id: string;

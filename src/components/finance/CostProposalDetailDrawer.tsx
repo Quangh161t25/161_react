@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FileText,
   PanelRightClose,
@@ -19,7 +19,6 @@ import {
   TriangleAlert,
   Layers,
   CircleCheck,
-  Link2,
   Clock,
   FilePen,
   Send,
@@ -31,6 +30,14 @@ import {
   Trash2,
 } from 'lucide-react';
 import { CostProposal, ApprovalStatus } from '../../types/cost-proposal';
+import { employeeService } from '../../services/employeeService';
+import {
+  financeAccountService,
+  counterpartyService,
+  financeCategoryService,
+} from '../../services/financeMasterService';
+import { Employee } from '../../types/employee';
+import { FinanceAccount, Counterparty, FinanceCategory } from '../../types/financeMaster';
 
 interface CostProposalDetailDrawerProps {
   proposal: CostProposal;
@@ -62,6 +69,115 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
 }) => {
   const [widthMode, setWidthMode] = useState<DrawerWidthMode>('normal');
   const [activeTab, setActiveTab] = useState<ActivityTab>('changes');
+
+  // Master Data States
+  const [employees, setEmployees] = useState<Employee[]>(() =>
+    employeeService.getInitialEmployees()
+  );
+  const [masterAccounts, setMasterAccounts] = useState<FinanceAccount[]>(() =>
+    financeAccountService.getInitialAccounts()
+  );
+  const [masterCounterparties, setMasterCounterparties] = useState<Counterparty[]>(() =>
+    counterpartyService.getInitialCounterparties()
+  );
+  const [masterCategories, setMasterCategories] = useState<FinanceCategory[]>(() =>
+    financeCategoryService.getInitialCategories()
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadMaster = async () => {
+      try {
+        const [liveEmps, liveAccs, liveCps, liveCats] = await Promise.all([
+          employeeService.fetchFromSheet().catch(() => employeeService.getInitialEmployees()),
+          financeAccountService.fetchFromSheet().catch(() => financeAccountService.getInitialAccounts()),
+          counterpartyService.fetchFromSheet().catch(() => counterpartyService.getInitialCounterparties()),
+          financeCategoryService.fetchFromSheet().catch(() => financeCategoryService.getInitialCategories()),
+        ]);
+        if (isMounted) {
+          if (liveEmps?.length) setEmployees(liveEmps);
+          if (liveAccs?.length) setMasterAccounts(liveAccs);
+          if (liveCps?.length) setMasterCounterparties(liveCps);
+          if (liveCats?.length) setMasterCategories(liveCats);
+        }
+      } catch {}
+    };
+    loadMaster();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const getResolvedProposer = useCallback(
+    (proposerStr?: string) => {
+      if (!proposerStr) return { name: '—', code: '', department: '' };
+      const clean = proposerStr.trim();
+      const emp = employees.find(
+        (e) => e.name === clean || e.code === clean || e.id === clean
+      );
+      return {
+        name: emp ? emp.name : clean,
+        code: emp ? emp.code : '',
+        department: emp ? emp.department : '',
+      };
+    },
+    [employees]
+  );
+
+  const getResolvedAccount = useCallback(
+    (accountStr?: string) => {
+      if (!accountStr) return { name: '—', code: '' };
+      const clean = accountStr.trim();
+      const acc = masterAccounts.find(
+        (a) =>
+          a.accountName === clean ||
+          a.code === clean ||
+          a.id === clean ||
+          `${a.accountName} (${a.accountNumber})` === clean
+      );
+      return {
+        name: acc ? acc.accountName : clean,
+        code: acc ? acc.code : '',
+      };
+    },
+    [masterAccounts]
+  );
+
+  const getResolvedBeneficiary = useCallback(
+    (beneficiaryStr?: string) => {
+      if (!beneficiaryStr) return { name: '—', code: '' };
+      const clean = beneficiaryStr.trim();
+      const cp = masterCounterparties.find(
+        (c) => c.name === clean || c.code === clean || c.id === clean
+      );
+      if (cp) return { name: cp.name, code: cp.code };
+      const emp = employees.find(
+        (e) => e.name === clean || e.code === clean || e.id === clean
+      );
+      if (emp) return { name: emp.name, code: emp.code };
+      return { name: clean, code: '' };
+    },
+    [masterCounterparties, employees]
+  );
+
+  const getResolvedCategory = useCallback(
+    (catStr?: string) => {
+      if (!catStr) return { name: 'Chi phí hoạt động', code: '' };
+      const clean = catStr.trim();
+      const cat = masterCategories.find(
+        (c) => c.name === clean || c.code === clean || c.id === clean
+      );
+      return {
+        name: cat ? cat.name : clean,
+        code: cat ? cat.code : '',
+      };
+    },
+    [masterCategories]
+  );
+
+  const resolvedProposer = getResolvedProposer(proposal.proposer);
+  const resolvedAccount = getResolvedAccount(proposal.account);
+  const resolvedBeneficiary = getResolvedBeneficiary(proposal.beneficiary);
 
   // Currency Formatter
   const formatCurrency = (amount: number) => {
@@ -324,15 +440,13 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                     Người đề xuất
                   </span>
                   <div className="text-xs sm:text-sm leading-relaxed min-w-0">
-                    <span className="inline-flex items-center gap-1 min-w-0">
-                      <span className="min-w-0 truncate font-medium">{proposal.proposer}</span>
-                      <button
-                        type="button"
-                        title="Mở Nhân viên"
-                        className="shrink-0 grid place-items-center h-4 w-4 rounded transition-colors text-primary hover:bg-primary/10"
-                      >
-                        <Link2 className="w-3 h-3" />
-                      </button>
+                    <span className="inline-flex items-center gap-1.5 min-w-0">
+                      <span className="min-w-0 truncate font-medium">{resolvedProposer.name}</span>
+                      {resolvedProposer.code && (
+                        <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground border border-border/50 shrink-0">
+                          {resolvedProposer.code}
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -345,14 +459,9 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                   </span>
                   <div className="text-xs sm:text-sm leading-relaxed min-w-0">
                     <span className="inline-flex items-center gap-1 min-w-0">
-                      <span className="min-w-0 truncate font-medium">{proposal.department}</span>
-                      <button
-                        type="button"
-                        title="Mở Phòng ban"
-                        className="shrink-0 grid place-items-center h-4 w-4 rounded transition-colors text-primary hover:bg-primary/10"
-                      >
-                        <Link2 className="w-3 h-3" />
-                      </button>
+                      <span className="min-w-0 truncate font-medium">
+                        {proposal.department || resolvedProposer.department || '—'}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -397,15 +506,13 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                     Tài khoản đề nghị chi
                   </span>
                   <div className="text-xs sm:text-sm leading-relaxed min-w-0">
-                    <span className="inline-flex items-center gap-1 min-w-0">
-                      <span className="min-w-0 truncate">{proposal.account}</span>
-                      <button
-                        type="button"
-                        title="Mở Tài khoản"
-                        className="shrink-0 grid place-items-center h-4 w-4 rounded transition-colors text-primary hover:bg-primary/10"
-                      >
-                        <Link2 className="w-3 h-3" />
-                      </button>
+                    <span className="inline-flex items-center gap-1.5 min-w-0">
+                      <span className="min-w-0 truncate">{resolvedAccount.name}</span>
+                      {resolvedAccount.code && (
+                        <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground border border-border/50 shrink-0">
+                          {resolvedAccount.code}
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -417,7 +524,18 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                     Đối tượng thụ hưởng
                   </span>
                   <p className="text-xs sm:text-sm text-foreground leading-relaxed">
-                    {proposal.beneficiary || <span className="italic text-muted-foreground">Chưa cập nhật</span>}
+                    {resolvedBeneficiary.name !== '—' ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="font-medium">{resolvedBeneficiary.name}</span>
+                        {resolvedBeneficiary.code && (
+                          <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground border border-border/50 shrink-0">
+                            {resolvedBeneficiary.code}
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="italic text-muted-foreground">Chưa cập nhật</span>
+                    )}
                   </p>
                 </div>
 
@@ -538,25 +656,35 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                     </thead>
                     <tbody className="[&>tr>td]:border-b [&>tr>td]:border-border">
                       {proposal.lineItems && proposal.lineItems.length > 0 ? (
-                        proposal.lineItems.map((item) => (
-                          <tr key={item.id} className="group hover:bg-muted/40 transition-colors">
-                            <td className="px-4 py-2.5 font-medium text-foreground bg-card group-hover:bg-muted/40">
-                              {item.category || 'Chi phí hoạt động'}
-                            </td>
-                            <td className="px-4 py-2.5 text-foreground bg-card group-hover:bg-muted/40">
-                              {item.description || item.name || 'Chi tiết chi phí'}
-                            </td>
-                            <td className="px-4 py-2.5 tabular-nums text-right text-foreground bg-card group-hover:bg-muted/40">
-                              {item.quantity}
-                            </td>
-                            <td className="px-4 py-2.5 tabular-nums text-right text-foreground bg-card group-hover:bg-muted/40">
-                              {formatCurrency(item.unitPrice || 0)}
-                            </td>
-                            <td className="px-4 py-2.5 tabular-nums text-right font-semibold text-foreground bg-card group-hover:bg-muted/40">
-                              {formatCurrency(item.amount ?? item.total ?? ((item.quantity || 0) * (item.unitPrice || 0)))}
-                            </td>
-                          </tr>
-                        ))
+                        proposal.lineItems.map((item) => {
+                          const cat = getResolvedCategory(item.category);
+                          return (
+                            <tr key={item.id} className="group hover:bg-muted/40 transition-colors">
+                              <td className="px-4 py-2.5 font-medium text-foreground bg-card group-hover:bg-muted/40">
+                                <div className="flex items-center gap-1.5">
+                                  <span>{cat.name}</span>
+                                  {cat.code && (
+                                    <span className="text-[10px] font-mono bg-muted px-1.5 py-0.2 rounded text-muted-foreground border border-border/50">
+                                      {cat.code}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-2.5 text-foreground bg-card group-hover:bg-muted/40">
+                                {item.description || item.name || 'Chi tiết chi phí'}
+                              </td>
+                              <td className="px-4 py-2.5 tabular-nums text-right text-foreground bg-card group-hover:bg-muted/40">
+                                {item.quantity}
+                              </td>
+                              <td className="px-4 py-2.5 tabular-nums text-right text-foreground bg-card group-hover:bg-muted/40">
+                                {formatCurrency(item.unitPrice || 0)}
+                              </td>
+                              <td className="px-4 py-2.5 tabular-nums text-right font-semibold text-foreground bg-card group-hover:bg-muted/40">
+                                {formatCurrency(item.amount ?? item.total ?? ((item.quantity || 0) * (item.unitPrice || 0)))}
+                              </td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr className="group hover:bg-muted/40 transition-colors">
                           <td className="px-4 py-2.5 font-medium text-foreground bg-card">Chi phí hoạt động</td>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -19,7 +19,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsRight,
-  RefreshCw,
   CheckCircle2,
   AlertCircle,
   ChartColumn,
@@ -38,6 +37,8 @@ import {
   ColumnItem,
   TableDensity,
 } from '../common/ColumnCustomizerPopover';
+import { useAutoSync } from '../../hooks/useAutoSync';
+import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 
 interface EmployeePageProps {
   onBack: () => void;
@@ -113,9 +114,22 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
 
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [isSyncing, setIsSyncing] = useState(false);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Smart Realtime Auto-Sync Hook (25s interval, focus refresh, instant badge)
+  const [isMutating, setIsMutating] = useState(false);
+  const { isSyncing: isAutoSyncing, lastSyncTime, triggerManualSync } = useAutoSync<Employee[]>({
+    syncFn: () => employeeService.fetchFromSheet(),
+    onDataReceived: (liveEmployees) => {
+      if (Array.isArray(liveEmployees)) {
+        setEmployees(liveEmployees);
+      }
+    },
+    intervalMs: 25000,
+  });
+  const isSyncing = isAutoSyncing || isMutating;
+  const setIsSyncing = setIsMutating;
 
   // Resizing state
   const [resizingColId, setResizingColId] = useState<string | null>(null);
@@ -247,28 +261,6 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       setTimeout(() => setSyncToastMessage(null), 3500);
     }
   };
-
-  // Initial load from Google Sheets
-  useEffect(() => {
-    let isMounted = true;
-    const loadData = async () => {
-      setIsSyncing(true);
-      try {
-        const liveData = await employeeService.fetchFromSheet();
-        if (isMounted && liveData && liveData.length > 0) {
-          setEmployees(liveData);
-        }
-      } catch (err) {
-        console.warn('Initial sheet load failed:', err);
-      } finally {
-        if (isMounted) setIsSyncing(false);
-      }
-    };
-    loadData();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
 
   // Filtered List
   const filteredEmployees = useMemo(() => {
@@ -480,6 +472,18 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         bankAccountHolder: formData.bankAccountHolder || (formData.name ? formData.name.toUpperCase() : ''),
         bankName: formData.bankName || '',
         bankBranch: formData.bankBranch || '',
+        bankAccounts: formData.bankAccounts || (formData.bankAccount ? [{
+          id: 'ba_1',
+          bankName: formData.bankName || '',
+          accountNumber: formData.bankAccount || '',
+          accountHolder: formData.bankAccountHolder || (formData.name ? formData.name.toUpperCase() : ''),
+          branch: formData.bankBranch || '',
+          isPrimary: true,
+        }] : []),
+        hobbies: formData.hobbies || '',
+        dislikes: formData.dislikes || '',
+        socialMedia: formData.socialMedia || '',
+        notes: formData.notes || '',
         socialInsuranceNumber: formData.socialInsuranceNumber || '',
         healthInsuranceNumber: formData.healthInsuranceNumber || '',
         taxCode: formData.taxCode || '',
@@ -539,19 +543,19 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
 
   // Manual Sync from Google Sheet
   const handleManualSync = async () => {
-    setIsSyncing(true);
     try {
-      const data = await employeeService.fetchFromSheet();
-      if (data && data.length > 0) {
-        setEmployees(data);
-        showToast(`Đã đồng bộ thành công ${data.length} nhân viên từ Google Sheet!`);
+      const data = await triggerManualSync();
+      if (Array.isArray(data)) {
+        showToast(
+          data.length > 0
+            ? `Đã đồng bộ thành công ${data.length} nhân viên từ Google Sheet!`
+            : 'Đã đồng bộ với Google Sheet (danh sách nhân viên trống).'
+        );
       } else {
         showToast('Google Sheet đã ở trạng thái mới nhất!');
       }
     } catch {
       showToast('Không thể kết nối với Google Sheet.', true);
-    } finally {
-      setIsSyncing(false);
     }
   };
 
@@ -871,23 +875,27 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
             style={colStyle}
             className={`${tdBaseClass} font-mono text-muted-foreground ${textWrapClass}`}
           >
-            {emp.password ? emp.password : '••••••••'}
+            {emp.password ? emp.password : '—'}
           </td>
         );
       case 'phone':
         return (
           <td key={colId} style={colStyle} className={tdBaseClass}>
-            <span className={`flex items-center ${justifyClass} gap-1 text-foreground ${textWrapClass}`}>
-              <span className={textWrapClass}>{emp.phone}</span>
-              <a
-                href={`tel:${emp.phone.replace(/\s+/g, '')}`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-primary hover:text-primary/80 p-0.5 shrink-0"
-                title="Gọi"
-              >
-                <Phone className="w-3 h-3" />
-              </a>
-            </span>
+            {emp.phone ? (
+              <span className={`flex items-center ${justifyClass} gap-1 text-foreground ${textWrapClass}`}>
+                <span className={textWrapClass}>{emp.phone}</span>
+                <a
+                  href={`tel:${emp.phone.replace(/\s+/g, '')}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-primary hover:text-primary/80 p-0.5 shrink-0"
+                  title="Gọi"
+                >
+                  <Phone className="w-3 h-3" />
+                </a>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
           </td>
         );
       case 'role':
@@ -925,31 +933,41 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       case 'email':
         return (
           <td key={colId} style={colStyle} className={tdBaseClass}>
-            <span className={`flex items-center ${justifyClass} gap-1 text-foreground ${textWrapClass}`}>
-              <span className={textWrapClass}>{emp.email}</span>
-              <a
-                href={`mailto:${emp.email}`}
-                onClick={(e) => e.stopPropagation()}
-                className="text-primary hover:text-primary/80 p-0.5 shrink-0"
-                title="Gửi mail"
-              >
-                <Mail className="w-3 h-3" />
-              </a>
-            </span>
+            {emp.email ? (
+              <span className={`flex items-center ${justifyClass} gap-1 text-foreground ${textWrapClass}`}>
+                <span className={textWrapClass}>{emp.email}</span>
+                <a
+                  href={`mailto:${emp.email}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-primary hover:text-primary/80 p-0.5 shrink-0"
+                  title="Gửi mail"
+                >
+                  <Mail className="w-3 h-3" />
+                </a>
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
           </td>
         );
       case 'gender':
         return (
           <td key={colId} style={colStyle} className={tdBaseClass}>
-            <span
-              className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border ${
-                emp.gender === 'Nam'
-                  ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-                  : 'bg-pink-500/10 text-pink-600 border-pink-500/20'
-              }`}
-            >
-              {emp.gender}
-            </span>
+            {emp.gender ? (
+              <span
+                className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                  emp.gender === 'Nam'
+                    ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                    : emp.gender === 'Nữ'
+                    ? 'bg-pink-500/10 text-pink-600 border-pink-500/20'
+                    : 'bg-purple-500/10 text-purple-600 border-purple-500/20'
+                }`}
+              >
+                {emp.gender}
+              </span>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            )}
           </td>
         );
       case 'status':
@@ -991,11 +1009,11 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       case 'hometown':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.hometown || '—'}</td>;
       case 'jobRole':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>{emp.role}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>{emp.role || '—'}</td>;
       case 'jobDepartment':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>{emp.department}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>{emp.department || '—'}</td>;
       case 'rank':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>Bậc {emp.rank || 1}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.rank ? `Bậc ${emp.rank}` : '—'}</td>;
       case 'startDate':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.startDate || '—'}</td>;
       case 'officialDate':
@@ -1468,19 +1486,12 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                     </button>
                   )}
 
-                  {/* Google Sheets Live Sync */}
-                  <button
-                    type="button"
-                    onClick={handleManualSync}
-                    disabled={isSyncing}
-                    title="Đồng bộ 2 chiều với Google Sheet: H161 react (tab: Nhân viên)"
-                    className="h-8 px-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                    <span className="hidden sm:inline">
-                      {isSyncing ? 'Đang đồng bộ...' : 'Google Sheet'}
-                    </span>
-                  </button>
+                  {/* Google Sheets Realtime Smart Sync Badge */}
+                  <RealtimeSyncBadge
+                    isSyncing={isSyncing}
+                    lastSyncTime={lastSyncTime}
+                    onSync={handleManualSync}
+                  />
 
                   {/* Print */}
                   <button
@@ -1771,7 +1782,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                                 @{emp.username || emp.code}
                               </p>
                               <p className="text-xs text-muted-foreground truncate">
-                                {emp.role}
+                                {emp.role || '—'}
                               </p>
                             </div>
                           </div>
@@ -1785,7 +1796,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                               Phòng ban:
                             </span>
                             <span className="font-medium text-foreground truncate max-w-[130px]">
-                              {emp.department}
+                              {emp.department || '—'}
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
@@ -1793,14 +1804,14 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                               <Phone className="w-3 h-3 text-primary/70" />
                               SĐT:
                             </span>
-                            <span className="font-mono text-foreground">{emp.phone}</span>
+                            <span className="font-mono text-foreground">{emp.phone || '—'}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="flex items-center gap-1.5">
                               <Mail className="w-3 h-3 text-primary/70" />
                               Email:
                             </span>
-                            <span className="truncate max-w-[150px] text-foreground">{emp.email}</span>
+                            <span className="truncate max-w-[150px] text-foreground">{emp.email || '—'}</span>
                           </div>
                         </div>
 

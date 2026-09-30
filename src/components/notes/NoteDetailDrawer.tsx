@@ -25,8 +25,10 @@ import {
   History,
   MessageSquare,
   Paperclip,
-  AlertCircle,
   FolderOpen,
+  Users,
+  Sparkles,
+  AlertCircle,
 } from 'lucide-react';
 import { Note } from '../../types/note';
 import { useSettings } from '../../context/SettingsContext';
@@ -123,13 +125,20 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
   };
 
   const handleCopyAll = () => {
+    const participantsStr =
+      note.participants && note.participants.length > 0
+        ? note.participants.map((p) => `${p.name}${p.role ? ` (${p.role})` : ''}`).join(', ')
+        : '—';
+
     const lines = [
-      `=== GHI CHÚ / WIKI: ${note.title} ===`,
+      `=== GHI CHÚ: ${note.title} ===`,
       `Mã tài liệu: ${note.code || '—'}`,
       `Danh mục: ${note.category || '—'}`,
       `Người tạo: ${note.author || '—'}`,
       `Ngày giờ: ${note.noteTime ? `${formatTime(note.noteTime)} - ` : ''}${note.noteDate ? formatDate(note.noteDate) : (note.createdAt ? formatDate(note.createdAt) : '')}`,
       `Địa điểm: ${note.location || '—'}`,
+      `Hoạt động: ${note.activity || '—'}`,
+      `Đi cùng ai: ${participantsStr}`,
       `Thẻ tags: ${note.tags?.join(', ') || '—'}`,
       `\nTóm tắt:`,
       `${note.summary || '—'}`,
@@ -453,6 +462,70 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
 
             {/* Section Cards */}
             <div className="space-y-5">
+              {/* Card: Đối tượng nhân viên & Đi cùng ai (Nhật ký) */}
+              {((note.participants && note.participants.length > 0) || note.activity) && (
+                <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">
+                    <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-2 text-primary font-bold">
+                      <Users className="w-4 h-4" />
+                      <span>Đối tượng nhân viên / Đi cùng ai</span>
+                    </h4>
+                    {note.participants && note.participants.length > 0 && (
+                      <span className="text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                        {note.participants.length} người tham gia
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Activity Badge if present */}
+                  {note.activity && (
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-700 dark:text-emerald-300 font-medium">
+                      <Sparkles className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                      <span>
+                        <strong>Hoạt động:</strong> {note.activity}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Participants Grid */}
+                  {note.participants && note.participants.length > 0 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
+                      {note.participants.map((p, idx) => {
+                        const avatar =
+                          p.avatarUrl ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1d4ed8&color=fff`;
+
+                        return (
+                          <div
+                            key={p.id || p.code || idx}
+                            className="flex items-center gap-2.5 p-2.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/60 transition-colors"
+                          >
+                            <img
+                              src={avatar}
+                              alt={p.name}
+                              className="w-8 h-8 rounded-full object-cover border border-border shrink-0 shadow-2xs"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-foreground truncate flex items-center gap-1.5">
+                                <span>{p.name}</span>
+                                {p.code && (
+                                  <span className="text-[9px] font-mono text-muted-foreground bg-background px-1.5 py-0.2 rounded border border-border">
+                                    {p.code}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {p.role || p.department || 'Thành viên'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Card 1: Tóm tắt & Nội dung bài viết */}
               <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">

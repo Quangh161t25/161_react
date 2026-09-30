@@ -13,10 +13,18 @@ import {
   CalendarDays,
   CalendarRange,
   CalendarCheck,
+  Sparkles,
+  Users,
+  Moon,
 } from 'lucide-react';
 import { Note } from '../../types/note';
 import { NOTE_CATEGORIES } from '../../data/notes';
 import { useSettings } from '../../context/SettingsContext';
+import {
+  getLunarFullInfoFromDateStr,
+  getCanChiYear,
+  LunarFullInfo,
+} from '../../utils/lunarCalendar';
 
 interface NoteCalendarViewProps {
   notes: Note[];
@@ -73,6 +81,14 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
   const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showLunar, setShowLunar] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('erp_calendar_show_lunar');
+      return saved !== null ? saved === 'true' : true; // Default ON
+    } catch {
+      return true;
+    }
+  });
   const [selectedDayDate, setSelectedDayDate] = useState<string>(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -80,6 +96,15 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth(); // 0 - 11
+
+  // Lunar information for current month & selected day
+  const currentMonthLunarYear = useMemo(() => {
+    return getCanChiYear(year);
+  }, [year]);
+
+  const selectedDayLunarInfo = useMemo(() => {
+    return getLunarFullInfoFromDateStr(selectedDayDate);
+  }, [selectedDayDate]);
 
   // Filter notes by search & category
   const filteredNotes = useMemo(() => {
@@ -92,8 +117,12 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
         const matchTitle = note.title.toLowerCase().includes(q);
         const matchContent = (note.content || '').toLowerCase().includes(q);
         const matchLocation = (note.location || '').toLowerCase().includes(q);
+        const matchActivity = (note.activity || '').toLowerCase().includes(q);
+        const matchParticipants = (note.participants || []).some(
+          (p) => p.name?.toLowerCase().includes(q) || (p.role && p.role.toLowerCase().includes(q))
+        );
         const matchTags = (note.tags || []).some((t) => t.toLowerCase().includes(q));
-        if (!matchTitle && !matchContent && !matchLocation && !matchTags) {
+        if (!matchTitle && !matchContent && !matchLocation && !matchActivity && !matchParticipants && !matchTags) {
           return false;
         }
       }
@@ -101,7 +130,7 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
     });
   }, [notes, selectedCategory, searchQuery]);
 
-  // Map notes by normalized date: "YYYY-MM-DD" -> Note[]
+  // Map notes by normalized date: "YYYY-MM-DD" -> Note[] (sorted by time descending)
   const notesByDate = useMemo(() => {
     const map = new Map<string, Note[]>();
     filteredNotes.forEach((note) => {
@@ -112,6 +141,14 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
         }
         map.get(dateKey)!.push(note);
       }
+    });
+    // Sort notes in each day by time descending (lớn tới nhỏ)
+    map.forEach((dayNotes) => {
+      dayNotes.sort((a, b) => {
+        const timeA = a.noteTime || '00:00';
+        const timeB = b.noteTime || '00:00';
+        return timeB.localeCompare(timeA);
+      });
     });
     return map;
   }, [filteredNotes]);
@@ -176,6 +213,7 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
       isCurrentMonth: boolean;
       isToday: boolean;
       notes: Note[];
+      lunarInfo?: LunarFullInfo | null;
     }[] = [];
 
     const now = new Date();
@@ -192,6 +230,7 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
         isCurrentMonth: false,
         isToday: dateStr === todayStr,
         notes: notesByDate.get(dateStr) || [],
+        lunarInfo: getLunarFullInfoFromDateStr(dateStr),
       });
     }
 
@@ -204,6 +243,7 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
         isCurrentMonth: true,
         isToday: dateStr === todayStr,
         notes: notesByDate.get(dateStr) || [],
+        lunarInfo: getLunarFullInfoFromDateStr(dateStr),
       });
     }
 
@@ -218,6 +258,7 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
         isCurrentMonth: false,
         isToday: dateStr === todayStr,
         notes: notesByDate.get(dateStr) || [],
+        lunarInfo: getLunarFullInfoFromDateStr(dateStr),
       });
     }
 
@@ -239,6 +280,7 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
       dayName: string;
       isToday: boolean;
       notes: Note[];
+      lunarInfo: LunarFullInfo | null;
     }[] = [];
 
     const now = new Date();
@@ -254,13 +296,14 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
         dayName: FULL_WEEKDAYS[i],
         isToday: dateStr === todayStr,
         notes: notesByDate.get(dateStr) || [],
+        lunarInfo: getLunarFullInfoFromDateStr(dateStr),
       });
     }
 
     return days;
   }, [currentDate, notesByDate]);
 
-  // Agenda / List View: sorted notes grouped by date
+  // Agenda / List View: sorted notes grouped by date (date & time descending)
   const agendaList = useMemo(() => {
     const grouped = new Map<string, Note[]>();
     filteredNotes.forEach((note) => {
@@ -269,6 +312,15 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
         grouped.set(dateKey, []);
       }
       grouped.get(dateKey)!.push(note);
+    });
+
+    // Sort notes within each group by time descending (lớn tới nhỏ)
+    grouped.forEach((groupNotes) => {
+      groupNotes.sort((a, b) => {
+        const timeA = a.noteTime || '00:00';
+        const timeB = b.noteTime || '00:00';
+        return timeB.localeCompare(timeA);
+      });
     });
 
     // Sort dates descending
@@ -282,6 +334,9 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
   // Category Color Map
   const getCategoryColor = (cat: string) => {
     const lower = (cat || '').toLowerCase();
+    if (lower.includes('nhật ký') || lower.includes('hoạt động') || lower.includes('đi chơi')) {
+      return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20';
+    }
     if (lower.includes('họp')) return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
     if (lower.includes('kỹ thuật')) return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20';
     if (lower.includes('kế hoạch')) return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
@@ -329,6 +384,11 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
                 ? `Ngày ${formatDate(selectedDayDate)}`
                 : `Tháng ${month + 1}, Năm ${year}`}
             </span>
+            {showLunar && currentMonthLunarYear && viewMode !== 'day' && (
+              <span className="hidden sm:inline text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded-full">
+                Năm {currentMonthLunarYear.fullName} ({currentMonthLunarYear.conGiap})
+              </span>
+            )}
           </h2>
         </div>
 
@@ -359,8 +419,29 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
           </select>
         </div>
 
-        {/* Right: View Mode Switcher & Add Button */}
+        {/* Right: View Mode Switcher, Lunar Toggle & Add Button */}
         <div className="flex items-center gap-2 self-end md:self-auto">
+          {/* Lunar Toggle Button */}
+          <button
+            type="button"
+            onClick={() => {
+              const next = !showLunar;
+              setShowLunar(next);
+              try {
+                localStorage.setItem('erp_calendar_show_lunar', String(next));
+              } catch {}
+            }}
+            title={showLunar ? 'Đang bật Lịch Âm (Bấm để ẩn)' : 'Bấm để hiển thị Lịch Âm Việt Nam'}
+            className={`h-8 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+              showLunar
+                ? 'bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400 shadow-2xs'
+                : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+            }`}
+          >
+            <Moon className={`w-3.5 h-3.5 ${showLunar ? 'fill-current' : ''}`} />
+            <span className="hidden sm:inline">Âm lịch</span>
+          </button>
+
           {/* View Mode Tabs */}
           <div className="flex items-center rounded-xl border border-border bg-muted/40 p-0.5 text-xs">
             <button
@@ -441,24 +522,45 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
                   key={idx}
                   onClick={() => {
                     setSelectedDayDate(cell.dateStr);
+                    setViewMode('day');
                   }}
-                  className={`min-h-[100px] sm:min-h-[120px] p-1 sm:p-1.5 flex flex-col transition-colors group relative ${
+                  title={`Bấm để mở xem chi tiết ngày ${formatDate(cell.dateStr)}`}
+                  className={`min-h-[100px] sm:min-h-[120px] p-1 sm:p-1.5 flex flex-col transition-colors group relative cursor-pointer hover:bg-primary/5 hover:border-primary/40 ${
                     cell.isCurrentMonth ? 'bg-card' : 'bg-muted/20 text-muted-foreground'
                   } ${cell.isToday ? 'ring-2 ring-primary ring-inset bg-primary/5' : ''}`}
                 >
-                  {/* Day Header */}
-                  <div className="flex items-center justify-between mb-1">
-                    <span
-                      className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center transition-all ${
-                        cell.isToday
-                          ? 'bg-primary text-primary-foreground font-extrabold shadow-xs'
-                          : cell.isCurrentMonth
-                          ? 'text-foreground group-hover:text-primary'
-                          : 'text-muted-foreground/60'
-                      }`}
-                    >
-                      {cell.dayNumber}
-                    </span>
+                  {/* Day Header: Solar date (left) & Lunar date (right) */}
+                  <div className="flex items-center justify-between mb-1 min-w-0">
+                    <div className="flex items-center gap-1 min-w-0">
+                      {/* Solar Day Number */}
+                      <span
+                        className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center transition-all shrink-0 ${
+                          cell.isToday
+                            ? 'bg-primary text-primary-foreground font-extrabold shadow-xs'
+                            : cell.isCurrentMonth
+                            ? 'text-foreground group-hover:text-primary'
+                            : 'text-muted-foreground/60'
+                        }`}
+                      >
+                        {cell.dayNumber}
+                      </span>
+
+                      {/* Lunar Day Indicator */}
+                      {showLunar && cell.lunarInfo && (
+                        <span
+                          title={`Dương lịch: ${cell.dateStr}\nÂm lịch: Ngày ${cell.lunarInfo.lunar.day}/${cell.lunarInfo.lunar.month}/${cell.lunarInfo.lunar.year} (${cell.lunarInfo.canChiDay.fullName})\nTiết khí: ${cell.lunarInfo.tietKhi || '—'}`}
+                          className={`text-[10px] leading-tight px-1 py-0.5 rounded transition-colors ${
+                            cell.lunarInfo.isSpecialDay
+                              ? 'text-rose-600 dark:text-rose-400 font-extrabold bg-rose-500/15 border border-rose-500/30 shadow-2xs'
+                              : cell.isCurrentMonth
+                              ? 'text-muted-foreground font-medium'
+                              : 'text-muted-foreground/40 font-normal'
+                          }`}
+                        >
+                          {cell.lunarInfo.displayText}
+                        </span>
+                      )}
+                    </div>
 
                     {/* Quick Add Button on Hover */}
                     <button
@@ -468,7 +570,7 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
                         e.stopPropagation();
                         onAddNote(cell.dateStr);
                       }}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all shrink-0"
                     >
                       <Plus className="w-3 h-3" />
                     </button>
@@ -529,16 +631,40 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
                 }`}
               >
                 {/* Week Day Header */}
-                <div className="flex items-center justify-between pb-2 mb-2 border-b border-border">
+                <div
+                  onClick={() => {
+                    setSelectedDayDate(day.dateStr);
+                    setViewMode('day');
+                  }}
+                  title={`Bấm để mở xem chi tiết ngày ${formatDate(day.dateStr)}`}
+                  className="flex items-center justify-between pb-2 mb-2 border-b border-border cursor-pointer hover:bg-muted/40 p-1 rounded-lg transition-colors group/wh"
+                >
                   <div>
-                    <span className="text-xs font-bold text-muted-foreground uppercase">{day.dayName}</span>
-                    <p className={`text-sm font-extrabold ${day.isToday ? 'text-primary' : 'text-foreground'}`}>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-muted-foreground uppercase group-hover/wh:text-primary transition-colors">{day.dayName}</span>
+                      {showLunar && day.lunarInfo && (
+                        <span
+                          className={`text-[10px] px-1 py-0.2 rounded font-semibold ${
+                            day.lunarInfo.isSpecialDay
+                              ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/30'
+                              : 'text-muted-foreground bg-muted/60'
+                          }`}
+                          title={`Âm lịch: ${day.lunarInfo.lunar.day}/${day.lunarInfo.lunar.month} (${day.lunarInfo.canChiDay.fullName})`}
+                        >
+                          ÂL: {day.lunarInfo.displayText}
+                        </span>
+                      )}
+                    </div>
+                    <p className={`text-sm font-extrabold ${day.isToday ? 'text-primary' : 'text-foreground group-hover/wh:text-primary'}`}>
                       {day.date.getDate()} Thg {day.date.getMonth() + 1}
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => onAddNote(day.dateStr)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddNote(day.dateStr);
+                    }}
                     className="p-1 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                     title="Thêm ghi chú"
                   >
@@ -549,7 +675,14 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
                 {/* Day Notes List */}
                 <div className="flex-1 space-y-2 overflow-y-auto">
                   {day.notes.length === 0 ? (
-                    <div className="h-28 flex items-center justify-center text-center text-xs text-muted-foreground/60 italic">
+                    <div
+                      onClick={() => {
+                        setSelectedDayDate(day.dateStr);
+                        setViewMode('day');
+                      }}
+                      title={`Bấm để xem chi tiết ngày ${formatDate(day.dateStr)}`}
+                      className="h-28 flex items-center justify-center text-center text-xs text-muted-foreground/60 italic cursor-pointer hover:bg-primary/5 rounded-xl transition-colors"
+                    >
                       Trống
                     </div>
                   ) : (
@@ -577,6 +710,22 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
                             <span className="truncate">{note.location}</span>
                           </div>
                         )}
+                        {(note.activity || (note.participants && note.participants.length > 0)) && (
+                          <div className="flex items-center gap-1 pt-0.5 overflow-hidden">
+                            {note.activity && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 truncate">
+                                <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                                <span className="truncate">{note.activity}</span>
+                              </span>
+                            )}
+                            {note.participants && note.participants.length > 0 && (
+                              <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground bg-muted/60 px-1 rounded truncate">
+                                <Users className="w-2.5 h-2.5 shrink-0 text-primary" />
+                                <span className="truncate">{note.participants.map(p => p.name).join(', ')}</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
@@ -590,23 +739,90 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
         {viewMode === 'day' && (
           <div className="max-w-4xl mx-auto space-y-4">
             <div className="p-4 rounded-2xl border border-border bg-card shadow-xs flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                  Chi tiết ngày được chọn
-                </span>
-                <h3 className="text-lg font-bold text-foreground mt-0.5">
-                  {formatDate(selectedDayDate)} ({notesByDate.get(selectedDayDate)?.length || 0} bài viết & ghi chú)
-                </h3>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('month')}
+                  title="Quay lại Lịch Tháng"
+                  className="p-2 rounded-xl border border-border bg-background hover:bg-muted text-foreground transition-colors shadow-2xs"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <div>
+                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">
+                    Chi tiết ngày được chọn
+                  </span>
+                  <h3 className="text-lg font-bold text-foreground mt-0.5">
+                    {formatDate(selectedDayDate)} ({notesByDate.get(selectedDayDate)?.length || 0} bài viết & ghi chú)
+                  </h3>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => onAddNote(selectedDayDate)}
-                className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold flex items-center gap-1.5 shadow-xs hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Thêm ghi chú ngày này</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('month')}
+                  className="px-3 py-2 rounded-xl border border-border bg-background hover:bg-muted text-xs font-semibold text-foreground transition-colors"
+                >
+                  Xem lịch tháng
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAddNote(selectedDayDate)}
+                  className="px-3 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold flex items-center gap-1.5 shadow-xs hover:bg-primary/90 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Thêm ghi chú ngày này</span>
+                </button>
+              </div>
             </div>
+
+            {/* Lunar Calendar Detailed Card in Day View */}
+            {showLunar && selectedDayLunarInfo && (
+              <div className="p-4 rounded-2xl border border-rose-500/20 bg-rose-500/5 shadow-2xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rose-500/15 pb-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
+                      <Moon className="w-4 h-4 fill-current" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-extrabold text-foreground">
+                          Lịch Âm: Ngày {selectedDayLunarInfo.lunar.day} Tháng {selectedDayLunarInfo.lunar.month}{selectedDayLunarInfo.lunar.isLeap ? ' (Nhuận)' : ''}, Năm {selectedDayLunarInfo.canChiYear.fullName}
+                        </span>
+                        {selectedDayLunarInfo.isSpecialDay && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-500 text-white shadow-2xs">
+                            {selectedDayLunarInfo.specialDayLabel}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Ngày <span className="font-semibold text-foreground">{selectedDayLunarInfo.canChiDay.fullName}</span> • Tiết khí: <span className="font-semibold text-foreground">{selectedDayLunarInfo.tietKhi || '—'}</span> • Tuổi {selectedDayLunarInfo.canChiYear.conGiap}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Giờ Hoàng Đạo */}
+                {selectedDayLunarInfo.gioHoangDao.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                      Giờ Hoàng Đạo ({selectedDayLunarInfo.gioHoangDao.length} giờ tốt trong ngày):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedDayLunarInfo.gioHoangDao.map((hourStr, idx) => (
+                        <span
+                          key={idx}
+                          className="px-2 py-1 rounded-lg text-xs font-medium bg-background border border-border/80 text-foreground shadow-2xs"
+                        >
+                          {hourStr}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* List for this day */}
             <div className="space-y-3">
@@ -651,7 +867,35 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
                         {note.summary && (
                           <p className="text-xs text-muted-foreground line-clamp-1">{note.summary}</p>
                         )}
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground pt-1">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground pt-1">
+                          {note.activity && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                              <Sparkles className="w-3 h-3" />
+                              {note.activity}
+                            </span>
+                          )}
+                          {note.participants && note.participants.length > 0 && (
+                            <div className="flex items-center gap-1 bg-muted/60 px-2 py-0.5 rounded-md border border-border/60 text-[11px] text-muted-foreground">
+                              <Users className="w-3 h-3 text-primary shrink-0" />
+                              <div className="flex -space-x-1 overflow-hidden">
+                                {note.participants.slice(0, 3).map((p, idx) => (
+                                  <img
+                                    key={p.id || idx}
+                                    src={
+                                      p.avatarUrl ||
+                                      `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff`
+                                    }
+                                    alt={p.name}
+                                    title={p.name}
+                                    className="inline-block h-4 w-4 rounded-full ring-1 ring-background object-cover shrink-0"
+                                  />
+                                ))}
+                              </div>
+                              <span className="truncate max-w-[120px] font-medium text-foreground">
+                                {note.participants.map((p) => p.name).join(', ')}
+                              </span>
+                            </div>
+                          )}
                           {note.noteTime && (
                             <span className="flex items-center gap-1 font-mono">
                               <Clock className="w-3.5 h-3.5 text-primary" /> {note.noteTime}
@@ -712,11 +956,38 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
               agendaList.map(([dateKey, dateNotes]) => (
                 <div key={dateKey} className="space-y-3">
                   {/* Date Heading Group */}
-                  <div className="flex items-center gap-2 sticky top-0 bg-card/90 backdrop-blur-xs py-1 z-10">
+                  <div
+                    onClick={() => {
+                      if (dateKey !== 'Không có ngày') {
+                        setSelectedDayDate(dateKey);
+                        setViewMode('day');
+                      }
+                    }}
+                    title={dateKey !== 'Không có ngày' ? `Bấm để mở xem chi tiết ngày ${formatDate(dateKey)}` : undefined}
+                    className={`flex items-center gap-2 sticky top-0 bg-card/90 backdrop-blur-xs py-1 z-10 p-1 rounded-lg transition-colors group/ag ${
+                      dateKey !== 'Không có ngày' ? 'cursor-pointer hover:text-primary hover:bg-muted/60' : ''
+                    }`}
+                  >
                     <CalendarCheck className="w-4 h-4 text-primary" />
-                    <h3 className="text-sm font-extrabold text-foreground">
+                    <h3 className="text-sm font-extrabold text-foreground group-hover/ag:text-primary">
                       {dateKey === 'Không có ngày' ? 'Chưa phân ngày cụ thể' : formatDate(dateKey)}
                     </h3>
+                    {showLunar && dateKey !== 'Không có ngày' && (() => {
+                      const lInfo = getLunarFullInfoFromDateStr(dateKey);
+                      if (!lInfo) return null;
+                      return (
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-md font-medium border ${
+                            lInfo.isSpecialDay
+                              ? 'bg-rose-500/15 border-rose-500/30 text-rose-600 dark:text-rose-400 font-bold'
+                              : 'bg-muted/60 border-border text-muted-foreground'
+                          }`}
+                          title={`Ngày ${lInfo.canChiDay.fullName}, Năm ${lInfo.canChiYear.fullName}`}
+                        >
+                          ÂL: {lInfo.lunar.day}/{lInfo.lunar.month} {lInfo.specialDayLabel ? `(${lInfo.specialDayLabel})` : ''}
+                        </span>
+                      );
+                    })()}
                     <span className="text-xs px-2 py-0.5 rounded-full bg-muted font-bold text-muted-foreground">
                       {dateNotes.length}
                     </span>
@@ -754,6 +1025,25 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
                             <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                               {note.summary}
                             </p>
+                          )}
+
+                          {(note.activity || (note.participants && note.participants.length > 0)) && (
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                              {note.activity && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 truncate max-w-full">
+                                  <Sparkles className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{note.activity}</span>
+                                </span>
+                              )}
+                              {note.participants && note.participants.length > 0 && (
+                                <div className="flex items-center gap-1 bg-muted/60 px-1.5 py-0.5 rounded-md border border-border/60 text-[11px] text-muted-foreground">
+                                  <Users className="w-3 h-3 text-primary shrink-0" />
+                                  <span className="truncate max-w-[120px]">
+                                    {note.participants.map((p) => p.name).join(', ')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
 

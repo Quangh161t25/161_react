@@ -1,5 +1,4 @@
 import { Employee } from '../types/employee';
-import { MOCK_EMPLOYEES } from '../data/employees';
 
 const STORAGE_KEY = 'erp_employees_cache';
 const LAST_SYNC_KEY = 'erp_employees_last_sync';
@@ -10,14 +9,14 @@ export const employeeService = {
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
     } catch (e) {
       console.warn('Could not read employees from cache:', e);
     }
-    return MOCK_EMPLOYEES;
+    return [];
   },
 
   saveToCache(employees: Employee[]): void {
@@ -38,11 +37,11 @@ export const employeeService = {
       const res = await fetch('/api/sheets/employees');
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+      if (data.success && Array.isArray(data.data)) {
         this.saveToCache(data.data);
         return data.data;
       }
-      throw new Error(data.error || 'Empty data returned');
+      return this.getInitialEmployees();
     } catch (err) {
       console.warn('Failed to fetch employees from Google Sheet, fallback to cache:', err);
       return this.getInitialEmployees();
