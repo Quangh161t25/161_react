@@ -3767,9 +3767,15 @@ export function rowToLearningEntry(r, idx) {
     links = [];
   }
 
+  const rawCreatedAt = String(r[20] || '').trim();
+  const rawUpdatedAt = String(r[21] || '').trim();
+  const entryDate = String(r[12] || '').trim();
+  const fallbackDate = entryDate ? `${entryDate}T00:00:00.000Z` : '';
+
   return {
     id: `learn_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
     code,
+    sheetIndex: idx,
     title: String(r[1] || '').trim(),
     content: String(r[2] || '').trim(),
     summary: String(r[3] || '').trim(),
@@ -3781,7 +3787,7 @@ export function rowToLearningEntry(r, idx) {
     masteryLevel: String(r[9] || 'learning').trim(),
     difficulty: String(r[10] || 'intermediate').trim(),
     rating: Number(r[11]) || 5,
-    entryDate: String(r[12] || '').trim(),
+    entryDate,
     nextReviewDate: String(r[13] || '').trim(),
     isPinned: String(r[14] || '').toLowerCase() === 'true',
     coverUrl: String(r[15] || '').trim(),
@@ -3789,8 +3795,8 @@ export function rowToLearningEntry(r, idx) {
     links: Array.isArray(links) ? links : [],
     color: String(r[18] || '#8b5cf6').trim(),
     author: String(r[19] || '').trim(),
-    createdAt: String(r[20] || '').trim() || new Date().toISOString(),
-    updatedAt: String(r[21] || '').trim() || new Date().toISOString(),
+    createdAt: rawCreatedAt || fallbackDate,
+    updatedAt: rawUpdatedAt || fallbackDate,
   };
 }
 

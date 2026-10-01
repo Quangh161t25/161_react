@@ -48,6 +48,7 @@ export interface LearningEntry {
   isPinned: boolean;
   color?: string; // Nhãn màu
   author?: string;
+  sheetIndex?: number; // 0-based row order index from Google Sheet
   createdAt: string;
   updatedAt: string;
 }

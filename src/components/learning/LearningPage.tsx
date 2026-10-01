@@ -8,10 +8,11 @@ import {
   List,
   LayoutGrid,
   ChevronDown,
-  ChevronsLeft,
   ChevronLeft,
   ChevronRight,
-  ChevronsRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Star,
   Pin,
   ExternalLink,
@@ -34,6 +35,7 @@ import {
   ColumnItem,
   TableDensity,
 } from '../common/ColumnCustomizerPopover';
+import { TablePagination } from '../common/TablePagination';
 import { stripMarkdown } from '../notes/MarkdownRenderer';
 import { useAutoSync } from '../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
@@ -115,6 +117,11 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
   // Dropdowns
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isMasteryOpen, setIsMasteryOpen] = useState(false);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+
+  // Sorting: Default 'sheetOrder' desc = "Từ dưới lên trên" (dòng dưới cùng trong Sheet lên đầu)
+  const [sortField, setSortField] = useState<string>('sheetOrder');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Selection & Drawers
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -322,13 +329,25 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
     const isEdit = !!editingEntry || entries.some((e) => (e.code && e.code === matchCode) || e.id === matchId);
 
     if (isEdit) {
-      updated = entries.map((e) =>
-        (e.code && e.code === matchCode) || e.id === matchId ? { ...e, ...payload } : e
-      );
+      updated = entries.map((e) => {
+        if ((e.code && e.code === matchCode) || e.id === matchId) {
+          return {
+            ...e,
+            ...payload,
+            sheetIndex: e.sheetIndex,
+          };
+        }
+        return e;
+      });
       learningService.updateInSheet(payload);
     } else {
-      updated = [payload, ...entries];
-      learningService.appendToSheet(payload);
+      const maxSheetIndex = entries.reduce((max, e) => Math.max(max, e.sheetIndex ?? -1), -1);
+      const newEntry: LearningEntry = {
+        ...payload,
+        sheetIndex: maxSheetIndex + 1,
+      };
+      updated = [...entries, newEntry];
+      learningService.appendToSheet(newEntry);
     }
     setEntries(updated);
     learningService.saveToLocalCache(updated);
@@ -423,19 +442,97 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
     });
   }, [entries, searchQuery, selectedCategory, selectedMastery, onlyPinned, onlyDueForReview, todayStr]);
 
-  // Sorted: Pinned first, then date descending
+  // Helper to extract numeric rank for sheet order (dưới lên trên)
+  const getEntrySheetOrderRank = (entry: LearningEntry, originalIndex: number): number => {
+    if (typeof entry.sheetIndex === 'number') {
+      return entry.sheetIndex;
+    }
+    const codeNum = parseInt((entry.code || '').replace(/\D/g, ''), 10);
+    if (!isNaN(codeNum)) {
+      return codeNum;
+    }
+    return originalIndex;
+  };
+
+  const handleSortColumn = (colId: string) => {
+    if (sortField === colId) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(colId);
+      setSortDirection(colId === 'entryDate' || colId === 'rating' ? 'desc' : 'asc');
+    }
+  };
+
+  // Sorted: Pinned first, then sorted by sortField with stable tie-breaker (Từ dưới lên trên)
   const sortedEntries = useMemo(() => {
-    return [...filteredEntries].sort((a, b) => {
+    const indexed = filteredEntries.map((item, originalIdx) => ({
+      item,
+      originalIdx,
+    }));
+
+    indexed.sort((aObj, bObj) => {
+      const a = aObj.item;
+      const b = bObj.item;
+
+      // 1. Pinned entries always stay at the very top
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
-      const dateA = a.entryDate || a.createdAt || '';
-      const dateB = b.entryDate || b.createdAt || '';
-      return dateB.localeCompare(dateA);
-    });
-  }, [filteredEntries]);
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(sortedEntries.length / pageSize));
+      // 2. Specific column sort
+      let diff = 0;
+      if (sortField === 'sheetOrder') {
+        const rankA = getEntrySheetOrderRank(a, aObj.originalIdx);
+        const rankB = getEntrySheetOrderRank(b, bObj.originalIdx);
+        // desc: "Từ dưới lên trên" (dòng dưới cùng trong Sheet rank cao hơn -> lên đầu)
+        diff = sortDirection === 'desc' ? rankB - rankA : rankA - rankB;
+      } else if (sortField === 'code') {
+        const numA = parseInt((a.code || '').replace(/\D/g, ''), 10) || 0;
+        const numB = parseInt((b.code || '').replace(/\D/g, ''), 10) || 0;
+        diff = numA !== numB
+          ? (sortDirection === 'asc' ? numA - numB : numB - numA)
+          : (sortDirection === 'asc' ? a.code.localeCompare(b.code) : b.code.localeCompare(a.code));
+      } else if (sortField === 'title') {
+        diff = sortDirection === 'asc'
+          ? (a.title || '').localeCompare(b.title || '', 'vi')
+          : (b.title || '').localeCompare(a.title || '', 'vi');
+      } else if (sortField === 'entryDate') {
+        const dateA = a.entryDate || a.createdAt || '';
+        const dateB = b.entryDate || b.createdAt || '';
+        diff = sortDirection === 'asc'
+          ? dateA.localeCompare(dateB)
+          : dateB.localeCompare(dateA);
+      } else if (sortField === 'category') {
+        diff = sortDirection === 'asc'
+          ? (a.category || '').localeCompare(b.category || '', 'vi')
+          : (b.category || '').localeCompare(a.category || '', 'vi');
+      } else if (sortField === 'rating') {
+        const rA = a.rating ?? 5;
+        const rB = b.rating ?? 5;
+        diff = sortDirection === 'asc' ? rA - rB : rB - rA;
+      } else if (sortField === 'masteryLevel') {
+        diff = sortDirection === 'asc'
+          ? (a.masteryLevel || '').localeCompare(b.masteryLevel || '')
+          : (b.masteryLevel || '').localeCompare(a.masteryLevel || '');
+      } else {
+        const valA = String((a as any)[sortField] || '');
+        const valB = String((b as any)[sortField] || '');
+        diff = sortDirection === 'asc'
+          ? valA.localeCompare(valB, 'vi')
+          : valB.localeCompare(valA, 'vi');
+      }
+
+      if (diff !== 0) return diff;
+
+      // 3. Stable tie-breaker: always maintain Sheet order (dòng dưới cùng lên trước)
+      const rankA = getEntrySheetOrderRank(a, aObj.originalIdx);
+      const rankB = getEntrySheetOrderRank(b, bObj.originalIdx);
+      return rankB - rankA;
+    });
+
+    return indexed.map((x) => x.item);
+  }, [filteredEntries, sortField, sortDirection]);
+
+  // Paginated Entries (TablePagination handles total pages)
   const paginatedEntries = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return sortedEntries.slice(start, start + pageSize);
@@ -941,6 +1038,105 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>Cần ôn tập</span>
                   </button>
+
+                  {/* Sort Mode Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                      className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                        sortField === 'sheetOrder' && sortDirection === 'desc'
+                          ? 'bg-primary/10 border-primary text-primary font-semibold'
+                          : 'bg-background border-border text-foreground hover:bg-muted'
+                      }`}
+                      title="Tùy chọn sắp xếp (Mặc định: Dưới lên trên)"
+                    >
+                      <ArrowUpDown className="w-3.5 h-3.5" />
+                      <span>
+                        {sortField === 'sheetOrder'
+                          ? sortDirection === 'desc'
+                            ? 'Dưới lên trên'
+                            : 'Trên xuống dưới'
+                          : sortField === 'entryDate'
+                          ? 'Ngày học'
+                          : sortField === 'title'
+                          ? 'Tiêu đề'
+                          : sortField === 'code'
+                          ? 'Mã'
+                          : sortField === 'rating'
+                          ? 'Đánh giá'
+                          : 'Tùy chỉnh'}
+                      </span>
+                      <ChevronDown className="w-3 h-3 ml-0.5 opacity-60" />
+                    </button>
+                    {isSortMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setIsSortMenuOpen(false)} />
+                        <div className="absolute left-0 top-full mt-1 w-56 rounded-xl border border-border bg-card shadow-lg z-40 p-1 space-y-0.5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSortField('sheetOrder');
+                              setSortDirection('desc');
+                              setIsSortMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                              sortField === 'sheetOrder' && sortDirection === 'desc'
+                                ? 'bg-primary/10 text-primary font-semibold'
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            <span>⬇️ Dưới lên trên (Mặc định)</span>
+                            {sortField === 'sheetOrder' && sortDirection === 'desc' && <span className="text-[10px]">✓</span>}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSortField('sheetOrder');
+                              setSortDirection('asc');
+                              setIsSortMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                              sortField === 'sheetOrder' && sortDirection === 'asc'
+                                ? 'bg-primary/10 text-primary font-semibold'
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            <span>⬆️ Trên xuống dưới (Thứ tự Sheet)</span>
+                            {sortField === 'sheetOrder' && sortDirection === 'asc' && <span className="text-[10px]">✓</span>}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSortField('entryDate');
+                              setSortDirection('desc');
+                              setIsSortMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                              sortField === 'entryDate' ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
+                            }`}
+                          >
+                            <span>📅 Ngày học mới nhất</span>
+                            {sortField === 'entryDate' && <span className="text-[10px]">✓</span>}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSortField('title');
+                              setSortDirection('asc');
+                              setIsSortMenuOpen(false);
+                            }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between ${
+                              sortField === 'title' ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
+                            }`}
+                          >
+                            <span>🔤 Tiêu đề (A → Z)</span>
+                            {sortField === 'title' && <span className="text-[10px]">✓</span>}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Right: Actions */}
@@ -1149,14 +1345,26 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                               <th
                                 key={col.id}
                                 style={{ width: col.width, minWidth: col.width }}
-                                className={`px-3 py-2 border-r border-border relative select-none ${
+                                onClick={() => handleSortColumn(col.id)}
+                                className={`px-3 py-2 border-r border-border relative select-none cursor-pointer hover:bg-muted/80 transition-colors group ${
                                   colAlign === 'center' ? 'text-center' : colAlign === 'right' ? 'text-right' : 'text-left'
-                                }`}
+                                } ${sortField === col.id ? 'text-primary font-bold bg-primary/5' : ''}`}
+                                title={`Bấm để sắp xếp theo ${col.label}`}
                               >
-                                <div className={`flex items-center ${justifyClass}`}>
+                                <div className={`flex items-center ${justifyClass} gap-1`}>
                                   <span className="truncate">{col.label}</span>
+                                  {sortField === col.id ? (
+                                    sortDirection === 'asc' ? (
+                                      <ArrowUp className="w-3 h-3 text-primary shrink-0" />
+                                    ) : (
+                                      <ArrowDown className="w-3 h-3 text-primary shrink-0" />
+                                    )
+                                  ) : (
+                                    <ArrowUpDown className="w-2.5 h-2.5 opacity-0 group-hover:opacity-40 hover:opacity-100 shrink-0 text-muted-foreground" />
+                                  )}
                                   <div
                                     onMouseDown={(e) => handleStartResize(col.id, e)}
+                                    onClick={(e) => e.stopPropagation()}
                                     className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 transition-colors"
                                   />
                                 </div>
@@ -1214,77 +1422,15 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
               )}
             </div>
 
-            {/* Pagination Toolbar */}
-            <div className="px-3 py-2 border-t border-border bg-card flex flex-col sm:flex-row items-center justify-between gap-2 shrink-0 text-xs">
-              <div className="text-muted-foreground">
-                Hiển thị <strong>{paginatedEntries.length}</strong> trên tổng số <strong>{sortedEntries.length}</strong> bài học
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-muted-foreground mr-2">
-                  <span>Số hàng:</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      setPageSize(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="px-1.5 py-0.5 rounded border border-border bg-background text-foreground"
-                  >
-                    <option value={10}>10</option>
-                    <option value={20}>20</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                    <option value={200}>200</option>
-                    <option value={500}>500</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage(1)}
-                    className="p-1 rounded border border-border bg-background hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
-                    title="Trang đầu"
-                  >
-                    <ChevronsLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={currentPage === 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="p-1 rounded border border-border bg-background hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
-                    title="Trang trước"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-
-                  <span className="px-2 py-0.5 text-foreground font-semibold">
-                    {currentPage} / {totalPages}
-                  </span>
-
-                  <button
-                    type="button"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className="p-1 rounded border border-border bg-background hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
-                    title="Trang sau"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setCurrentPage(totalPages)}
-                    className="p-1 rounded border border-border bg-background hover:bg-muted disabled:opacity-30 disabled:pointer-events-none"
-                    title="Trang cuối"
-                  >
-                    <ChevronsRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
+            {/* Table Pagination Footer */}
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={filteredEntries.length}
+              itemsPerPage={pageSize}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setPageSize}
+              itemLabel="bài học"
+            />
           </>
         )}
       </div>
