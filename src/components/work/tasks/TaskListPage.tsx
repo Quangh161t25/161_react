@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -9,10 +9,6 @@ import {
   Plus,
   Trash2,
   SquarePen,
-  ChevronsLeft,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsRight,
   Printer,
   Bookmark,
   Download,
@@ -39,6 +35,8 @@ import {
 } from '../../common/ColumnCustomizerPopover';
 import { useAutoSync } from '../../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../../common/RealtimeSyncBadge';
+import { useSettings } from '../../../context/SettingsContext';
+import { TablePagination } from '../../common/TablePagination';
 
 interface TaskListPageProps {
   onBack: () => void;
@@ -84,10 +82,20 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
   const [isProjectOpen, setIsProjectOpen] = useState(false);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
 
+  // User global settings
+  const { settings } = useSettings();
+
   // Table Selection & Pagination
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(15);
+  const [itemsPerPage, setItemsPerPage] = useState(settings.rowsPerPage || 50);
+
+  useEffect(() => {
+    if (settings.rowsPerPage) {
+      setItemsPerPage(settings.rowsPerPage);
+      setCurrentPage(1);
+    }
+  }, [settings.rowsPerPage]);
 
   // Sync state & Realtime Auto-Sync Hook (25s interval, focus refresh, instant badge)
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
@@ -348,7 +356,6 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
   }, [tasks, searchQuery, selectedStatus, selectedPriority, selectedProjectId, selectedAssigneeId]);
 
   // Paginated Table data
-  const totalPages = Math.ceil(filteredTasks.length / itemsPerPage) || 1;
   const paginatedTasks = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredTasks.slice(start, start + itemsPerPage);
@@ -1109,67 +1116,14 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
               </div>
 
               {/* Table Pagination Footer */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-2.5 border-t border-border bg-muted/20 text-xs text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span>Hiển thị</span>
-                  <select
-                    value={itemsPerPage}
-                    onChange={(e) => {
-                      setItemsPerPage(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="h-7 px-2 rounded-md border border-border bg-background text-foreground text-xs"
-                  >
-                    <option value={10}>10</option>
-                    <option value={15}>15</option>
-                    <option value={30}>30</option>
-                    <option value={50}>50</option>
-                  </select>
-                  <span>/ {filteredTasks.length} dòng</span>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="p-1 rounded hover:bg-muted disabled:opacity-30"
-                    title="Trang đầu"
-                  >
-                    <ChevronsLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-1 rounded hover:bg-muted disabled:opacity-30"
-                    title="Trang trước"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="px-2 font-semibold text-foreground">
-                    Trang {currentPage} / {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={currentPage === totalPages}
-                    className="p-1 rounded hover:bg-muted disabled:opacity-30"
-                    title="Trang sau"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="p-1 rounded hover:bg-muted disabled:opacity-30"
-                    title="Trang cuối"
-                  >
-                    <ChevronsRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={filteredTasks.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="công việc"
+              />
             </div>
           )}
         </div>

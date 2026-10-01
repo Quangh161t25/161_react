@@ -114,10 +114,19 @@ export const passwordService = {
       const res = await fetch('/api/sheets/passwords');
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
-      if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
-        localStorage.setItem(PASSWORDS_STORAGE_KEY, JSON.stringify(data.data));
-        localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
-        return data.data;
+      if (data && data.success && Array.isArray(data.data)) {
+        if (data.data.length > 0) {
+          localStorage.setItem(PASSWORDS_STORAGE_KEY, JSON.stringify(data.data));
+          localStorage.setItem(LAST_SYNC_KEY, new Date().toISOString());
+          return data.data;
+        }
+        // If sheet is empty but local storage has data, upload local data to Google Sheet
+        const local = this.getInitialPasswords();
+        if (local.length > 0) {
+          await this.saveAllToSheet(local);
+          return local;
+        }
+        return [];
       }
     } catch (e) {
       console.warn('Google Sheet fetch for Passwords failed, using fallback cache:', e);
@@ -139,6 +148,49 @@ export const passwordService = {
     } catch (e) {
       console.warn('Google Sheet save for Passwords failed, saved locally:', e);
       return true;
+    }
+  },
+
+  async appendToSheet(password: PasswordItem): Promise<boolean> {
+    try {
+      const res = await fetch('/api/sheets/append-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Append password to sheet failed:', e);
+      return false;
+    }
+  },
+
+  async updateInSheet(password: PasswordItem): Promise<boolean> {
+    try {
+      const res = await fetch('/api/sheets/update-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Update password in sheet failed:', e);
+      return false;
+    }
+  },
+
+  async deleteFromSheet(idOrCode: string | string[]): Promise<boolean> {
+    try {
+      const codes = Array.isArray(idOrCode) ? idOrCode : [idOrCode];
+      const res = await fetch('/api/sheets/delete-passwords', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codes }),
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('Delete password from sheet failed:', e);
+      return false;
     }
   },
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -21,6 +21,7 @@ import {
   RotateCcw,
   CheckCircle2,
   GraduationCap,
+  X,
 } from 'lucide-react';
 import { LearningEntry, MasteryLevel } from '../../types/learning';
 import { LEARNING_CATEGORIES, MASTERY_LEVEL_MAP } from '../../data/learning';
@@ -36,6 +37,48 @@ import {
 import { stripMarkdown } from '../notes/MarkdownRenderer';
 import { useAutoSync } from '../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
+import { useSettings } from '../../context/SettingsContext';
+
+// Helper to extract all image URLs (cover, uploaded images array/string, and markdown images) from a learning entry
+export function getLearningEntryImages(entry: LearningEntry): string[] {
+  const list: string[] = [];
+  const addUrl = (raw: string | undefined | null) => {
+    if (!raw || typeof raw !== 'string') return;
+    const clean = raw.trim();
+    if (clean && !list.includes(clean)) {
+      list.push(clean);
+    }
+  };
+
+  addUrl(entry.coverUrl);
+
+  if (Array.isArray(entry.images)) {
+    entry.images.forEach((url) => addUrl(url));
+  } else if (typeof entry.images === 'string') {
+    try {
+      const parsed = JSON.parse(entry.images);
+      if (Array.isArray(parsed)) parsed.forEach((url) => addUrl(url));
+      else addUrl(entry.images);
+    } catch {
+      (entry.images as string).split(/[\n,;]+/).forEach((url) => addUrl(url));
+    }
+  }
+
+  if (entry.content) {
+    const mdRegex = /!\[.*?\]\((https?:\/\/[^\)\s]+)\)/g;
+    let match;
+    while ((match = mdRegex.exec(entry.content)) !== null) {
+      addUrl(match[1]);
+    }
+    const bareImgRegex = /(https?:\/\/[^\s<>"'\)]+\.(?:png|jpe?g|webp|gif|svg))/gi;
+    let bareMatch;
+    while ((bareMatch = bareImgRegex.exec(entry.content)) !== null) {
+      addUrl(bareMatch[1]);
+    }
+  }
+
+  return list;
+}
 
 interface LearningPageProps {
   onBack: () => void;
@@ -43,7 +86,9 @@ interface LearningPageProps {
 
 export const DEFAULT_LEARNING_COLUMNS: ColumnItem[] = [
   { id: 'code', label: 'Mã', visible: true, pinned: true, width: 110, align: 'left', wrap: 'truncate' },
+  { id: 'image', label: 'Hình ảnh', visible: true, width: 130, align: 'center', wrap: 'wrap' },
   { id: 'title', label: 'Tiêu đề kiến thức', visible: true, pinned: true, width: 280, align: 'left', wrap: 'truncate' },
+  { id: 'content', label: 'Nội dung', visible: true, width: 340, align: 'left', wrap: 'truncate' },
   { id: 'category', label: 'Chuyên mục', visible: true, width: 170, align: 'center', wrap: 'truncate' },
   { id: 'masteryLevel', label: 'Mức độ nắm vững', visible: true, width: 150, align: 'center', wrap: 'truncate' },
   { id: 'rating', label: 'Đánh giá', visible: true, width: 110, align: 'center', wrap: 'truncate' },
@@ -77,10 +122,50 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
   const [editingEntry, setEditingEntry] = useState<LearningEntry | null>(null);
   const [isFormDrawerOpen, setIsFormDrawerOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Lightbox Gallery Modal state
+  const [galleryModal, setGalleryModal] = useState<{
+    images: string[];
+    currentIndex: number;
+    title: string;
+  } | null>(null);
+
+  // Keyboard navigation for Lightbox Gallery (Esc: close, ArrowLeft: prev, ArrowRight: next)
+  useEffect(() => {
+    if (!galleryModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setGalleryModal(null);
+      } else if (e.key === 'ArrowLeft') {
+        setGalleryModal((prev) => {
+          if (!prev || prev.images.length <= 1) return prev;
+          const prevIdx = prev.currentIndex > 0 ? prev.currentIndex - 1 : prev.images.length - 1;
+          return { ...prev, currentIndex: prevIdx };
+        });
+      } else if (e.key === 'ArrowRight') {
+        setGalleryModal((prev) => {
+          if (!prev || prev.images.length <= 1) return prev;
+          const nextIdx = prev.currentIndex < prev.images.length - 1 ? prev.currentIndex + 1 : 0;
+          return { ...prev, currentIndex: nextIdx };
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [galleryModal]);
+
+  // User global settings
+  const { settings } = useSettings();
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(settings.rowsPerPage || 50);
+
+  useEffect(() => {
+    if (settings.rowsPerPage) {
+      setPageSize(settings.rowsPerPage);
+      setCurrentPage(1);
+    }
+  }, [settings.rowsPerPage]);
 
   // Resizing state
   const resizingRef = useRef<{ colId: string; startX: number; startWidth: number } | null>(null);
@@ -105,9 +190,22 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
               });
             }
           });
-          DEFAULT_LEARNING_COLUMNS.forEach((def) => {
-            if (!map.has(def.id)) merged.push(def);
+          DEFAULT_LEARNING_COLUMNS.forEach((def, defIdx) => {
+            if (!map.has(def.id)) {
+              const prevDef = DEFAULT_LEARNING_COLUMNS[defIdx - 1];
+              const prevIdx = prevDef ? merged.findIndex((c) => c.id === prevDef.id) : -1;
+              if (prevIdx !== -1) {
+                merged.splice(prevIdx + 1, 0, def);
+              } else {
+                merged.push(def);
+              }
+            }
           });
+          if (merged.length !== parsed.length) {
+            try {
+              localStorage.setItem('erp_learning_columns', JSON.stringify(merged));
+            } catch {}
+          }
           return merged;
         }
       }
@@ -415,25 +513,94 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
   };
 
   // Render Table Cell
-  const renderTableCell = (colId: string, entry: LearningEntry, density: TableDensity) => {
+  const renderTableCell = (col: ColumnItem, entry: LearningEntry, density: TableDensity) => {
+    const colId = col.id;
+    const isWrap = col.wrap === 'wrap';
+    const textWrapClass = isWrap
+      ? 'whitespace-normal break-words leading-relaxed'
+      : 'truncate';
+    const colAlign = col.align || 'left';
+    const alignClass =
+      colAlign === 'center' ? 'text-center' : colAlign === 'right' ? 'text-right' : 'text-left';
+    const justifyClass =
+      colAlign === 'center'
+        ? 'justify-center'
+        : colAlign === 'right'
+        ? 'justify-end'
+        : 'justify-start';
+
     const padding = density === 'compact' ? 'py-1.5 px-2.5 text-xs' : density === 'relaxed' ? 'py-3.5 px-4 text-sm' : 'py-2 px-3 text-xs';
     const masteryMeta = MASTERY_LEVEL_MAP[entry.masteryLevel] || MASTERY_LEVEL_MAP.learning;
 
     switch (colId) {
       case 'code':
         return (
-          <div className={`${padding} font-mono font-semibold text-primary truncate flex items-center gap-1.5`}>
+          <div className={`${padding} font-mono font-semibold text-primary ${textWrapClass} flex items-center ${justifyClass} gap-1.5`}>
             {entry.isPinned && <Pin className="w-3 h-3 fill-amber-500 text-amber-500 shrink-0" />}
             <span>{entry.code}</span>
           </div>
         );
 
+      case 'image': {
+        const entryImages = getLearningEntryImages(entry);
+        if (entryImages.length === 0) {
+          return (
+            <div className={`${padding} flex items-center ${justifyClass}`}>
+              <span className="text-muted-foreground/30 text-xs">—</span>
+            </div>
+          );
+        }
+
+        return (
+          <div className={`${padding} flex items-center ${justifyClass}`}>
+            <div className={`flex items-center gap-1.5 ${isWrap ? 'flex-wrap' : 'overflow-x-auto max-w-full'} py-0.5`}>
+              {entryImages.map((imgUrl, imgIdx) => (
+                <div
+                  key={imgIdx}
+                  className="relative group cursor-pointer inline-flex items-center justify-center shrink-0"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setGalleryModal({
+                      images: entryImages,
+                      currentIndex: imgIdx,
+                      title: entry.title,
+                    });
+                  }}
+                  title={`Ảnh ${imgIdx + 1}/${entryImages.length} (Bấm để phóng to)`}
+                >
+                  <img
+                    src={imgUrl}
+                    alt={`${entry.title} - ${imgIdx + 1}`}
+                    className="w-10 h-10 rounded-lg object-cover border border-border shadow-2xs group-hover:scale-105 group-hover:ring-2 group-hover:ring-primary/50 transition-all shrink-0 bg-muted"
+                    loading="lazy"
+                  />
+                  {entryImages.length > 1 && (
+                    <span className="absolute bottom-0 right-0 px-1 py-0.2 rounded-tl-md rounded-br-lg text-[8px] font-bold bg-black/60 text-white leading-none">
+                      {imgIdx + 1}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
       case 'title':
         return (
-          <div className={`${padding} truncate font-semibold text-foreground hover:text-primary transition-colors cursor-pointer`}>
+          <div className={`${padding} ${textWrapClass} ${alignClass} font-semibold text-foreground hover:text-primary transition-colors cursor-pointer`}>
             {entry.title}
           </div>
         );
+
+      case 'content': {
+        const cleanContent = stripMarkdown(entry.content || '');
+        return (
+          <div className={`${padding} text-muted-foreground ${textWrapClass} ${alignClass}`} title={cleanContent}>
+            {cleanContent || '—'}
+          </div>
+        );
+      }
 
       case 'category':
         return (
@@ -465,7 +632,7 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
 
       case 'source':
         return (
-          <div className={`${padding} truncate text-muted-foreground`}>
+          <div className={`${padding} ${textWrapClass} ${alignClass} text-muted-foreground`}>
             {entry.sourceName ? (
               <span className="text-foreground font-medium">{entry.sourceName}</span>
             ) : (
@@ -476,17 +643,17 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
 
       case 'sourceUrl':
         return (
-          <div className={`${padding} truncate`}>
+          <div className={`${padding} ${alignClass} ${isWrap ? 'break-all whitespace-normal' : 'truncate'}`}>
             {entry.sourceUrl ? (
               <a
                 href={entry.sourceUrl}
                 target="_blank"
                 rel="noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-primary hover:underline inline-flex items-center gap-1 truncate max-w-[170px]"
+                className={`text-primary hover:underline inline-flex items-center gap-1 ${isWrap ? 'break-all' : 'truncate max-w-[170px]'}`}
               >
                 <ExternalLink className="w-3 h-3 shrink-0" />
-                <span className="truncate">{entry.sourceUrl}</span>
+                <span className={isWrap ? 'break-all' : 'truncate'}>{entry.sourceUrl}</span>
               </a>
             ) : (
               <span className="text-muted-foreground">—</span>
@@ -496,13 +663,13 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
 
       case 'tags':
         return (
-          <div className={`${padding} flex items-center gap-1 overflow-hidden truncate`}>
-            {(entry.tags || []).slice(0, 2).map((t) => (
+          <div className={`${padding} flex items-center ${justifyClass} gap-1 overflow-hidden ${isWrap ? 'flex-wrap' : 'truncate'}`}>
+            {(entry.tags || []).slice(0, isWrap ? undefined : 2).map((t) => (
               <span key={t} className="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground border border-border shrink-0">
                 #{t}
               </span>
             ))}
-            {(entry.tags || []).length > 2 && (
+            {!isWrap && (entry.tags || []).length > 2 && (
               <span className="text-[10px] text-muted-foreground">+{entry.tags.length - 2}</span>
             )}
           </div>
@@ -510,8 +677,8 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
 
       case 'summary':
         return (
-          <div className={`${padding} text-muted-foreground truncate`} title={entry.summary}>
-            {entry.summary || stripMarkdown(entry.content || '') || '—'}
+          <div className={`${padding} text-muted-foreground ${textWrapClass} ${alignClass}`} title={entry.summary}>
+            {entry.summary || '—'}
           </div>
         );
 
@@ -543,7 +710,7 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
         return <div className={`${padding} text-center tabular-nums text-muted-foreground`}>{entry.createdAt ? entry.createdAt.slice(0, 10) : '—'}</div>;
 
       default:
-        return <div className={padding}>—</div>;
+        return <div className={`${padding} ${alignClass}`}>—</div>;
     }
   };
 
@@ -886,24 +1053,28 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                           className="group rounded-xl border border-border bg-card hover:border-primary/50 hover:shadow-md transition-all flex flex-col overflow-hidden cursor-pointer"
                         >
                           {/* Card Banner / Cover */}
-                          {entry.coverUrl ? (
-                            <div className="h-32 w-full overflow-hidden bg-muted relative">
-                              <img src={entry.coverUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                              {entry.isPinned && (
-                                <div className="absolute top-2 right-2 p-1 rounded-md bg-amber-500 text-white shadow-xs">
-                                  <Pin className="w-3 h-3 fill-current" />
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="h-3 bg-primary/20 relative">
-                              {entry.isPinned && (
-                                <div className="absolute top-1.5 right-2 text-amber-500">
-                                  <Pin className="w-3 h-3 fill-current" />
-                                </div>
-                              )}
-                            </div>
-                          )}
+                          {(() => {
+                            const entryImages = getLearningEntryImages(entry);
+                            const bannerUrl = entry.coverUrl || entryImages[0];
+                            return bannerUrl ? (
+                              <div className="h-32 w-full overflow-hidden bg-muted relative">
+                                <img src={bannerUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                {entry.isPinned && (
+                                  <div className="absolute top-2 right-2 p-1 rounded-md bg-amber-500 text-white shadow-xs">
+                                    <Pin className="w-3 h-3 fill-current" />
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="h-3 bg-primary/20 relative">
+                                {entry.isPinned && (
+                                  <div className="absolute top-1.5 right-2 text-amber-500">
+                                    <Pin className="w-3 h-3 fill-current" />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           <div className="p-3.5 flex-1 flex flex-col space-y-2.5">
                             {/* Badges */}
@@ -966,21 +1137,32 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                         </th>
                         {tableColumns
                           .filter((c) => c.visible)
-                          .map((col) => (
-                            <th
-                              key={col.id}
-                              style={{ width: col.width, minWidth: col.width }}
-                              className="px-3 py-2 border-r border-border relative select-none"
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="truncate">{col.label}</span>
-                                <div
-                                  onMouseDown={(e) => handleStartResize(col.id, e)}
-                                  className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 transition-colors"
-                                />
-                              </div>
-                            </th>
-                          ))}
+                          .map((col) => {
+                            const colAlign = col.align || 'left';
+                            const justifyClass =
+                              colAlign === 'center'
+                                ? 'justify-center'
+                                : colAlign === 'right'
+                                ? 'justify-end'
+                                : 'justify-between';
+                            return (
+                              <th
+                                key={col.id}
+                                style={{ width: col.width, minWidth: col.width }}
+                                className={`px-3 py-2 border-r border-border relative select-none ${
+                                  colAlign === 'center' ? 'text-center' : colAlign === 'right' ? 'text-right' : 'text-left'
+                                }`}
+                              >
+                                <div className={`flex items-center ${justifyClass}`}>
+                                  <span className="truncate">{col.label}</span>
+                                  <div
+                                    onMouseDown={(e) => handleStartResize(col.id, e)}
+                                    className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-primary/50 transition-colors"
+                                  />
+                                </div>
+                              </th>
+                            );
+                          })}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -1014,10 +1196,12 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                                 .map((col) => (
                                   <td
                                     key={col.id}
-                                    style={{ width: col.width, minWidth: col.width }}
-                                    className="border-r border-border overflow-hidden max-w-0"
+                                    style={{ width: col.width, minWidth: col.width, maxWidth: col.width }}
+                                    className={`border-r border-border overflow-hidden max-w-0 ${
+                                      col.wrap === 'wrap' ? 'align-top' : 'align-middle'
+                                    }`}
                                   >
-                                    {renderTableCell(col.id, entry, tableDensity)}
+                                    {renderTableCell(col, entry, tableDensity)}
                                   </td>
                                 ))}
                             </tr>
@@ -1051,6 +1235,8 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                     <option value={20}>20</option>
                     <option value={50}>50</option>
                     <option value={100}>100</option>
+                    <option value={200}>200</option>
+                    <option value={500}>500</option>
                   </select>
                 </div>
 
@@ -1138,6 +1324,119 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
           }
         }}
       />
+
+      {/* Lightbox Gallery Modal with Full Multi-Image Navigation */}
+      {galleryModal && (
+        <div
+          className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex flex-col items-center justify-between p-3 sm:p-5 select-none animate-in fade-in duration-150"
+          onClick={() => setGalleryModal(null)}
+        >
+          {/* Header */}
+          <div
+            className="w-full max-w-5xl flex items-center justify-between text-white py-1 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="font-bold text-sm sm:text-base truncate max-w-md">
+                {galleryModal.title}
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white/90 shrink-0">
+                {galleryModal.currentIndex + 1} / {galleryModal.images.length}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setGalleryModal(null)}
+              className="p-1.5 rounded-full bg-white/10 hover:bg-white/25 text-white transition-all cursor-pointer"
+              title="Đóng (Esc)"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Main Content Area (Image + Left/Right Arrows) */}
+          <div
+            className="relative flex-1 w-full max-w-5xl flex items-center justify-center min-h-0 my-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Prev Button */}
+            {galleryModal.images.length > 1 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setGalleryModal((prev) => {
+                    if (!prev) return null;
+                    const prevIdx =
+                      prev.currentIndex > 0
+                        ? prev.currentIndex - 1
+                        : prev.images.length - 1;
+                    return { ...prev, currentIndex: prevIdx };
+                  })
+                }
+                className="absolute left-2 sm:left-4 z-10 p-2 sm:p-3 rounded-full bg-black/50 hover:bg-black/80 text-white/80 hover:text-white border border-white/20 transition-all cursor-pointer backdrop-blur-xs"
+                title="Ảnh trước (Mũi tên trái)"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+
+            {/* Enlarged Image */}
+            <img
+              key={galleryModal.currentIndex}
+              src={galleryModal.images[galleryModal.currentIndex]}
+              alt={`Ảnh ${galleryModal.currentIndex + 1}`}
+              className="max-w-full max-h-full rounded-xl object-contain shadow-2xl animate-in zoom-in-95 duration-200"
+            />
+
+            {/* Next Button */}
+            {galleryModal.images.length > 1 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setGalleryModal((prev) => {
+                    if (!prev) return null;
+                    const nextIdx =
+                      prev.currentIndex < prev.images.length - 1
+                        ? prev.currentIndex + 1
+                        : 0;
+                    return { ...prev, currentIndex: nextIdx };
+                  })
+                }
+                className="absolute right-2 sm:right-4 z-10 p-2 sm:p-3 rounded-full bg-black/50 hover:bg-black/80 text-white/80 hover:text-white border border-white/20 transition-all cursor-pointer backdrop-blur-xs"
+                title="Ảnh sau (Mũi tên phải)"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+          </div>
+
+          {/* Bottom Thumbnails Strip */}
+          {galleryModal.images.length > 1 && (
+            <div
+              className="w-full max-w-3xl flex items-center justify-center gap-2 overflow-x-auto py-2 px-4 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {galleryModal.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() =>
+                    setGalleryModal((prev) => (prev ? { ...prev, currentIndex: idx } : null))
+                  }
+                  className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all shrink-0 cursor-pointer ${
+                    idx === galleryModal.currentIndex
+                      ? 'border-primary ring-2 ring-primary/50 scale-105'
+                      : 'border-white/20 opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

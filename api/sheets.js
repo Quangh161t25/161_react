@@ -60,6 +60,11 @@ import {
   appendLearningEntryToSheet,
   updateLearningEntryInSheet,
   deleteLearningEntriesFromSheet,
+  fetchPasswordsFromSheet,
+  saveAllPasswordsToSheet,
+  appendPasswordToSheet,
+  updatePasswordInSheet,
+  deletePasswordsFromSheet,
 } from '../server/sheetsService.mjs';
 import { uploadToCatbox } from '../server/catboxService.mjs';
 
@@ -490,6 +495,44 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
       const entries = body.entries || [];
       const result = await saveAllLearningEntriesToSheet(entries);
+      return res.status(200).json({ success: true, count: result.count });
+    }
+
+    // --- PASSWORDS (MAT KHAU & TAI KHOAN) ---
+    if (action === 'passwords' && req.method === 'GET') {
+      const passwords = await fetchPasswordsFromSheet();
+      return res.status(200).json({ success: true, data: passwords });
+    }
+
+    if ((action === 'passwords' || action === 'append-password') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      if (body.passwords && Array.isArray(body.passwords)) {
+        const result = await saveAllPasswordsToSheet(body.passwords);
+        return res.status(200).json({ success: true, count: result.count });
+      }
+      const password = body.password || body;
+      await appendPasswordToSheet(password);
+      return res.status(200).json({ success: true, password });
+    }
+
+    if ((action === 'passwords' && req.method === 'PUT') || (action === 'update-password' && req.method === 'POST')) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const password = body.password || body;
+      await updatePasswordInSheet(password);
+      return res.status(200).json({ success: true, password });
+    }
+
+    if ((action === 'passwords' && req.method === 'DELETE') || (action === 'delete-passwords' && (req.method === 'POST' || req.method === 'DELETE'))) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const codes = body.codes || (body.code ? [body.code] : (body.identifiers || (body.ids || [])));
+      const result = await deletePasswordsFromSheet(codes);
+      return res.status(200).json({ success: true, count: result.count });
+    }
+
+    if ((action === 'save-passwords' || action === 'sync-passwords') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const passwords = body.passwords || [];
+      const result = await saveAllPasswordsToSheet(passwords);
       return res.status(200).json({ success: true, count: result.count });
     }
 

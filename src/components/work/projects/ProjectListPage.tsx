@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -23,6 +23,8 @@ import { ProjectFormDrawer } from './ProjectFormDrawer';
 import { ProjectDetailDrawer } from './ProjectDetailDrawer';
 import { useAutoSync } from '../../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../../common/RealtimeSyncBadge';
+import { useSettings } from '../../../context/SettingsContext';
+import { TablePagination } from '../../common/TablePagination';
 
 interface ProjectListPageProps {
   onBack: () => void;
@@ -168,6 +170,30 @@ export const ProjectListPage: React.FC<ProjectListPageProps> = ({
       return true;
     });
   }, [projects, searchQuery, selectedStatus]);
+
+  // User global settings
+  const { settings } = useSettings();
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(settings.rowsPerPage || 50);
+
+  useEffect(() => {
+    if (settings.rowsPerPage) {
+      setItemsPerPage(settings.rowsPerPage);
+      setCurrentPage(1);
+    }
+  }, [settings.rowsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedStatus]);
+
+  // Paginated List for Table & Grid View
+  const paginatedProjects = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredProjects.slice(start, start + itemsPerPage);
+  }, [filteredProjects, currentPage, itemsPerPage]);
 
   const getStatusBadge = (status: ProjectStatus) => {
     switch (status) {
@@ -418,7 +444,7 @@ export const ProjectListPage: React.FC<ProjectListPageProps> = ({
               {viewMode === 'grid' ? (
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredProjects.map((proj) => {
+                    {paginatedProjects.map((proj) => {
                       const projTasks = tasks.filter(
                         (t) => t.projectId === proj.id || t.projectCode === proj.code
                       );
@@ -529,7 +555,7 @@ export const ProjectListPage: React.FC<ProjectListPageProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60">
-                      {filteredProjects.map((p) => (
+                      {paginatedProjects.map((p) => (
                         <tr
                           key={p.id}
                           onClick={() => setSelectedProjectForDetail(p)}
@@ -585,6 +611,16 @@ export const ProjectListPage: React.FC<ProjectListPageProps> = ({
                   </table>
                 </div>
               )}
+
+              {/* Table Pagination Footer */}
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={filteredProjects.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="dự án"
+              />
             </div>
           )}
 

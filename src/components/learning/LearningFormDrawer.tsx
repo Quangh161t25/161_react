@@ -209,6 +209,40 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
     }
   };
 
+  // Handle Multiple Images Upload to Catbox
+  const handleMultipleImagesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList);
+    setIsUploading(true);
+    setPasteToast(`☁️ Đang tải ${files.length} ảnh lên Catbox...`);
+    try {
+      const uploadedUrls: string[] = [];
+      for (const file of files) {
+        const url = await uploadImageFile(file);
+        if (url) {
+          uploadedUrls.push(url);
+        }
+      }
+      if (uploadedUrls.length > 0) {
+        setImages((prev) => [...prev, ...uploadedUrls]);
+        if (!coverUrl) {
+          setCoverUrl(uploadedUrls[0]);
+        }
+        // Insert markdown for each image into content
+        const markdownToAdd = uploadedUrls.map((u) => `\n![Hình ảnh kiến thức](${u})\n`).join('');
+        setContent((prev) => prev + markdownToAdd);
+        setPasteToast(`✅ Đã tải lên ${uploadedUrls.length} ảnh thành công!`);
+      }
+    } catch {
+      setPasteToast('❌ Lỗi tải ảnh');
+    } finally {
+      setIsUploading(false);
+      setTimeout(() => setPasteToast(null), 3000);
+      if (e.target) e.target.value = '';
+    }
+  };
+
   // Add External Image URL
   const handleAddImageUrl = () => {
     const trimmed = imageUrlInput.trim();
@@ -629,10 +663,24 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                {/* Upload Multiple Images Button */}
+                <label className="cursor-pointer px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Tải nhiều ảnh (Catbox)</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handleMultipleImagesUpload}
+                    disabled={isUploading}
+                    className="hidden"
+                  />
+                </label>
+
                 {/* Upload Cover Button */}
                 <label className="cursor-pointer px-2.5 py-1 rounded-lg border border-border bg-background hover:bg-muted text-xs font-medium flex items-center gap-1.5 transition-colors">
-                  <Upload className="w-3 h-3 text-muted-foreground" />
-                  <span>Tải ảnh bìa (Catbox)</span>
+                  <ImageIcon className="w-3 h-3 text-muted-foreground" />
+                  <span>Tải ảnh bìa riêng</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -682,9 +730,59 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
                 </div>
               )}
 
-              {/* Cover preview */}
-              {coverUrl && (
-                <div className="relative mt-2 w-full h-32 rounded-lg overflow-hidden border border-border group">
+              {/* Uploaded images gallery */}
+              {images.length > 0 && (
+                <div className="pt-2 border-t border-border/60 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span className="font-semibold text-foreground">Đã thêm {images.length} ảnh vào bài học:</span>
+                    <span>Bấm ⭐ để làm ảnh bìa hoặc ✕ để gỡ</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {images.map((imgUrl, idx) => {
+                      const isCover = coverUrl === imgUrl;
+                      return (
+                        <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-border bg-muted shrink-0 shadow-2xs">
+                          <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                          {isCover && (
+                            <span className="absolute bottom-0 inset-x-0 bg-primary/90 text-[9px] text-primary-foreground font-bold text-center py-0.5">
+                              Ảnh bìa
+                            </span>
+                          )}
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                            {!isCover && (
+                              <button
+                                type="button"
+                                onClick={() => setCoverUrl(imgUrl)}
+                                title="Đặt làm ảnh bìa"
+                                className="p-1 rounded bg-amber-500 text-white hover:bg-amber-600 transition-colors"
+                              >
+                                <Star className="w-3 h-3 fill-current" />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setImages((prev) => prev.filter((_, i) => i !== idx));
+                                if (coverUrl === imgUrl) {
+                                  setCoverUrl(images.find((_, i) => i !== idx) || '');
+                                }
+                              }}
+                              title="Xóa ảnh này"
+                              className="p-1 rounded bg-rose-600 text-white hover:bg-rose-700 transition-colors"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Cover preview if set independently */}
+              {coverUrl && !images.includes(coverUrl) && (
+                <div className="relative mt-2 w-full h-28 rounded-lg overflow-hidden border border-border group">
                   <img src={coverUrl} alt="Cover" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <button

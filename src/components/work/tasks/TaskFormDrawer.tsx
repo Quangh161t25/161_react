@@ -191,11 +191,19 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
     }
   };
 
-  const widthClasses: Record<DrawerWidthMode, string> = {
-    narrow: 'w-full md:max-w-md',
-    normal: 'w-full md:max-w-xl',
-    wide: 'w-full md:max-w-3xl',
-    fullscreen: 'w-full max-w-full',
+  const getDrawerWidthStyle = () => {
+    switch (widthMode) {
+      case 'narrow':
+        return 'min(540px, 100vw)';
+      case 'normal':
+        return 'min(768px, 100vw)';
+      case 'wide':
+        return 'min(1080px, 100vw)';
+      case 'fullscreen':
+        return '100vw';
+      default:
+        return 'min(1080px, 100vw)';
+    }
   };
 
   const validate = () => {
@@ -255,16 +263,21 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 md:pl-10">
-        <div
-          className={`${widthClasses[widthMode]} flex flex-col bg-card border-l border-border shadow-2xl transition-all duration-300 ease-in-out`}
-        >
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-200"
+        onClick={onClose}
+      />
+
+      {/* Main Drawer Container */}
+      <div
+        className="fixed inset-y-0 right-0 z-50 flex flex-col bg-card border-l border-border shadow-2xl transition-[width] duration-300 ease-in-out"
+        style={{
+          width: getDrawerWidthStyle(),
+          maxWidth: '100vw',
+        }}
+      >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/40">
             <div className="flex items-center gap-2.5">
@@ -719,8 +732,7 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
               <span>{mode === 'create' ? 'Tạo công việc' : 'Lưu thay đổi'}</span>
             </button>
           </div>
-        </div>
       </div>
-    </div>
+    </>
   );
 };

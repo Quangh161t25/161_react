@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Pin,
   Trash2,
@@ -14,10 +14,6 @@ import {
   Link2,
   FileText,
   ChevronDown,
-  ChevronsLeft,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsRight,
   SlidersHorizontal,
   Funnel,
   List,
@@ -43,6 +39,8 @@ import {
 } from '../common/ColumnCustomizerPopover';
 import { useAutoSync } from '../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
+import { useSettings } from '../../context/SettingsContext';
+import { TablePagination } from '../common/TablePagination';
 
 interface CostProposalPageProps {
   onBack: () => void;
@@ -330,6 +328,30 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
       return matchQuery && matchStatus;
     });
   }, [proposals, searchQuery, statusFilter, getResolvedProposer, getResolvedAccount, getResolvedBeneficiary]);
+
+  // User global settings
+  const { settings } = useSettings();
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(settings.rowsPerPage || 50);
+
+  useEffect(() => {
+    if (settings.rowsPerPage) {
+      setItemsPerPage(settings.rowsPerPage);
+      setCurrentPage(1);
+    }
+  }, [settings.rowsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  // Paginated List for Table & Grid View
+  const paginatedProposals = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredProposals.slice(start, start + itemsPerPage);
+  }, [filteredProposals, currentPage, itemsPerPage]);
 
   // Current index for detail drawer navigation
   const currentDetailIndex = useMemo(() => {
@@ -1235,7 +1257,7 @@ const handleDeleteProposal = async (id: string) => {
                             </td>
                           </tr>
                         ) : (
-                          filteredProposals.map((item, index) => {
+                          paginatedProposals.map((item, index) => {
                             const isSelected = selectedIds.includes(item.id);
                             const isActiveDetail = selectedProposalForDetail?.id === item.id;
                             const isEven = index % 2 === 1;
@@ -1328,7 +1350,7 @@ const handleDeleteProposal = async (id: string) => {
               {/* Mobile Card View */}
               {(viewMode === 'grid' || true) && (
                 <div className="md:hidden flex-1 overflow-auto p-3 space-y-2.5">
-                  {filteredProposals.map((item) => (
+                  {paginatedProposals.map((item) => (
                     <div
                       key={item.id}
                       onClick={() => setSelectedProposalForDetail(item)}
@@ -1357,7 +1379,7 @@ const handleDeleteProposal = async (id: string) => {
               {viewMode === 'grid' && (
                 <div className="hidden md:block flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredProposals.map((item) => (
+                    {paginatedProposals.map((item) => (
                       <div
                         key={item.id}
                         onClick={() => setSelectedProposalForDetail(item)}
@@ -1408,63 +1430,32 @@ const handleDeleteProposal = async (id: string) => {
               )}
 
               {/* Table / Grid Footer Pagination */}
-              <div className="p-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground shrink-0 bg-card">
-                <div className="flex items-center gap-3">
-                  <span>
-                    Hiển thị <span className="font-semibold text-foreground">{filteredProposals.length}</span> / {proposals.length} đề xuất
-                  </span>
-                  {selectedIds.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={filteredProposals.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="đề xuất"
+                leftExtra={
+                  selectedIds.length > 0 && (
+                    <div className="flex items-center gap-2 ml-2">
+                      <span className="font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full text-xs">
                         Đã chọn {selectedIds.length}
                       </span>
                       <button
                         type="button"
                         onClick={handleDeleteSelected}
-                        className="px-2.5 py-1 flex items-center gap-1.5 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive hover:text-white transition-all text-xs font-semibold"
+                        className="px-2.5 py-1 flex items-center gap-1.5 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive hover:text-white transition-all text-xs font-semibold cursor-pointer"
                         title="Xóa tất cả các mục đã chọn"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Xóa đã chọn</span>
                       </button>
                     </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled
-                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <ChevronsLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="px-2.5 py-1 bg-primary text-primary-foreground font-semibold rounded-lg text-xs">
-                    1
-                  </span>
-                  <button
-                    type="button"
-                    disabled
-                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <ChevronsRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+                  )
+                }
+              />
             </div>
           </div>
         </div>

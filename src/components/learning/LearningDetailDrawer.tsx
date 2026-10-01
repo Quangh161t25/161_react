@@ -19,6 +19,7 @@ import {
 import { LearningEntry } from '../../types/learning';
 import { MASTERY_LEVEL_MAP } from '../../data/learning';
 import { MarkdownRenderer } from '../notes/MarkdownRenderer';
+import { getLearningEntryImages } from './LearningPage';
 
 interface LearningDetailDrawerProps {
   entry: LearningEntry | null;
@@ -299,28 +300,32 @@ export const LearningDetailDrawer: React.FC<LearningDetailDrawerProps> = ({
             </div>
 
             {/* Attached Images Gallery */}
-            {entry.images && entry.images.length > 0 && (
-              <div className="border-t border-border pt-4 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                  <ImageIcon className="w-3.5 h-3.5 text-violet-500" />
-                  <span>Bộ sưu tập hình ảnh ({entry.images.length})</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {entry.images.map((imgUrl, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => setActiveImageModal(imgUrl)}
-                      className="relative h-28 rounded-lg overflow-hidden border border-border cursor-pointer group bg-muted"
-                    >
-                      <img src={imgUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                      <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <span className="text-[11px] text-white font-medium bg-black/60 px-2 py-0.5 rounded">Xem lớn</span>
+            {(() => {
+              const allImages = getLearningEntryImages(entry);
+              if (allImages.length === 0) return null;
+              return (
+                <div className="border-t border-border pt-4 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                    <ImageIcon className="w-3.5 h-3.5 text-violet-500" />
+                    <span>Bộ sưu tập hình ảnh ({allImages.length})</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {allImages.map((imgUrl, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => setActiveImageModal(imgUrl)}
+                        className="relative h-28 rounded-lg overflow-hidden border border-border cursor-pointer group bg-muted shadow-2xs"
+                      >
+                        <img src={imgUrl} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <span className="text-[11px] text-white font-medium bg-black/60 px-2 py-0.5 rounded">Xem lớn</span>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Tags */}
             {entry.tags && entry.tags.length > 0 && (

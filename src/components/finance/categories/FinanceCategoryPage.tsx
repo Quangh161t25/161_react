@@ -10,10 +10,6 @@ import {
   Trash2,
   List,
   ChevronDown,
-  ChevronsLeft,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsRight,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
@@ -30,6 +26,8 @@ import {
 import { FinanceCategoryDetailDrawer } from './FinanceCategoryDetailDrawer';
 import { FinanceCategoryFormDrawer } from './FinanceCategoryFormDrawer';
 import { FinanceCategoryStatsTab } from './FinanceCategoryStatsTab';
+import { useSettings } from '../../../context/SettingsContext';
+import { TablePagination } from '../../common/TablePagination';
 
 interface FinanceCategoryPageProps {
   onBack: () => void;
@@ -127,9 +125,19 @@ export const FinanceCategoryPage: React.FC<FinanceCategoryPageProps> = ({ onBack
     mode: 'create',
   });
 
+  // User global settings
+  const { settings } = useSettings();
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [itemsPerPage, setItemsPerPage] = useState(settings.rowsPerPage || 50);
+
+  useEffect(() => {
+    if (settings.rowsPerPage) {
+      setItemsPerPage(settings.rowsPerPage);
+      setCurrentPage(1);
+    }
+  }, [settings.rowsPerPage]);
 
   // Auto-fetch data from Google Sheets on mount
   useEffect(() => {
@@ -226,8 +234,6 @@ export const FinanceCategoryPage: React.FC<FinanceCategoryPageProps> = ({ onBack
     const start = (currentPage - 1) * itemsPerPage;
     return filteredCategories.slice(start, start + itemsPerPage);
   }, [filteredCategories, currentPage, itemsPerPage]);
-
-  const totalPages = Math.ceil(filteredCategories.length / itemsPerPage) || 1;
 
   // Selection handlers
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1005,67 +1011,14 @@ export const FinanceCategoryPage: React.FC<FinanceCategoryPageProps> = ({ onBack
             </div>
 
             {/* PAGINATION FOOTER */}
-            <div className="px-4 py-2.5 border-t border-border bg-card flex items-center justify-between gap-2 flex-wrap text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <span>Hiển thị</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="h-7 px-2 rounded-md border border-border bg-background text-foreground text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-                <span>trên tổng số {filteredCategories.length} dòng</span>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="p-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-30"
-                  title="Trang đầu"
-                >
-                  <ChevronsLeft className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-30"
-                  title="Trang trước"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="px-2 font-medium text-foreground">
-                  Trang {currentPage} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-30"
-                  title="Trang tiếp"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={currentPage === totalPages}
-                  className="p-1 rounded hover:bg-muted text-muted-foreground disabled:opacity-30"
-                  title="Trang cuối"
-                >
-                  <ChevronsRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+            <TablePagination
+              currentPage={currentPage}
+              totalItems={filteredCategories.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+              itemLabel="khoản mục"
+            />
           </div>
         ) : (
           /* TAB 2: STATS TAB */

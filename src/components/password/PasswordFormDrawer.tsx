@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Save,
@@ -13,6 +13,7 @@ import {
   PanelRightOpen,
   Maximize2,
   Minimize2,
+  Tag,
 } from 'lucide-react';
 import { PasswordItem, PasswordCategory } from '../../types/password';
 import { PASSWORD_CATEGORIES } from '../../data/passwords';
@@ -84,6 +85,13 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
       setNote('');
       setTags(['Công việc']);
       setIsFavorite(false);
+
+      // Enforce empty fields against aggressive browser autofill
+      const timer = setTimeout(() => {
+        setUsername('');
+        setPassword('');
+      }, 50);
+      return () => clearTimeout(timer);
     }
   }, [mode, passwordItem, allPasswords]);
 
@@ -96,16 +104,80 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
     }
   };
 
-  const widthClasses: Record<DrawerWidthMode, string> = {
-    narrow: 'w-full md:max-w-md',
-    normal: 'w-full md:max-w-xl',
-    wide: 'w-full md:max-w-3xl',
-    fullscreen: 'w-full max-w-full',
+  const getDrawerWidthStyle = () => {
+    switch (widthMode) {
+      case 'narrow':
+        return 'min(480px, 100vw)';
+      case 'wide':
+        return 'min(980px, 100vw)';
+      case 'fullscreen':
+        return '100vw';
+      case 'normal':
+      default:
+        return 'min(640px, 100vw)';
+    }
   };
 
+  // Extract all existing unique tags from previous password items + default list
+  const suggestedTags = useMemo(() => {
+    const defaultList = ['Công việc', 'Cá nhân', 'Khẩn cấp', 'Quản trị', 'Ngân hàng'];
+    const tagMap = new Map<string, number>(); // tag -> usage frequency
+
+    // Count usage frequency from all previous passwords
+    allPasswords.forEach((item) => {
+      if (Array.isArray(item.tags)) {
+        item.tags.forEach((t) => {
+          const trimmed = t.trim();
+          if (trimmed) {
+            const existingKey = Array.from(tagMap.keys()).find(
+              (k) => k.toLowerCase() === trimmed.toLowerCase()
+            );
+            if (existingKey) {
+              tagMap.set(existingKey, (tagMap.get(existingKey) || 0) + 1);
+            } else {
+              tagMap.set(trimmed, 1);
+            }
+          }
+        });
+      }
+    });
+
+    // Ensure default tags are also in the map if not already
+    defaultList.forEach((def) => {
+      const existingKey = Array.from(tagMap.keys()).find(
+        (k) => k.toLowerCase() === def.toLowerCase()
+      );
+      if (!existingKey) {
+        tagMap.set(def, 0);
+      }
+    });
+
+    // Sort by usage count descending, then alphabetical
+    return Array.from(tagMap.keys()).sort((a, b) => {
+      const freqA = tagMap.get(a) || 0;
+      const freqB = tagMap.get(b) || 0;
+      if (freqB !== freqA) return freqB - freqA;
+      return a.localeCompare(b, 'vi');
+    });
+  }, [allPasswords]);
+
+  // Filter out tags already applied to the current item
+  const unselectedSuggestions = useMemo(() => {
+    return suggestedTags.filter(
+      (sug) => !tags.some((t) => t.toLowerCase() === sug.toLowerCase())
+    );
+  }, [suggestedTags, tags]);
+
+  // Filter suggestions based on tagInput search query
+  const filteredSuggestions = useMemo(() => {
+    const q = tagInput.trim().toLowerCase();
+    if (!q) return unselectedSuggestions;
+    return unselectedSuggestions.filter((sug) => sug.toLowerCase().includes(q));
+  }, [unselectedSuggestions, tagInput]);
+
   const handleAddTag = (t: string) => {
-    const trimmed = t.trim();
-    if (trimmed && !tags.includes(trimmed)) {
+    const trimmed = t.trim().replace(/^#/, '');
+    if (trimmed && !tags.some((existing) => existing.toLowerCase() === trimmed.toLowerCase())) {
       setTags([...tags, trimmed]);
     }
     setTagInput('');
@@ -156,16 +228,20 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
 
   return (
     <>
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-200"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose();
+        className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-200"
+        onClick={onClose}
+      />
+
+      {/* Main Drawer Container */}
+      <div
+        className="fixed inset-y-0 right-0 z-50 flex flex-col bg-card border-l border-border shadow-2xl transition-[width] duration-300 ease-in-out"
+        style={{
+          width: getDrawerWidthStyle(),
+          maxWidth: '100vw',
         }}
       >
-        <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 md:pl-10">
-          <div
-            className={`${widthClasses[widthMode]} flex flex-col bg-card border-l border-border shadow-2xl transition-all duration-300 ease-in-out`}
-          >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/40">
               <div className="flex items-center gap-2.5">
@@ -242,7 +318,13 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
             </div>
 
             {/* Form Content */}
-            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar">
+            <form onSubmit={handleSubmit} autoComplete="off" className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar">
+              {/* Trap decoy fields to prevent aggressive browser autofill of saved site credentials */}
+              <div className="sr-only" style={{ display: 'none' }} aria-hidden="true">
+                <input type="text" name="fakeusernameremembered" tabIndex={-1} autoComplete="off" />
+                <input type="password" name="fakepasswordremembered" tabIndex={-1} autoComplete="off" />
+              </div>
+
               {/* Code & Favorite */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
@@ -273,66 +355,21 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Title & Category */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    Tên dịch vụ / Ứng dụng <span className="text-rose-500">*</span>:
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="VD: Google Workspace, Facebook Fanpage, Server VPS HCM..."
-                    className={`w-full h-8 px-3 rounded-xl border bg-background text-xs focus:outline-none focus:ring-1 ${
-                      errors.title ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border focus:ring-primary'
-                    }`}
-                  />
-                  {errors.title && <p className="text-[11px] text-rose-500 mt-1">{errors.title}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    Phân loại danh mục:
-                  </label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as PasswordCategory)}
-                    className="w-full h-8 px-3 rounded-xl border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    {PASSWORD_CATEGORIES.filter((c) => c.id !== 'all').map((cat) => (
-                      <option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    Địa chỉ Website / Link đăng nhập:
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="url"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full h-8 pl-3 pr-8 rounded-xl border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    {url && (
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
-                        title="Mở liên kết"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                  </div>
-                </div>
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Tên dịch vụ / Ứng dụng <span className="text-rose-500">*</span>:
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="VD: Google Workspace, Facebook Fanpage, Server VPS HCM..."
+                  className={`w-full h-8 px-3 rounded-xl border bg-background text-xs focus:outline-none focus:ring-1 ${
+                    errors.title ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border focus:ring-primary'
+                  }`}
+                />
+                {errors.title && <p className="text-[11px] text-rose-500 mt-1">{errors.title}</p>}
               </div>
 
               {/* Username & Password */}
@@ -343,9 +380,11 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
                   </label>
                   <input
                     type="text"
+                    name="service_account_login"
+                    autoComplete="off"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="VD: admin@domain.com hoặc username"
+                    placeholder="VD: ketoan@congty.com, sale_fb, server_root..."
                     className={`w-full h-8 px-3 rounded-xl border bg-background text-xs focus:outline-none focus:ring-1 ${
                       errors.username ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border focus:ring-primary'
                     }`}
@@ -371,6 +410,8 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      name="service_account_secret"
+                      autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Nhập mật khẩu..."
@@ -423,6 +464,52 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
                 </div>
               </div>
 
+              {/* Category & Website URL (Moved down) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Phân loại danh mục:
+                  </label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as PasswordCategory)}
+                    className="w-full h-8 px-3 rounded-xl border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    {PASSWORD_CATEGORIES.filter((c) => c.id !== 'all').map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-foreground mb-1">
+                    Địa chỉ Website / Link đăng nhập:
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full h-8 pl-3 pr-8 rounded-xl border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    {url && (
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary"
+                        title="Mở liên kết"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Tags */}
               <div>
                 <label className="block text-xs font-semibold text-foreground mb-1">
@@ -454,24 +541,58 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
                         handleAddTag(tagInput);
                       }
                     }}
+                    onBlur={() => {
+                      if (tagInput.trim()) {
+                        handleAddTag(tagInput);
+                      }
+                    }}
                     placeholder="Nhập tag và nhấn Enter..."
                     className="flex-1 bg-transparent text-xs focus:outline-none min-w-[120px]"
                   />
                 </div>
-                {/* Suggestions */}
-                <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-muted-foreground">
-                  <span>Gợi ý:</span>
-                  {['Công việc', 'Cá nhân', 'Khẩn cấp', 'Quản trị', 'Ngân hàng'].map((sug) => (
+
+                {/* Suggestions from previous passwords & presets */}
+                {filteredSuggestions.length > 0 ? (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span className="font-medium flex items-center gap-1">
+                        <Tag className="w-3 h-3 text-primary" />
+                        Gợi ý thẻ từ dữ liệu trước ({filteredSuggestions.length}):
+                      </span>
+                      {tagInput.trim() && (
+                        <span className="text-[10px] text-primary">
+                          Đang tìm theo "{tagInput.trim()}"
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 max-h-24 overflow-y-auto custom-scrollbar p-1.5 rounded-xl bg-muted/30 border border-border/60">
+                      {filteredSuggestions.map((sug) => (
+                        <button
+                          key={sug}
+                          type="button"
+                          onClick={() => handleAddTag(sug)}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs bg-background hover:bg-primary/10 text-muted-foreground hover:text-primary border border-border hover:border-primary/40 transition-all cursor-pointer shadow-2xs active:scale-95"
+                          title={`Bấm để thêm thẻ "${sug}"`}
+                        >
+                          <span className="text-primary font-bold text-xs">+</span>
+                          <span>{sug}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : tagInput.trim() ? (
+                  <div className="mt-2 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                    <Tag className="w-3 h-3 text-primary" />
+                    <span>Nhấn <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] border border-border font-mono font-semibold">Enter</kbd> để tạo thẻ mới:</span>
                     <button
-                      key={sug}
                       type="button"
-                      onClick={() => handleAddTag(sug)}
-                      className="hover:text-primary underline cursor-pointer"
+                      onClick={() => handleAddTag(tagInput)}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs bg-primary/10 text-primary font-semibold border border-primary/20 hover:bg-primary/20 cursor-pointer"
                     >
-                      +{sug}
+                      +{tagInput.trim()}
                     </button>
-                  ))}
-                </div>
+                  </div>
+                ) : null}
               </div>
 
               {/* Notes */}
@@ -507,8 +628,6 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
                 <span>{mode === 'create' ? 'Lưu tài khoản mới' : 'Lưu thay đổi'}</span>
               </button>
             </div>
-          </div>
-        </div>
       </div>
 
       {/* Embedded Generator Modal */}

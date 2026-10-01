@@ -39,8 +39,9 @@ export function stripMarkdown(content: string): string {
     // Remove inline code & code blocks
     .replace(/```[\s\S]*?```/g, '')
     .replace(/`([^`]+)`/g, '$1')
-    // Remove links & images: [text](url) -> text, ![alt](url) -> alt
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    // Remove images: ![alt](url) -> ''
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+    // Remove links: [text](url) -> text
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     // Remove table pipes
     .replace(/\|/g, ' ')

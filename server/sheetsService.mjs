@@ -3753,7 +3753,11 @@ export function rowToLearningEntry(r, idx) {
   try {
     images = r[16] ? JSON.parse(r[16]) : [];
   } catch {
-    images = [];
+    if (r[16] && typeof r[16] === 'string') {
+      images = r[16].split(/[\n,;]+/).map((u) => u.trim()).filter((u) => /^https?:\/\//i.test(u));
+    } else {
+      images = [];
+    }
   }
 
   let links = [];
@@ -3987,6 +3991,307 @@ export async function deleteLearningEntriesFromSheet(identifiers) {
   );
   if (!batchRes.ok) throw new Error(`Delete learning entries failed: ${await batchRes.text()}`);
   invalidateSheetCache('learning');
+  return { success: true, count: indicesToDelete.length };
+}
+
+// ---------------------- PASSWORDS (QUAN LY MAT KHAU & TAI KHOAN) ----------------------
+
+export const PASSWORD_HEADERS = [
+  'Mã tài khoản',        // Col A (r[0]): code (e.g. MK-001)
+  'Tên dịch vụ',         // Col B (r[1]): title (e.g. Google Workspace)
+  'Danh mục',            // Col C (r[2]): category (web, email, work, server, finance, etc.)
+  'Tên đăng nhập',       // Col D (r[3]): username
+  'Mật khẩu',            // Col E (r[4]): password
+  'Đường dẫn URL',       // Col F (r[5]): url
+  'Mã PIN / 2FA',        // Col G (r[6]): pinOr2FA
+  'Ghi chú',             // Col H (r[7]): note
+  'Thẻ (Tags)',          // Col I (r[8]): tags
+  'Yêu thích',           // Col J (r[9]): isFavorite
+  'Điểm bảo mật',        // Col K (r[10]): securityScore
+  'Ngày đổi gần nhất',   // Col L (r[11]): lastChangedDate
+  'Ngày tạo',            // Col M (r[12]): createdAt
+  'Cập nhật',            // Col N (r[13]): updatedAt
+  'ID hệ thống',         // Col O (r[14]): id
+];
+
+export function passwordToRow(p) {
+  const isFav = p.isFavorite ? 'Có' : 'Không';
+  const tagsText = Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags || '');
+  return [
+    p.code || '',
+    p.title || '',
+    p.category || 'other',
+    p.username || '',
+    p.password || '',
+    p.url || '',
+    p.pinOr2FA || '',
+    p.note || '',
+    tagsText,
+    isFav,
+    p.securityScore != null ? String(p.securityScore) : '',
+    p.lastChangedDate || '',
+    p.createdAt || new Date().toISOString(),
+    p.updatedAt || new Date().toISOString(),
+    p.id || '',
+  ];
+}
+
+export function rowToPassword(r, idx) {
+  const code = (r[0] || '').trim();
+  const title = (r[1] || '').trim();
+  const category = (r[2] || 'other').trim().toLowerCase();
+  const username = (r[3] || '').trim();
+  const password = (r[4] || '').trim();
+  const url = (r[5] || '').trim();
+  const pinOr2FA = (r[6] || '').trim();
+  const note = (r[7] || '').trim();
+  const rawTags = (r[8] || '').trim();
+  let tags = [];
+  if (rawTags) {
+    if (rawTags.startsWith('[') && rawTags.endsWith(']')) {
+      try {
+        tags = JSON.parse(rawTags);
+      } catch {
+        tags = rawTags.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    } else {
+      tags = rawTags.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  const isFavorite =
+    (r[9] || '').trim().toLowerCase() === 'có' ||
+    (r[9] || '').trim().toLowerCase() === 'co' ||
+    (r[9] || '').trim().toLowerCase() === 'true';
+  const securityScore = parseInt(r[10], 10) || 70;
+  const lastChangedDate = (r[11] || '').trim();
+  const createdAt = (r[12] || '').trim() || new Date().toISOString();
+  const updatedAt = (r[13] || '').trim() || new Date().toISOString();
+  const id = (r[14] || '').trim() || (code ? `pw_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : `pw_${Date.now()}_${idx + 1}`);
+
+  return {
+    id,
+    code: code || `MK-${String(idx + 1).padStart(3, '0')}`,
+    title: title || 'Tài khoản không tên',
+    category: category || 'other',
+    username,
+    password,
+    url: url || undefined,
+    pinOr2FA: pinOr2FA || undefined,
+    note: note || undefined,
+    tags: tags.length > 0 ? tags : undefined,
+    isFavorite,
+    securityScore,
+    lastChangedDate: lastChangedDate || undefined,
+    createdAt,
+    updatedAt,
+  };
+}
+
+export async function ensureMatKhauTabExists() {
+  const token = await getAccessToken();
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const meta = await metaRes.json();
+  const existingSheets = (meta.sheets || []).map((s) => s.properties.title);
+
+  if (!existingSheets.includes('MatKhau')) {
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{ addSheet: { properties: { title: 'MatKhau' } } }],
+        }),
+      }
+    );
+
+    // Write header
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/MatKhau!A1:O1?valueInputOption=USER_ENTERED`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: [PASSWORD_HEADERS] }),
+      }
+    );
+  }
+}
+
+export async function fetchPasswordsFromSheet() {
+  const cached = getCachedSheetData('passwords');
+  if (cached) return cached;
+  await ensureMatKhauTabExists();
+  const token = await getAccessToken();
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/MatKhau!A2:O`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`Fetch passwords failed: ${await res.text()}`);
+  const data = await res.json();
+  const rows = data.values || [];
+  const result = rows.filter((r) => r && (r[0] || r[1])).map((r, idx) => rowToPassword(r, idx));
+  setCachedSheetData('passwords', result);
+  return result;
+}
+
+export async function saveAllPasswordsToSheet(passwords) {
+  await ensureMatKhauTabExists();
+  const token = await getAccessToken();
+  const rows = passwords.map((p) => passwordToRow(p));
+  const values = [PASSWORD_HEADERS, ...rows];
+
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/MatKhau!A1:O1000:clear`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    }
+  );
+
+  const writeRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/MatKhau!A1:O${values.length}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values }),
+    }
+  );
+  if (!writeRes.ok) throw new Error(`Write passwords failed: ${await writeRes.text()}`);
+  invalidateSheetCache('passwords');
+  return { success: true, count: passwords.length };
+}
+
+export async function appendPasswordToSheet(password) {
+  await ensureMatKhauTabExists();
+  const token = await getAccessToken();
+  const row = passwordToRow(password);
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/MatKhau!A:O:append?valueInputOption=USER_ENTERED`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [row] }),
+    }
+  );
+  if (!res.ok) throw new Error(`Append password failed: ${await res.text()}`);
+  invalidateSheetCache('passwords');
+  return { success: true, password };
+}
+
+export async function updatePasswordInSheet(password) {
+  await ensureMatKhauTabExists();
+  const token = await getAccessToken();
+  const getRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/MatKhau!A1:O`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await getRes.json();
+  const rows = data.values || [];
+  const targetCode = String(password.code || '').trim().toLowerCase();
+  const cleanTargetCode = targetCode.replace(/[^a-z0-9]/g, '');
+  const targetId = String(password.id || '').trim().toLowerCase();
+  const cleanTargetId = targetId.replace(/[^a-z0-9]/g, '');
+  const targetTitle = String(password.title || '').trim().toLowerCase();
+
+  let targetRowIndex = -1;
+  for (let i = 1; i < rows.length; i++) {
+    const rowCode = String(rows[i][0] || '').trim().toLowerCase();
+    const cleanRowCode = rowCode.replace(/[^a-z0-9]/g, '');
+    const rowId = String(rows[i][14] || '').trim().toLowerCase();
+    const cleanRowId = rowId.replace(/[^a-z0-9]/g, '');
+    const rowTitle = String(rows[i][1] || '').trim().toLowerCase();
+
+    if (
+      (cleanTargetCode && (rowCode === targetCode || cleanRowCode === cleanTargetCode)) ||
+      (cleanTargetId && (rowId === targetId || cleanRowId === cleanTargetId || rowCode === targetId)) ||
+      (targetTitle && rowTitle === targetTitle)
+    ) {
+      targetRowIndex = i + 1;
+      break;
+    }
+  }
+
+  if (targetRowIndex === -1) {
+    return appendPasswordToSheet(password);
+  }
+
+  const row = passwordToRow(password);
+  const updateRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/MatKhau!A${targetRowIndex}:O${targetRowIndex}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [row] }),
+    }
+  );
+  if (!updateRes.ok) throw new Error(`Update password failed: ${await updateRes.text()}`);
+  invalidateSheetCache('passwords');
+  return { success: true, password };
+}
+
+export async function deletePasswordsFromSheet(identifiers) {
+  await ensureMatKhauTabExists();
+  const token = await getAccessToken();
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const meta = await metaRes.json();
+  const sheet = (meta.sheets || []).find((s) => s.properties.title === 'MatKhau');
+  if (!sheet) return { success: true, count: 0 };
+
+  const dataRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/MatKhau!A1:O`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await dataRes.json();
+  const rows = data.values || [];
+  const idList = Array.isArray(identifiers) ? identifiers : [identifiers];
+  const cleanIdList = idList.map((id) => String(id || '').trim().toLowerCase()).filter(Boolean);
+
+  const indicesToDelete = [];
+  rows.forEach((r, idx) => {
+    if (idx === 0) return;
+    const code = String(r[0] || '').trim().toLowerCase();
+    const rowId = String(r[14] || '').trim().toLowerCase();
+    if (cleanIdList.includes(code) || cleanIdList.includes(rowId)) {
+      indicesToDelete.push(idx);
+    }
+  });
+
+  if (indicesToDelete.length === 0) return { success: true, count: 0 };
+  indicesToDelete.sort((a, b) => b - a);
+
+  const requests = indicesToDelete.map((rowIdx) => ({
+    deleteDimension: {
+      range: {
+        sheetId: sheet.properties.sheetId,
+        dimension: 'ROWS',
+        startIndex: rowIdx,
+        endIndex: rowIdx + 1,
+      },
+    },
+  }));
+
+  const batchRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests }),
+    }
+  );
+  if (!batchRes.ok) throw new Error(`Delete passwords failed: ${await batchRes.text()}`);
+  invalidateSheetCache('passwords');
   return { success: true, count: indicesToDelete.length };
 }
 

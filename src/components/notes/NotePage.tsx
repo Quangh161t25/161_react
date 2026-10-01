@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -108,7 +108,7 @@ export function getNoteDateTimeTimestamp(note: Note): number {
 
 export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   const { currentUser } = useAuth();
-  const { formatDate, formatTime } = useSettings();
+  const { formatDate, formatTime, settings } = useSettings();
   const [notes, setNotes] = useState<Note[]>(() => noteService.getInitialNotes());
   const [activeTopTab, setActiveTopTab] = useState<'list' | 'calendar' | 'stats'>('list');
   const [searchQuery, setSearchQuery] = useState('');
@@ -151,7 +151,14 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(settings.rowsPerPage || 50);
+
+  useEffect(() => {
+    if (settings.rowsPerPage) {
+      setPageSize(settings.rowsPerPage);
+      setCurrentPage(1);
+    }
+  }, [settings.rowsPerPage]);
 
   // Resizing state
   const [resizingColId, setResizingColId] = useState<string | null>(null);
@@ -1921,6 +1928,8 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                       <option value={20}>20 / trang</option>
                       <option value={50}>50 / trang</option>
                       <option value={100}>100 / trang</option>
+                      <option value={200}>200 / trang</option>
+                      <option value={500}>500 / trang</option>
                     </select>
                   </div>
 

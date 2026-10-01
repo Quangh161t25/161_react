@@ -1,6 +1,5 @@
 import {
   House,
-  LayoutDashboard,
   Wallet,
   Layers,
   Copyright,
@@ -21,34 +20,22 @@ export const NAV_ITEMS: NavItem[] = [
     icon: House,
   },
   {
-    id: 'overview',
-    label: 'Tổng quan',
-    href: '/tong-quan',
-    icon: LayoutDashboard,
-  },
-  {
     id: 'calendar',
     label: 'Lịch biểu',
     href: '/lich',
     icon: Calendar,
   },
   {
-    id: 'work',
-    label: 'Công việc',
-    href: '/cong-viec',
-    icon: CheckSquare,
-  },
-  {
-    id: 'passwords',
-    label: 'Mật khẩu',
-    href: '/mat-khau',
-    icon: KeyRound,
-  },
-  {
     id: 'notes',
     label: 'Ghi chú',
     href: '/ghi-chu',
     icon: BookOpen,
+  },
+  {
+    id: 'work',
+    label: 'Công việc',
+    href: '/cong-viec',
+    icon: CheckSquare,
   },
   {
     id: 'learning',
@@ -61,6 +48,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Tài chính',
     href: '/tai-chinh',
     icon: Wallet,
+  },
+  {
+    id: 'passwords',
+    label: 'Mật khẩu',
+    href: '/mat-khau',
+    icon: KeyRound,
   },
   {
     id: 'system',
@@ -87,14 +80,6 @@ export const BOTTOM_NAV_ITEMS: NavItem[] = [
 
 export const DASHBOARD_MODULES: DashboardModule[] = [
   {
-    id: 'overview',
-    title: 'Tổng quan',
-    description: 'Thống kê nhân sự hôm nay và màn hình Live TV.',
-    href: '/tong-quan',
-    icon: LayoutDashboard,
-    gradientClass: 'from-sky-600 to-indigo-700 dark:from-sky-500 dark:to-indigo-600',
-  },
-  {
     id: 'calendar',
     title: 'Lịch & Sự kiện Toàn hệ thống',
     description: 'Tổng hợp hạn chót công việc, dự án, dòng tiền, sinh nhật và cuộc họp.',
@@ -103,28 +88,20 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     gradientClass: 'from-rose-600 to-pink-700 dark:from-rose-500 dark:to-pink-600',
   },
   {
-    id: 'work',
-    title: 'Công việc & Dự án',
-    description: 'Quản lý nhiệm vụ, tiến độ dự án, quy trình và KPI.',
-    href: '/cong-viec',
-    icon: CheckSquare,
-    gradientClass: 'from-blue-600 to-cyan-700 dark:from-blue-500 dark:to-cyan-600',
-  },
-  {
-    id: 'passwords',
-    title: 'Quản lý Mật khẩu & Vault',
-    description: 'Két bảo mật tài khoản cá nhân/công ty & Extension trình duyệt.',
-    href: '/mat-khau',
-    icon: KeyRound,
-    gradientClass: 'from-amber-600 to-orange-700 dark:from-amber-500 dark:to-orange-600',
-  },
-  {
     id: 'notes',
     title: 'Ghi chú',
     description: 'Soạn thảo bài viết, nhật ký hoạt động & tài liệu.',
     href: '/ghi-chu',
     icon: BookOpen,
     gradientClass: 'from-purple-600 to-indigo-700 dark:from-purple-500 dark:to-indigo-600',
+  },
+  {
+    id: 'work',
+    title: 'Công việc & Dự án',
+    description: 'Quản lý nhiệm vụ, tiến độ dự án, quy trình và KPI.',
+    href: '/cong-viec',
+    icon: CheckSquare,
+    gradientClass: 'from-blue-600 to-cyan-700 dark:from-blue-500 dark:to-cyan-600',
   },
   {
     id: 'learning',
@@ -141,6 +118,14 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     href: '/tai-chinh',
     icon: Wallet,
     gradientClass: 'from-emerald-600 to-teal-700 dark:from-emerald-500 dark:to-teal-600',
+  },
+  {
+    id: 'passwords',
+    title: 'Quản lý Mật khẩu & Vault',
+    description: 'Két bảo mật tài khoản cá nhân/công ty & Extension trình duyệt.',
+    href: '/mat-khau',
+    icon: KeyRound,
+    gradientClass: 'from-amber-600 to-orange-700 dark:from-amber-500 dark:to-orange-600',
   },
   {
     id: 'system',

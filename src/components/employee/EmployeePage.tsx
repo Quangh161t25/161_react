@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   ArrowLeft,
   Search,
@@ -15,10 +15,6 @@ import {
   Phone,
   Mail,
   ChevronDown,
-  ChevronsLeft,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsRight,
   CheckCircle2,
   AlertCircle,
   ChartColumn,
@@ -39,6 +35,8 @@ import {
 } from '../common/ColumnCustomizerPopover';
 import { useAutoSync } from '../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
+import { useSettings } from '../../context/SettingsContext';
+import { TablePagination } from '../common/TablePagination';
 
 interface EmployeePageProps {
   onBack: () => void;
@@ -283,6 +281,30 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       return matchQuery && matchDept && matchRole && matchStatus;
     });
   }, [employees, searchQuery, selectedDept, selectedRole, selectedStatus]);
+
+  // User global settings
+  const { settings } = useSettings();
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(settings.rowsPerPage || 50);
+
+  useEffect(() => {
+    if (settings.rowsPerPage) {
+      setItemsPerPage(settings.rowsPerPage);
+      setCurrentPage(1);
+    }
+  }, [settings.rowsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedDept, selectedRole, selectedStatus]);
+
+  // Paginated List for Table & Grid View
+  const paginatedEmployees = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredEmployees.slice(start, start + itemsPerPage);
+  }, [filteredEmployees, currentPage, itemsPerPage]);
 
   // Unique Filter Options
   const departmentOptions = useMemo(() => {
@@ -1665,7 +1687,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                             </td>
                           </tr>
                         ) : (
-                          filteredEmployees.map((emp, index) => {
+                          paginatedEmployees.map((emp, index) => {
                             const isSelected = selectedIds.includes(emp.id);
                             const isActiveDetail = selectedEmployeeForDetail?.id === emp.id;
                             const isEven = index % 2 === 1;
@@ -1761,7 +1783,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                 /* Grid Cards View */
                 <div className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {filteredEmployees.map((emp) => (
+                    {paginatedEmployees.map((emp) => (
                       <div
                         key={emp.id}
                         onClick={() => setSelectedEmployeeForDetail(emp)}
@@ -1847,62 +1869,31 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
               )}
 
               {/* Table / Grid Footer Pagination */}
-              <div className="p-3 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground shrink-0 bg-card">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span>
-                    Hiển thị <span className="font-semibold text-foreground">{filteredEmployees.length}</span> / {employees.length} nhân viên
-                  </span>
-                  {selectedIds.length > 0 && (
-                    <div className="inline-flex items-center gap-1.5">
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={filteredEmployees.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="nhân viên"
+                leftExtra={
+                  selectedIds.length > 0 && (
+                    <div className="inline-flex items-center gap-1.5 ml-2">
                       <span className="font-medium text-primary">
                         (Đã chọn {selectedIds.length})
                       </span>
                       <button
                         type="button"
                         onClick={handleDeleteSelected}
-                        className="px-2 py-0.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 text-xs font-medium inline-flex items-center gap-1 transition-colors"
+                        className="px-2 py-0.5 rounded border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive/20 text-xs font-medium inline-flex items-center gap-1 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3" />
                         Xóa {selectedIds.length} mục đã chọn
                       </button>
                     </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    disabled
-                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <ChevronsLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="px-2.5 py-1 bg-primary text-primary-foreground font-semibold rounded-lg text-xs">
-                    1
-                  </span>
-                  <button
-                    type="button"
-                    disabled
-                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled
-                    className="p-1.5 rounded-lg border border-border opacity-50 cursor-not-allowed"
-                  >
-                    <ChevronsRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+                  )
+                }
+              />
             </div>
           )}
         </div>

@@ -21,6 +21,8 @@ import { WorkflowTemplate } from '../../../types/task';
 import { workflowService } from '../../../services/taskService';
 import { WorkflowFormDrawer } from './WorkflowFormDrawer';
 import { WorkflowDetailDrawer } from './WorkflowDetailDrawer';
+import { useSettings } from '../../../context/SettingsContext';
+import { TablePagination } from '../../common/TablePagination';
 
 interface WorkflowListPageProps {
   onBack: () => void;
@@ -144,6 +146,30 @@ export const WorkflowListPage: React.FC<WorkflowListPageProps> = ({ onBack }) =>
       return true;
     });
   }, [workflows, searchQuery, selectedCategory]);
+
+  // User global settings
+  const { settings } = useSettings();
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(settings.rowsPerPage || 50);
+
+  useEffect(() => {
+    if (settings.rowsPerPage) {
+      setItemsPerPage(settings.rowsPerPage);
+      setCurrentPage(1);
+    }
+  }, [settings.rowsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory]);
+
+  // Paginated List for Table & Grid View
+  const paginatedWorkflows = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredWorkflows.slice(start, start + itemsPerPage);
+  }, [filteredWorkflows, currentPage, itemsPerPage]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col p-1.5 md:p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
@@ -337,7 +363,7 @@ export const WorkflowListPage: React.FC<WorkflowListPageProps> = ({ onBack }) =>
               {viewMode === 'grid' ? (
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {filteredWorkflows.map((wf) => {
+                    {paginatedWorkflows.map((wf) => {
                       const totalDays = wf.steps.reduce((acc, s) => acc + (s.estimatedDays || 0), 0);
 
                       return (
@@ -443,7 +469,7 @@ export const WorkflowListPage: React.FC<WorkflowListPageProps> = ({ onBack }) =>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60">
-                      {filteredWorkflows.map((w) => {
+                      {paginatedWorkflows.map((w) => {
                         const totalDays = w.steps.reduce((acc, s) => acc + (s.estimatedDays || 0), 0);
                         return (
                           <tr
@@ -501,6 +527,16 @@ export const WorkflowListPage: React.FC<WorkflowListPageProps> = ({ onBack }) =>
                   </table>
                 </div>
               )}
+
+              {/* Table Pagination Footer */}
+              <TablePagination
+                currentPage={currentPage}
+                totalItems={filteredWorkflows.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={setItemsPerPage}
+                itemLabel="quy trình"
+              />
             </div>
           )}
 

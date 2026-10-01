@@ -30,6 +30,9 @@ export type CurrencyDisplay = 'symbol' | 'code' | 'number_only';
 
 export type TableDensity = 'compact' | 'medium' | 'comfortable';
 
+export const ROWS_PER_PAGE_OPTIONS = [10, 20, 50, 100, 200, 500] as const;
+export type RowsPerPage = typeof ROWS_PER_PAGE_OPTIONS[number];
+
 export interface UserSettings {
   primaryColor: PrimaryColor;
   colorScheme: ColorScheme;

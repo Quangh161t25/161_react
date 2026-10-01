@@ -34,6 +34,7 @@ import {
   TableDensity,
   COLOR_CONFIG,
   FONT_CONFIG,
+  ROWS_PER_PAGE_OPTIONS,
 } from '../../types/settings';
 
 interface SettingsPageProps {
@@ -1055,9 +1056,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                       <div
                         role="radiogroup"
                         aria-label="Số dòng mỗi trang"
-                        className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                        className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6"
                       >
-                        {[10, 20, 50, 100].map((rows) => {
+                        {ROWS_PER_PAGE_OPTIONS.map((rows) => {
                           const isSelected = settings.rowsPerPage === rows;
                           return (
                             <button
