@@ -42,6 +42,7 @@ interface EventFormModalProps {
   onClose: () => void;
   onSave?: (event: CalendarEvent) => void;
   onSaveSuccess?: (message: string) => void;
+  onSwitchModule?: (mod: EventModuleType) => void;
 }
 
 export const EventFormModal: React.FC<EventFormModalProps> = ({
@@ -51,6 +52,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
   onClose,
   onSave,
   onSaveSuccess,
+  onSwitchModule,
 }) => {
   const [activeModule, setActiveModule] = useState<EventModuleType>(defaultModule);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -436,6 +438,10 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                     key={tab.id}
                     type="button"
                     onClick={() => {
+                      if (onSwitchModule && tab.id !== 'meeting') {
+                        onSwitchModule(tab.id);
+                        return;
+                      }
                       setActiveModule(tab.id);
                       setErrors({});
                     }}

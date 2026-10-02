@@ -69,6 +69,7 @@ interface CashTransactionFormDrawerProps {
   isOpen: boolean;
   initialType?: TransactionType;
   transactionToEdit?: CashTransaction | null;
+  defaultDate?: string;
   onClose: () => void;
   onSave: (tx: Partial<CashTransaction>) => Promise<void> | void;
   onNavigateToModule?: (path: string) => void;
@@ -80,6 +81,7 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
   isOpen,
   initialType = 'expense',
   transactionToEdit,
+  defaultDate,
   onClose,
   onSave,
 }) => {
@@ -334,7 +336,7 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
       setTitle('');
       setAmount(0);
       setAmountInWords('Không đồng chẵn');
-      setTransactionDate(new Date().toISOString().split('T')[0]);
+      setTransactionDate(defaultDate || new Date().toISOString().split('T')[0]);
       setTransactionTime(getCurrentTimeString());
 
       const defaultCat =
@@ -373,7 +375,7 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
       setAttachments([]);
     }
     setFormErrors({});
-  }, [transactionToEdit, initialType, isOpen, masterCounterparties, employees]);
+  }, [transactionToEdit, initialType, defaultDate, isOpen, masterCounterparties, employees]);
 
   const handleAmountChange = (val: number) => {
     const validAmount = isNaN(val) || val < 0 ? 0 : val;

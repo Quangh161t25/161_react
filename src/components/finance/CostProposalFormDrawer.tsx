@@ -36,6 +36,7 @@ import {
 
 interface CostProposalFormDrawerProps {
   initialData?: CostProposal | null;
+  defaultDate?: string;
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (proposalData: Partial<CostProposal>) => void;
@@ -55,6 +56,7 @@ const DEPARTMENTS_LIST = [
 
 export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
   initialData,
+  defaultDate,
   isOpen,
   onClose,
   onSubmit,
@@ -167,8 +169,8 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
       const dd = String(today.getDate()).padStart(2, '0');
       const todayIso = `${yyyy}-${mm}-${dd}`;
 
-      setProposalDate(todayIso);
-      setDueDate(todayIso);
+      setProposalDate(defaultDate || todayIso);
+      setDueDate(defaultDate || todayIso);
       setProposer(currentUser.name || 'Lê Minh Công');
       setDepartment(currentUser.department || 'Ban Giám Đốc');
       setTitle('');
@@ -189,7 +191,7 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
         },
       ]);
     }
-  }, [initialData, isOpen]);
+  }, [initialData, defaultDate, isOpen]);
 
   if (!isOpen) return null;
 
