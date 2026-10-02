@@ -36,16 +36,11 @@ import { EventDetailModal } from './EventDetailModal';
 import { EventFormModal } from './EventFormModal';
 
 import { NoteDetailDrawer } from '../notes/NoteDetailDrawer';
-import { NoteFormDrawer } from '../notes/NoteFormDrawer';
 import { EmployeeDetailDrawer } from '../employee/EmployeeDetailDrawer';
 import { TaskDetailDrawer } from '../work/tasks/TaskDetailDrawer';
-import { TaskFormDrawer } from '../work/tasks/TaskFormDrawer';
 import { ProjectDetailDrawer } from '../work/projects/ProjectDetailDrawer';
 import { CashTransactionDetailDrawer } from '../finance/CashTransactionDetailDrawer';
-import { CashTransactionFormDrawer } from '../finance/CashTransactionFormDrawer';
 import { CostProposalDetailDrawer } from '../finance/CostProposalDetailDrawer';
-import { CostProposalFormDrawer } from '../finance/CostProposalFormDrawer';
-import { useAuth } from '../../context/AuthContext';
 
 import { Note } from '../../types/note';
 import { Employee } from '../../types/employee';
@@ -68,7 +63,6 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   onBack,
   onNavigate,
 }) => {
-  const { currentUser } = useAuth();
   // Top Tabs: 'list' (Lịch biểu) | 'stats' (Thống kê)
   const [activeTopTab, setActiveTopTab] = useState<'list' | 'stats'>('list');
 
@@ -1116,126 +1110,15 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
       />
 
       <EventFormModal
-        isOpen={activeAddDrawer === 'meeting'}
+        isOpen={activeAddDrawer !== null}
         defaultDate={addDrawerDate}
-        defaultModule="meeting"
+        defaultModule={activeAddDrawer || 'meeting'}
         onClose={() => setActiveAddDrawer(null)}
         onSave={handleSaveCustomEvent}
-        onSwitchModule={(mod) => openAddDrawer(mod, addDrawerDate)}
         onSaveSuccess={(msg) => {
           const fresh = calendarService.aggregateAllEvents();
           setAllEvents(fresh);
           showToast(`✅ ${msg}`);
-        }}
-      />
-
-      {/* Native NoteFormDrawer */}
-      <NoteFormDrawer
-        isOpen={activeAddDrawer === 'note'}
-        defaultDate={addDrawerDate}
-        existingTags={[]}
-        onClose={() => setActiveAddDrawer(null)}
-        onSubmit={(formData) => {
-          const notes = noteService.getInitialNotes();
-          const now = new Date().toISOString();
-          const newNote: Note = {
-            id: `note_${Date.now()}`,
-            code: `N${String(notes.length + 1).padStart(3, '0')}`,
-            title: formData.title || 'Ghi chú mới',
-            summary: formData.summary || '',
-            content: formData.content || '',
-            category: (formData.category as Note['category']) || 'Ghi chép cá nhân',
-            status: formData.status || 'published',
-            isPinned: formData.isPinned || false,
-            color: formData.color || 'blue',
-            coverUrl: formData.coverUrl || '',
-            author: formData.author || (currentUser?.name || 'Người dùng'),
-            authorAvatar: formData.authorAvatar || (currentUser?.avatarUrl || ''),
-            tags: formData.tags || [],
-            participants: formData.participants || [],
-            attachments: formData.attachments || [],
-            noteDate: (formData as any).noteDate || addDrawerDate || now.slice(0, 10),
-            noteTime: (formData as any).noteTime || '',
-            location: formData.location || '',
-            createdAt: now,
-            updatedAt: now,
-          };
-          const updatedNotes = [newNote, ...notes];
-          noteService.saveToLocalCache(updatedNotes);
-          setAllEvents(calendarService.aggregateAllEvents());
-          setActiveAddDrawer(null);
-          showToast('✅ Đã lưu ghi chú mới');
-        }}
-      />
-
-      {/* Native TaskFormDrawer */}
-      {activeAddDrawer === 'task' && (
-        <TaskFormDrawer
-          mode="create"
-          defaultDate={addDrawerDate}
-          allTasks={allTasksList}
-          onClose={() => setActiveAddDrawer(null)}
-          onSave={(newTask) => {
-            const tasks = taskService.getInitialTasks();
-            const updatedTasks = [...tasks, newTask];
-            taskService.saveToCache(updatedTasks);
-            setAllTasksList(updatedTasks);
-            setAllEvents(calendarService.aggregateAllEvents());
-            setActiveAddDrawer(null);
-            showToast('✅ Đã lưu công việc mới');
-          }}
-        />
-      )}
-
-      {/* Native CashTransactionFormDrawer */}
-      <CashTransactionFormDrawer
-        isOpen={activeAddDrawer === 'cash'}
-        defaultDate={addDrawerDate}
-        onClose={() => setActiveAddDrawer(null)}
-        onSave={(newTx) => {
-          const txs = cashTransactionService.getInitialTransactions();
-          const updatedTxs = [...txs, newTx as CashTransaction];
-          cashTransactionService.saveToCache(updatedTxs);
-          setAllCashTxsList(updatedTxs);
-          setAllEvents(calendarService.aggregateAllEvents());
-          setActiveAddDrawer(null);
-          showToast('✅ Đã lưu phiếu thu/chi mới');
-        }}
-      />
-
-      {/* Native CostProposalFormDrawer */}
-      <CostProposalFormDrawer
-        isOpen={activeAddDrawer === 'proposal'}
-        defaultDate={addDrawerDate}
-        onClose={() => setActiveAddDrawer(null)}
-        onSubmit={(formData) => {
-          const proposals = googleSheetsService.getInitialProposals();
-          const now = new Date().toISOString();
-          const newProposal: CostProposal = {
-            id: `prop_${Date.now()}`,
-            code: `CP${String(proposals.length + 1).padStart(3, '0')}`,
-            title: formData.title || 'Đề xuất chi phí mới',
-            reason: (formData as any).reason || '',
-            amount: formData.amount || 0,
-            department: (formData as any).department || (currentUser?.department || ''),
-            account: (formData as any).account || '',
-            status: formData.status || 'draft',
-            approvalStatus: (formData as any).approvalStatus || 'pending',
-            proposalDate: (formData as any).proposalDate || addDrawerDate || now.slice(0, 10),
-            dueDate: (formData as any).dueDate || addDrawerDate || now.slice(0, 10),
-            proposer: (formData as any).proposer || (currentUser?.name || ''),
-            isOverBudget: (formData as any).isOverBudget || false,
-            updatedAt: now,
-            createdAt: now,
-            lineItems: (formData as any).lineItems || [],
-            note: (formData as any).note || '',
-          };
-          const updatedProposals = [...proposals, newProposal];
-          googleSheetsService.saveToCache(updatedProposals);
-          setAllProposalsList(updatedProposals);
-          setAllEvents(calendarService.aggregateAllEvents());
-          setActiveAddDrawer(null);
-          showToast('✅ Đã lưu đề xuất chi phí mới');
         }}
       />
     </div>
