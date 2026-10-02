@@ -1444,6 +1444,7 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
         }}
         onSave={handleSaveEntry}
         initialEntry={editingEntry}
+        allEntries={entries}
       />
 
       {/* Detail Drawer */}

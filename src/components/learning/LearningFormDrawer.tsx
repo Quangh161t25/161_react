@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
   Save,
@@ -12,6 +12,7 @@ import {
   ExternalLink,
   BookOpen,
   Edit3,
+  Tag,
 } from 'lucide-react';
 import {
   LearningEntry,
@@ -29,6 +30,7 @@ interface LearningFormDrawerProps {
   onClose: () => void;
   onSave: (entry: LearningEntry) => void;
   initialEntry?: LearningEntry | null;
+  allEntries?: LearningEntry[];
 }
 
 export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
@@ -36,6 +38,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
   onClose,
   onSave,
   initialEntry,
+  allEntries = [],
 }) => {
   const isEditing = !!initialEntry;
 
@@ -254,10 +257,77 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
     setShowImageUrlInput(false);
   };
 
+  // Extract all existing unique tags from previous learning entries + presets
+  const suggestedTags = useMemo(() => {
+    const defaultList = [
+      'Frontend',
+      'Backend',
+      'React',
+      'TypeScript',
+      'AI',
+      'Kinh doanh',
+      'Marketing',
+      'Quản trị',
+      'CleanCode',
+      'Tài chính',
+      'Kỹ năng mềm',
+    ];
+    const tagMap = new Map<string, number>();
+
+    (allEntries || []).forEach((item) => {
+      if (Array.isArray(item.tags)) {
+        item.tags.forEach((t) => {
+          const trimmed = t.trim();
+          if (trimmed) {
+            const existingKey = Array.from(tagMap.keys()).find(
+              (k) => k.toLowerCase() === trimmed.toLowerCase()
+            );
+            if (existingKey) {
+              tagMap.set(existingKey, (tagMap.get(existingKey) || 0) + 1);
+            } else {
+              tagMap.set(trimmed, 1);
+            }
+          }
+        });
+      }
+    });
+
+    defaultList.forEach((def) => {
+      const existingKey = Array.from(tagMap.keys()).find(
+        (k) => k.toLowerCase() === def.toLowerCase()
+      );
+      if (!existingKey) {
+        tagMap.set(def, 0);
+      }
+    });
+
+    return Array.from(tagMap.keys()).sort((a, b) => {
+      const freqA = tagMap.get(a) || 0;
+      const freqB = tagMap.get(b) || 0;
+      if (freqB !== freqA) return freqB - freqA;
+      return a.localeCompare(b, 'vi');
+    });
+  }, [allEntries]);
+
+  // Filter out tags already added
+  const unselectedSuggestions = useMemo(() => {
+    return suggestedTags.filter(
+      (sug) => !tags.some((t) => t.toLowerCase() === sug.toLowerCase())
+    );
+  }, [suggestedTags, tags]);
+
+  // Filter suggestions based on tagInput search query
+  const filteredSuggestions = useMemo(() => {
+    const q = tagInput.trim().toLowerCase();
+    if (!q) return unselectedSuggestions;
+    return unselectedSuggestions.filter((sug) => sug.toLowerCase().includes(q));
+  }, [unselectedSuggestions, tagInput]);
+
   // Add Tag
-  const handleAddTag = () => {
-    const clean = tagInput.trim().replace(/^#/, '');
-    if (clean && !tags.includes(clean)) {
+  const handleAddTag = (tagToAdd?: string) => {
+    const raw = tagToAdd || tagInput;
+    const clean = raw.trim().replace(/^#/, '');
+    if (clean && !tags.some((t) => t.toLowerCase() === clean.toLowerCase())) {
       setTags([...tags, clean]);
       setTagInput('');
     }
@@ -401,252 +471,89 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
               />
             </div>
 
-            {/* Summary */}
+            {/* Tags (Đưa lên trên, hiển thị gợi ý từ các bài học trước) */}
             <div>
-              <label className="block text-xs font-semibold text-foreground mb-1">
-                Ý chính cốt lõi / Tóm tắt ngắn (1-2 câu)
-              </label>
-              <input
-                type="text"
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                placeholder="VD: Các module cấp cao không nên phụ thuộc vào module cấp thấp, cả hai nên phụ thuộc abstraction."
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-            </div>
-
-            {/* Category & Mastery Level & Difficulty & Rating */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Category */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Chuyên mục</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
-                >
-                  {LEARNING_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                {category === 'Khác' && (
-                  <input
-                    type="text"
-                    placeholder="Nhập chuyên mục riêng..."
-                    value={customCategory}
-                    onChange={(e) => setCustomCategory(e.target.value)}
-                    className="w-full mt-1.5 px-2.5 py-1 text-xs rounded-lg border border-border bg-background"
-                  />
-                )}
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-primary" />
+                  <span>Thẻ từ khóa (Tags)</span>
+                </label>
+                <span className="text-[11px] text-muted-foreground">
+                  Nhập thẻ rồi nhấn Enter hoặc chọn gợi ý bên dưới
+                </span>
               </div>
 
-              {/* Mastery Level */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Mức độ nắm vững</label>
-                <select
-                  value={masteryLevel}
-                  onChange={(e) => setMasteryLevel(e.target.value as MasteryLevel)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
-                >
-                  <option value="learning">📖 Đang học</option>
-                  <option value="practicing">🛠️ Đang thực hành</option>
-                  <option value="mastered">✅ Đã nắm vững</option>
-                  <option value="review_needed">🔄 Cần ôn lại</option>
-                </select>
-              </div>
-
-              {/* Difficulty */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Độ khó</label>
-                <select
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value as DifficultyLevel)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
-                >
-                  <option value="beginner">🌱 Cơ bản</option>
-                  <option value="intermediate">⚡ Trung bình</option>
-                  <option value="advanced">🔥 Nâng cao</option>
-                </select>
-              </div>
-
-              {/* Rating */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Độ hữu ích</label>
-                <div className="flex items-center gap-1 py-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setRating(star)}
-                      className="p-0.5 hover:scale-110 transition-transform"
-                    >
-                      <Star
-                        className={`w-4 h-4 ${
-                          star <= rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/40'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                  <span className="text-xs text-muted-foreground ml-1.5 font-semibold">({rating}/5)</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Source Information */}
-            <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                <Link2 className="w-3.5 h-3.5 text-primary" />
-                <span>Nguồn tham khảo & Tài liệu gốc</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Loại nguồn</label>
-                  <select
-                    value={sourceType}
-                    onChange={(e) => setSourceType(e.target.value as LearningSourceType)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background"
+              {/* Tag Input and Current Tags */}
+              <div className="min-h-[38px] p-1.5 rounded-lg border border-border bg-background focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary flex flex-wrap items-center gap-1.5">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
                   >
-                    {LEARNING_SOURCE_TYPES.map((st) => (
-                      <option key={st} value={st}>
-                        {st}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Tên nguồn / Tác giả</label>
-                  <input
-                    type="text"
-                    value={sourceName}
-                    onChange={(e) => setSourceName(e.target.value)}
-                    placeholder="VD: Sách Pragmatic Programmer..."
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Link nguồn URL</label>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="text"
-                      value={sourceUrl}
-                      onChange={(e) => setSourceUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background"
-                    />
-                    {sourceUrl && (
-                      <a
-                        href={sourceUrl.startsWith('http') ? sourceUrl : `https://${sourceUrl}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
-                        title="Mở link nguồn"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Extra Reference Links */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-medium text-muted-foreground">Các liên kết mở rộng khác:</span>
-                </div>
-                {links.length > 0 && (
-                  <div className="space-y-1 mb-2">
-                    {links.map((lnk) => (
-                      <div
-                        key={lnk.id}
-                        className="flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-background border border-border text-xs"
-                      >
-                        <a
-                          href={lnk.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-primary hover:underline truncate flex items-center gap-1 font-medium"
-                        >
-                          <ExternalLink className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{lnk.title || lnk.url}</span>
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveLink(lnk.id)}
-                          className="text-muted-foreground hover:text-rose-500 p-0.5"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Tiêu đề link..."
-                    value={newLinkTitle}
-                    onChange={(e) => setNewLinkTitle(e.target.value)}
-                    className="w-1/3 px-2 py-1 text-xs rounded-lg border border-border bg-background"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Đường dẫn URL (https://...)"
-                    value={newLinkUrl}
-                    onChange={(e) => setNewLinkUrl(e.target.value)}
-                    className="flex-1 px-2 py-1 text-xs rounded-lg border border-border bg-background"
-                  />
+                    #{t}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveTag(t)}
+                      className="hover:text-rose-500 transition-colors ml-0.5"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <input
+                  type="text"
+                  placeholder={tags.length === 0 ? "Nhập thẻ rồi nhấn Enter (VD: React, CleanCode, Sales...)" : "Thêm thẻ..."}
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none min-w-[140px] px-1 py-0.5"
+                />
+                {tagInput.trim() && (
                   <button
                     type="button"
-                    onClick={handleAddLink}
-                    className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 flex items-center gap-1 shrink-0"
+                    onClick={() => handleAddTag()}
+                    className="px-2.5 py-0.5 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
                   >
-                    <Plus className="w-3 h-3" />
-                    <span>Thêm</span>
+                    + Thêm
                   </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Dates: Entry Date & Next Review Date */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Ngày ghi nhận kiến thức</label>
-                <input
-                  type="date"
-                  value={entryDate}
-                  onChange={(e) => setEntryDate(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground"
-                />
+                )}
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">
-                  Ngày cần ôn lại (Spaced Repetition)
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="date"
-                    value={nextReviewDate}
-                    onChange={(e) => setNextReviewDate(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground"
-                  />
-                  {nextReviewDate && (
-                    <button
-                      type="button"
-                      onClick={() => setNextReviewDate('')}
-                      className="text-xs text-muted-foreground hover:text-foreground shrink-0 underline"
-                    >
-                      Xóa
-                    </button>
-                  )}
+              {/* Suggestions from previous learning entries & presets */}
+              {filteredSuggestions.length > 0 && (
+                <div className="mt-2 space-y-1.5">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span className="font-medium flex items-center gap-1">
+                      <Tag className="w-3 h-3 text-primary" />
+                      Gợi ý thẻ từ bài học trước ({filteredSuggestions.length}):
+                    </span>
+                    {tagInput.trim() && (
+                      <span className="text-[10px] text-primary">
+                        Đang lọc theo "{tagInput.trim()}"
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5 max-h-24 overflow-y-auto custom-scrollbar p-1.5 rounded-xl bg-muted/30 border border-border/60">
+                    {filteredSuggestions.map((sug) => (
+                      <button
+                        key={sug}
+                        type="button"
+                        onClick={() => handleAddTag(sug)}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs bg-background hover:bg-primary/10 text-muted-foreground hover:text-primary border border-border hover:border-primary/40 transition-all cursor-pointer shadow-2xs active:scale-95"
+                        title={`Bấm để thêm thẻ "${sug}"`}
+                      >
+                        <span className="text-primary font-bold text-xs">+</span>
+                        <span>{sug}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Cover Image & Image Upload to Catbox */}
@@ -944,50 +851,251 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
               </div>
             </div>
 
-            {/* Tags */}
+            {/* Summary */}
             <div>
               <label className="block text-xs font-semibold text-foreground mb-1">
-                Thẻ từ khóa (Tags) để tìm kiếm nhanh
+                Ý chính cốt lõi / Tóm tắt ngắn (1-2 câu)
               </label>
-              <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                {tags.map((t) => (
-                  <span
-                    key={t}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-                  >
-                    #{t}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(t)}
-                      className="hover:text-rose-500 transition-colors ml-0.5"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+              <input
+                type="text"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                placeholder="VD: Các module cấp cao không nên phụ thuộc vào module cấp thấp, cả hai nên phụ thuộc abstraction."
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+              />
+            </div>
+
+            {/* Category & Mastery Level & Difficulty & Rating */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">Chuyên mục</label>
+                <select
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
+                >
+                  {LEARNING_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+                {category === 'Khác' && (
+                  <input
+                    type="text"
+                    placeholder="Nhập chuyên mục riêng..."
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    className="w-full mt-1.5 px-2.5 py-1 text-xs rounded-lg border border-border bg-background"
+                  />
+                )}
               </div>
 
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Nhập thẻ rồi bấm Thêm (VD: React, CleanCode, Sales...)"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddTag();
-                    }
-                  }}
-                  className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-border bg-background"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddTag}
-                  className="px-3 py-1.5 rounded-lg border border-border bg-muted hover:bg-muted/80 text-xs font-medium"
+              {/* Mastery Level */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">Mức độ nắm vững</label>
+                <select
+                  value={masteryLevel}
+                  onChange={(e) => setMasteryLevel(e.target.value as MasteryLevel)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
                 >
-                  Thêm thẻ
-                </button>
+                  <option value="learning">📖 Đang học</option>
+                  <option value="practicing">🛠️ Đang thực hành</option>
+                  <option value="mastered">✅ Đã nắm vững</option>
+                  <option value="review_needed">🔄 Cần ôn lại</option>
+                </select>
+              </div>
+
+              {/* Difficulty */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">Độ khó</label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value as DifficultyLevel)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
+                >
+                  <option value="beginner">🌱 Cơ bản</option>
+                  <option value="intermediate">⚡ Trung bình</option>
+                  <option value="advanced">🔥 Nâng cao</option>
+                </select>
+              </div>
+
+              {/* Rating */}
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">Độ hữu ích</label>
+                <div className="flex items-center gap-1 py-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="p-0.5 hover:scale-110 transition-transform"
+                    >
+                      <Star
+                        className={`w-4 h-4 ${
+                          star <= rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/40'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  <span className="text-xs text-muted-foreground ml-1.5 font-semibold">({rating}/5)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Source Information */}
+            <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
+                <Link2 className="w-3.5 h-3.5 text-primary" />
+                <span>Nguồn tham khảo & Tài liệu gốc</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Loại nguồn</label>
+                  <select
+                    value={sourceType}
+                    onChange={(e) => setSourceType(e.target.value as LearningSourceType)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background"
+                  >
+                    {LEARNING_SOURCE_TYPES.map((st) => (
+                      <option key={st} value={st}>
+                        {st}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Tên nguồn / Tác giả</label>
+                  <input
+                    type="text"
+                    value={sourceName}
+                    onChange={(e) => setSourceName(e.target.value)}
+                    placeholder="VD: Sách Pragmatic Programmer..."
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Link nguồn URL</label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="text"
+                      value={sourceUrl}
+                      onChange={(e) => setSourceUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background"
+                    />
+                    {sourceUrl && (
+                      <a
+                        href={sourceUrl.startsWith('http') ? sourceUrl : `https://${sourceUrl}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 rounded-lg border border-border hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
+                        title="Mở link nguồn"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Extra Reference Links */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[11px] font-medium text-muted-foreground">Các liên kết mở rộng khác:</span>
+                </div>
+                {links.length > 0 && (
+                  <div className="space-y-1 mb-2">
+                    {links.map((lnk) => (
+                      <div
+                        key={lnk.id}
+                        className="flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-background border border-border text-xs"
+                      >
+                        <a
+                          href={lnk.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline truncate flex items-center gap-1 font-medium"
+                        >
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{lnk.title || lnk.url}</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveLink(lnk.id)}
+                          className="text-muted-foreground hover:text-rose-500 p-0.5"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="Tiêu đề link..."
+                    value={newLinkTitle}
+                    onChange={(e) => setNewLinkTitle(e.target.value)}
+                    className="w-1/3 px-2 py-1 text-xs rounded-lg border border-border bg-background"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Đường dẫn URL (https://...)"
+                    value={newLinkUrl}
+                    onChange={(e) => setNewLinkUrl(e.target.value)}
+                    className="flex-1 px-2 py-1 text-xs rounded-lg border border-border bg-background"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddLink}
+                    className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 flex items-center gap-1 shrink-0"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Thêm</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Dates: Entry Date & Next Review Date */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">Ngày ghi nhận kiến thức</label>
+                <input
+                  type="date"
+                  value={entryDate}
+                  onChange={(e) => setEntryDate(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Ngày cần ôn lại (Spaced Repetition)
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={nextReviewDate}
+                    onChange={(e) => setNextReviewDate(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground"
+                  />
+                  {nextReviewDate && (
+                    <button
+                      type="button"
+                      onClick={() => setNextReviewDate('')}
+                      className="text-xs text-muted-foreground hover:text-foreground shrink-0 underline"
+                    >
+                      Xóa
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </form>
