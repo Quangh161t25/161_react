@@ -4,6 +4,7 @@ import { googleSheetsService } from './googleSheetsService';
 import { cashTransactionService } from './cashTransactionService';
 import { employeeService } from './employeeService';
 import { noteService } from './noteService';
+import { learningService } from './learningService';
 
 const CUSTOM_EVENTS_KEY = 'erp_custom_calendar_events';
 
@@ -266,7 +267,50 @@ export const calendarService = {
       console.warn('Error aggregating notes to calendar:', e);
     }
 
-    // 7. Custom Calendar Events (Lịch họp & Sự kiện riêng)
+    // 7. Module Học hỏi & Kiến thức (Learning)
+    try {
+      const learnings = learningService.getInitialEntries();
+      learnings.forEach((l) => {
+        const d = l.entryDate || l.createdAt;
+        if (d) {
+          const cleanDate = d.slice(0, 10);
+          events.push({
+            id: `learning_${l.id}`,
+            title: `🎓 [Học hỏi] ${l.title}`,
+            startDate: cleanDate,
+            allDay: true,
+            source: 'learning',
+            sourceId: l.code,
+            sourceLink: '/hoc-hoi',
+            categoryName: `Học hỏi: ${l.category || 'Kiến thức'}`,
+            badgeBg: 'bg-indigo-500/10',
+            badgeColor: 'text-indigo-600',
+            badgeBorder: 'border-indigo-500/20',
+            description: l.summary || (l.content || '').substring(0, 100) + '...',
+          });
+        }
+        if (l.nextReviewDate) {
+          events.push({
+            id: `learning_review_${l.id}`,
+            title: `🔄 [Ôn tập kiến thức] ${l.title}`,
+            startDate: l.nextReviewDate.slice(0, 10),
+            allDay: true,
+            source: 'learning',
+            sourceId: l.code,
+            sourceLink: '/hoc-hoi',
+            categoryName: 'Ôn tập Kiến thức',
+            badgeBg: 'bg-violet-500/10',
+            badgeColor: 'text-violet-600',
+            badgeBorder: 'border-violet-500/20',
+            description: `Mức độ nắm vững: ${l.masteryLevel || 'Đang học'}`,
+          });
+        }
+      });
+    } catch (e) {
+      console.warn('Error aggregating learning entries to calendar:', e);
+    }
+
+    // 8. Custom Calendar Events (Lịch họp & Sự kiện riêng)
     const custom = this.getCustomEvents();
     events.push(...custom);
 

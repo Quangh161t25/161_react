@@ -19,6 +19,7 @@ import {
   Check,
   Layers,
   CheckCircle2,
+  GraduationCap,
 } from 'lucide-react';
 import {
   CalendarEvent,
@@ -36,6 +37,7 @@ import { EventDetailModal } from './EventDetailModal';
 import { EventFormModal } from './EventFormModal';
 
 import { NoteDetailDrawer } from '../notes/NoteDetailDrawer';
+import { LearningDetailDrawer } from '../learning/LearningDetailDrawer';
 import { EmployeeDetailDrawer } from '../employee/EmployeeDetailDrawer';
 import { TaskDetailDrawer } from '../work/tasks/TaskDetailDrawer';
 import { ProjectDetailDrawer } from '../work/projects/ProjectDetailDrawer';
@@ -43,12 +45,14 @@ import { CashTransactionDetailDrawer } from '../finance/CashTransactionDetailDra
 import { CostProposalDetailDrawer } from '../finance/CostProposalDetailDrawer';
 
 import { Note } from '../../types/note';
+import { LearningEntry } from '../../types/learning';
 import { Employee } from '../../types/employee';
 import { Task, Project, TaskStatus } from '../../types/task';
 import { CashTransaction } from '../../types/cashTransaction';
 import { CostProposal } from '../../types/cost-proposal';
 
 import { noteService } from '../../services/noteService';
+import { learningService } from '../../services/learningService';
 import { employeeService } from '../../services/employeeService';
 import { taskService, projectService } from '../../services/taskService';
 import { cashTransactionService } from '../../services/cashTransactionService';
@@ -94,12 +98,13 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   const [isSourceDropdownOpen, setIsSourceDropdownOpen] = useState(false);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [selectedSources, setSelectedSources] = useState<CalendarEventSource[]>([
+    'note',
     'work_task',
+    'learning',
+    'finance_cash',
     'work_project',
     'finance_proposal',
-    'finance_cash',
     'hr_birthday',
-    'note',
     'custom',
   ]);
 
@@ -110,6 +115,9 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   // Module-specific detail drawer states
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [allNotesList, setAllNotesList] = useState<Note[]>([]);
+
+  const [selectedLearning, setSelectedLearning] = useState<LearningEntry | null>(null);
+  const [allLearningsList, setAllLearningsList] = useState<LearningEntry[]>([]);
 
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [allEmployeesList, setAllEmployeesList] = useState<Employee[]>([]);
@@ -129,7 +137,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   const [selectedCustomEvent, setSelectedCustomEvent] = useState<CalendarEvent | null>(null);
 
   // Active Creation Form Drawer
-  const [activeAddDrawer, setActiveAddDrawer] = useState<'meeting' | 'note' | 'task' | 'cash' | 'proposal' | null>(null);
+  const [activeAddDrawer, setActiveAddDrawer] = useState<'note' | 'task' | 'learning' | 'cash' | null>(null);
   const [addDrawerDate, setAddDrawerDate] = useState<string>('');
 
   const showToast = useCallback((msg: string) => {
@@ -141,6 +149,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
 
   const closeAllDrawers = useCallback(() => {
     setSelectedNote(null);
+    setSelectedLearning(null);
     setSelectedEmployee(null);
     setSelectedTask(null);
     setSelectedProject(null);
@@ -150,7 +159,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
     setActiveAddDrawer(null);
   }, []);
 
-  const openAddDrawer = useCallback((mod: 'meeting' | 'note' | 'task' | 'cash' | 'proposal', dateStr?: string) => {
+  const openAddDrawer = useCallback((mod: 'note' | 'task' | 'learning' | 'cash', dateStr?: string) => {
     closeAllDrawers();
     setAddDrawerDate(dateStr || currentDate.toISOString().slice(0, 10));
     setActiveAddDrawer(mod);
@@ -233,6 +242,22 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
       const found = props.find((p) => p.id === rawId || (evt.sourceId && p.code === evt.sourceId));
       if (found) {
         setSelectedProposal(found);
+        return;
+      }
+    }
+
+    // 7. Bài học / Kiến thức (Learning)
+    if (evt.source === 'learning') {
+      const learnings = learningService.getInitialEntries();
+      setAllLearningsList(learnings);
+      const rawId = evt.id.startsWith('learning_review_')
+        ? evt.id.replace('learning_review_', '')
+        : evt.id.startsWith('learning_')
+        ? evt.id.replace('learning_', '')
+        : evt.id;
+      const found = learnings.find((l) => l.id === rawId || (evt.sourceId && l.code === evt.sourceId));
+      if (found) {
+        setSelectedLearning(found);
         return;
       }
     }
@@ -449,13 +474,14 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
     icon: React.ComponentType<{ className?: string }>;
     color: string;
   }[] = [
+    { id: 'note', label: 'Ghi chú & Tài liệu', icon: BookOpen, color: 'text-purple-500' },
     { id: 'work_task', label: 'Công việc & Nhiệm vụ', icon: CheckSquare, color: 'text-blue-500' },
-    { id: 'work_project', label: 'Dự án & Giai đoạn', icon: FolderKanban, color: 'text-cyan-500' },
-    { id: 'finance_proposal', label: 'Đề xuất tài chính', icon: Wallet, color: 'text-emerald-500' },
+    { id: 'learning', label: 'Học hỏi & Kiến thức', icon: GraduationCap, color: 'text-indigo-500' },
     { id: 'finance_cash', label: 'Phiếu thu & Chi tiền', icon: Wallet, color: 'text-emerald-500' },
+    { id: 'work_project', label: 'Dự án & Giai đoạn', icon: FolderKanban, color: 'text-cyan-500' },
+    { id: 'finance_proposal', label: 'Đề xuất tài chính', icon: Wallet, color: 'text-teal-500' },
     { id: 'hr_birthday', label: 'Sinh nhật Nhân sự', icon: Cake, color: 'text-pink-500' },
     { id: 'custom', label: 'Lịch họp nội bộ', icon: CalendarIcon, color: 'text-amber-500' },
-    { id: 'note', label: 'Ghi chú công tác', icon: BookOpen, color: 'text-purple-500' },
   ];
 
   return (
@@ -717,7 +743,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                     <div className="inline-flex rounded-lg shadow-sm">
                       <button
                         type="button"
-                        onClick={() => openAddDrawer('meeting')}
+                        onClick={() => openAddDrawer('note')}
                         className="h-8 px-2.5 rounded-l-lg bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -744,18 +770,6 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                             type="button"
                             onClick={() => {
                               setIsAddMenuOpen(false);
-                              openAddDrawer('task');
-                            }}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-muted text-foreground flex items-center gap-2 transition-colors"
-                          >
-                            <CheckSquare className="w-3.5 h-3.5 text-blue-500" />
-                            <span>Thêm Công việc mới</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsAddMenuOpen(false);
                               openAddDrawer('note');
                             }}
                             className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-muted text-foreground flex items-center gap-2 transition-colors"
@@ -768,38 +782,36 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                             type="button"
                             onClick={() => {
                               setIsAddMenuOpen(false);
+                              openAddDrawer('task');
+                            }}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-muted text-foreground flex items-center gap-2 transition-colors"
+                          >
+                            <CheckSquare className="w-3.5 h-3.5 text-blue-500" />
+                            <span>Thêm Công việc mới</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAddMenuOpen(false);
+                              openAddDrawer('learning');
+                            }}
+                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-muted text-foreground flex items-center gap-2 transition-colors"
+                          >
+                            <GraduationCap className="w-3.5 h-3.5 text-indigo-500" />
+                            <span>Thêm Bài học & Kiến thức</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsAddMenuOpen(false);
                               openAddDrawer('cash');
                             }}
                             className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-muted text-foreground flex items-center gap-2 transition-colors"
                           >
                             <Wallet className="w-3.5 h-3.5 text-emerald-500" />
                             <span>Thêm Phiếu Thu / Chi</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsAddMenuOpen(false);
-                              openAddDrawer('proposal');
-                            }}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-muted text-foreground flex items-center gap-2 transition-colors"
-                          >
-                            <Layers className="w-3.5 h-3.5 text-teal-500" />
-                            <span>Thêm Đề xuất chi phí</span>
-                          </button>
-
-                          <div className="h-px bg-border my-1" />
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsAddMenuOpen(false);
-                              openAddDrawer('meeting');
-                            }}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium hover:bg-muted text-foreground flex items-center gap-2 transition-colors"
-                          >
-                            <CalendarIcon className="w-3.5 h-3.5 text-amber-500" />
-                            <span>Lịch họp & Sự kiện</span>
                           </button>
                         </div>
                       </>
@@ -819,7 +831,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                   month={currentMonth}
                   events={filteredEvents}
                   onSelectEvent={handleSelectEvent}
-                  onAddEventForDate={(dateStr) => openAddDrawer('meeting', dateStr)}
+                  onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
                   onSelectDate={(date) => {
                     setCurrentDate(date);
                     setViewMode('day');
@@ -832,7 +844,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                   currentDate={currentDate}
                   events={filteredEvents}
                   onSelectEvent={handleSelectEvent}
-                  onAddEventForDate={(dateStr) => openAddDrawer('meeting', dateStr)}
+                  onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
                   onSelectDate={(date) => {
                     setCurrentDate(date);
                     setViewMode('day');
@@ -845,7 +857,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                   currentDate={currentDate}
                   events={filteredEvents}
                   onSelectEvent={handleSelectEvent}
-                  onAddEventForDate={(dateStr) => openAddDrawer('meeting', dateStr)}
+                  onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
                 />
               )}
 
@@ -1100,6 +1112,33 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
         />
       )}
 
+      {selectedLearning && (
+        <LearningDetailDrawer
+          entry={selectedLearning}
+          onClose={() => setSelectedLearning(null)}
+          onEdit={() => {
+            setSelectedLearning(null);
+            if (onNavigate) onNavigate('/hoc-hoi');
+          }}
+          onDelete={(id) => {
+            const updated = allLearningsList.filter((e) => e.id !== id);
+            learningService.saveToCache(updated);
+            setAllLearningsList(updated);
+            setSelectedLearning(null);
+            setAllEvents(calendarService.aggregateAllEvents());
+            showToast('Đã xóa bài học');
+          }}
+          onTogglePin={(id) => {
+            const updated = allLearningsList.map((e) =>
+              e.id === id ? { ...e, isPinned: !e.isPinned } : e
+            );
+            learningService.saveToCache(updated);
+            setAllLearningsList(updated);
+            setSelectedLearning(updated.find((e) => e.id === id) || null);
+          }}
+        />
+      )}
+
       {/* Custom Event Modal (for meetings and events created within Calendar) */}
       <EventDetailModal
         event={selectedCustomEvent}
@@ -1112,7 +1151,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
       <EventFormModal
         isOpen={activeAddDrawer !== null}
         defaultDate={addDrawerDate}
-        defaultModule={activeAddDrawer || 'meeting'}
+        defaultModule={activeAddDrawer || 'note'}
         onClose={() => setActiveAddDrawer(null)}
         onSave={handleSaveCustomEvent}
         onSaveSuccess={(msg) => {

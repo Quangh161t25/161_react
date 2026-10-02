@@ -1,15 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
-  Calendar as CalendarIcon,
   CheckSquare,
   BookOpen,
   Wallet,
-  Layers,
   Save,
   User,
   Clock,
-  MapPin,
   Building2,
   DollarSign,
   Loader2,
@@ -23,22 +20,26 @@ import {
   Trash2,
   Pin,
   Palette,
+  GraduationCap,
+  Link2,
+  Star,
+  BookMarked,
 } from 'lucide-react';
-import { CalendarEvent, CalendarEventPriority } from '../../types/calendar';
+import { CalendarEvent } from '../../types/calendar';
 import { Task, TaskPriority, TaskStatus, TaskSubtask, Project } from '../../types/task';
 import { Note, NoteCategory } from '../../types/note';
+import { LearningEntry, LearningSourceType, MasteryLevel, DifficultyLevel } from '../../types/learning';
 import { CashTransaction } from '../../types/cashTransaction';
-import { CostProposal } from '../../types/cost-proposal';
 import { Employee } from '../../types/employee';
 
-import { calendarService } from '../../services/calendarService';
 import { taskService, projectService } from '../../services/taskService';
 import { noteService } from '../../services/noteService';
+import { learningService } from '../../services/learningService';
 import { cashTransactionService } from '../../services/cashTransactionService';
-import { googleSheetsService } from '../../services/googleSheetsService';
 import { employeeService } from '../../services/employeeService';
+import { LEARNING_CATEGORIES, LEARNING_SOURCE_TYPES } from '../../data/learning';
 
-export type EventModuleType = 'meeting' | 'task' | 'note' | 'cash' | 'proposal';
+export type EventModuleType = 'note' | 'task' | 'learning' | 'cash';
 
 interface EventFormModalProps {
   isOpen: boolean;
@@ -72,9 +73,8 @@ const NOTE_COLORS = [
 export const EventFormModal: React.FC<EventFormModalProps> = ({
   isOpen,
   defaultDate,
-  defaultModule = 'meeting',
+  defaultModule = 'note',
   onClose,
-  onSave,
   onSaveSuccess,
 }) => {
   const [activeModule, setActiveModule] = useState<EventModuleType>(defaultModule);
@@ -115,17 +115,25 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     };
   }, []);
 
-  // 1. Meeting States
-  const [meetingTitle, setMeetingTitle] = useState('');
-  const [meetingDate, setMeetingDate] = useState('');
-  const [meetingTime, setMeetingTime] = useState('09:00');
-  const [meetingAssigneeId, setMeetingAssigneeId] = useState('');
-  const [meetingCategory, setMeetingCategory] = useState('Lịch họp nội bộ');
-  const [meetingLocation, setMeetingLocation] = useState('');
-  const [meetingPriority, setMeetingPriority] = useState<CalendarEventPriority>('medium');
-  const [meetingDescription, setMeetingDescription] = useState('');
+  // =========================================================================
+  // 1. GHI CHÚ STATES (NOTE)
+  // =========================================================================
+  const [noteTitle, setNoteTitle] = useState('');
+  const [noteSummary, setNoteSummary] = useState('');
+  const [noteCategory, setNoteCategory] = useState<NoteCategory>('Kế hoạch công việc');
+  const [noteColor, setNoteColor] = useState('purple');
+  const [noteAuthorId, setNoteAuthorId] = useState('');
+  const [noteDate, setNoteDate] = useState('');
+  const [noteTime, setNoteTime] = useState('09:00');
+  const [noteLocation, setNoteLocation] = useState('');
+  const [noteTags, setNoteTags] = useState<string[]>(['Kế hoạch']);
+  const [noteTagInput, setNoteTagInput] = useState('');
+  const [noteContent, setNoteContent] = useState('');
+  const [noteIsPinned, setNoteIsPinned] = useState(false);
 
-  // 2. Task States (Matching TaskFormDrawer / Image 2)
+  // =========================================================================
+  // 2. CÔNG VIỆC STATES (TASK - MATCHING IMAGE 2)
+  // =========================================================================
   const [taskCode, setTaskCode] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDescription, setTaskDescription] = useState('');
@@ -145,21 +153,29 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
   const [taskTagInput, setTaskTagInput] = useState('');
   const [taskNote, setTaskNote] = useState('');
 
-  // 3. Note States
-  const [noteTitle, setNoteTitle] = useState('');
-  const [noteSummary, setNoteSummary] = useState('');
-  const [noteCategory, setNoteCategory] = useState<NoteCategory>('Kế hoạch công việc');
-  const [noteColor, setNoteColor] = useState('blue');
-  const [noteAuthorId, setNoteAuthorId] = useState('');
-  const [noteDate, setNoteDate] = useState('');
-  const [noteTime, setNoteTime] = useState('09:00');
-  const [noteLocation, setNoteLocation] = useState('');
-  const [noteTags, setNoteTags] = useState<string[]>(['Kế hoạch']);
-  const [noteTagInput, setNoteTagInput] = useState('');
-  const [noteContent, setNoteContent] = useState('');
-  const [noteIsPinned, setNoteIsPinned] = useState(false);
+  // =========================================================================
+  // 3. HỌC HỎI STATES (LEARNING)
+  // =========================================================================
+  const [learningCode, setLearningCode] = useState('');
+  const [learningTitle, setLearningTitle] = useState('');
+  const [learningSummary, setLearningSummary] = useState('');
+  const [learningCategory, setLearningCategory] = useState(LEARNING_CATEGORIES[0] || 'Lập trình & Kỹ thuật');
+  const [learningSourceType, setSourceType] = useState<LearningSourceType>('Khóa học');
+  const [learningSourceName, setLearningSourceName] = useState('');
+  const [learningSourceUrl, setLearningSourceUrl] = useState('');
+  const [learningMasteryLevel, setMasteryLevel] = useState<MasteryLevel>('learning');
+  const [learningDifficulty, setDifficulty] = useState<DifficultyLevel>('intermediate');
+  const [learningRating, setRating] = useState(5);
+  const [learningDate, setLearningDate] = useState('');
+  const [learningReviewDate, setLearningReviewDate] = useState('');
+  const [learningTags, setLearningTags] = useState<string[]>(['Kiến thức']);
+  const [learningTagInput, setLearningTagInput] = useState('');
+  const [learningContent, setLearningContent] = useState('');
+  const [learningIsPinned, setLearningIsPinned] = useState(false);
 
-  // 4. Cash States
+  // =========================================================================
+  // 4. THU / CHI STATES (CASH)
+  // =========================================================================
   const [cashType, setCashType] = useState<'income' | 'expense'>('expense');
   const [cashCode, setCashCode] = useState('');
   const [cashTitle, setCashTitle] = useState('');
@@ -171,18 +187,6 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
   const [cashCounterparty, setCashCounterparty] = useState('');
   const [cashAssigneeId, setCashAssigneeId] = useState('');
   const [cashDescription, setCashDescription] = useState('');
-
-  // 5. Proposal States
-  const [proposalCode, setProposalCode] = useState('');
-  const [proposalTitle, setProposalTitle] = useState('');
-  const [proposalAmount, setProposalAmount] = useState('');
-  const [proposalDepartment, setProposalDepartment] = useState('');
-  const [proposalAccount, setProposalAccount] = useState('Quỹ tiền mặt');
-  const [proposalDate, setProposalDate] = useState('');
-  const [proposalDueDate, setProposalDueDate] = useState('');
-  const [proposalProposerId, setProposalProposerId] = useState('');
-  const [proposalReason, setProposalReason] = useState('');
-  const [proposalNote, setProposalNote] = useState('');
 
   // Initialize dates and codes on open or date change
   useEffect(() => {
@@ -198,37 +202,33 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     const nextWeek = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
 
     // Common dates
-    setMeetingDate(today);
+    setNoteDate(today);
     setTaskStartDate(today);
     setTaskDueDate(defaultDate || nextWeek);
-    setNoteDate(today);
+    setLearningDate(today);
+    setLearningReviewDate(nextWeek);
     setCashDate(today);
-    setProposalDate(today);
-    setProposalDueDate(defaultDate || nextWeek);
 
     // Initial Task Code
     const allTasks = taskService.getInitialTasks();
     setTaskCode(`CV-${String(allTasks.length + 1).padStart(3, '0')}`);
 
+    // Initial Learning Code
+    const allLearnings = learningService.getInitialEntries();
+    setLearningCode(`HH-${String(allLearnings.length + 1).padStart(3, '0')}`);
+
     // Initial Cash Code
     const allTxs = cashTransactionService.getInitialTransactions();
     setCashCode(`${cashType === 'income' ? 'PT' : 'PC'}-${String(allTxs.length + 1).padStart(3, '0')}`);
 
-    // Initial Proposal Code
-    const allProps = googleSheetsService.getInitialProposals();
-    setProposalCode(`CP-${String(allProps.length + 1).padStart(3, '0')}`);
-
     // Initial defaults for employees
     if (employees.length > 0) {
       const defaultEmpId = employees[0].id;
-      setMeetingAssigneeId(defaultEmpId);
+      setNoteAuthorId(defaultEmpId);
       setTaskAssigneeId(defaultEmpId);
       setTaskAssignerId(defaultEmpId);
-      setNoteAuthorId(defaultEmpId);
       setCashAssigneeId(defaultEmpId);
-      setProposalProposerId(defaultEmpId);
       setTaskDepartment(employees[0].department || 'Phòng Kỹ thuật & CNTT');
-      setProposalDepartment(employees[0].department || 'Phòng Kỹ thuật & CNTT');
     }
   }, [isOpen, defaultDate, defaultModule, employees]);
 
@@ -321,6 +321,19 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     setNoteTags(noteTags.filter((t) => t !== tag));
   };
 
+  // Learning Tags handlers
+  const handleAddLearningTag = () => {
+    const trimmed = learningTagInput.trim().replace(/^#/, '');
+    if (trimmed && !learningTags.includes(trimmed)) {
+      setLearningTags([...learningTags, trimmed]);
+    }
+    setLearningTagInput('');
+  };
+
+  const handleRemoveLearningTag = (tag: string) => {
+    setLearningTags(learningTags.filter((t) => t !== tag));
+  };
+
   // Handle Form Submit for Active Module
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,35 +341,37 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     setErrors({});
 
     try {
-      if (activeModule === 'meeting') {
-        if (!meetingTitle.trim()) {
-          setErrors({ meetingTitle: 'Vui lòng nhập tiêu đề cuộc họp / sự kiện' });
+      if (activeModule === 'note') {
+        if (!noteTitle.trim()) {
+          setErrors({ noteTitle: 'Vui lòng nhập tiêu đề ghi chú' });
           setIsSubmitting(false);
           return;
         }
-        const matchedEmp = employees.find((x) => x.id === meetingAssigneeId);
-        const payload: CalendarEvent = {
-          id: 'custom_evt_' + Date.now(),
-          title: meetingTitle.trim(),
-          startDate: meetingDate || new Date().toISOString().slice(0, 10),
-          time: meetingTime || undefined,
-          allDay: !meetingTime,
-          source: 'custom',
-          categoryName: meetingCategory || 'Lịch họp nội bộ',
-          badgeBg: 'bg-amber-500/10',
-          badgeColor: 'text-amber-600',
-          badgeBorder: 'border-amber-500/20',
-          location: meetingLocation.trim(),
-          assigneeId: matchedEmp ? matchedEmp.id : undefined,
-          assigneeCode: matchedEmp ? matchedEmp.code : undefined,
-          assigneeName: matchedEmp ? matchedEmp.name : undefined,
-          department: matchedEmp ? matchedEmp.department : undefined,
-          priority: meetingPriority,
-          description: meetingDescription.trim(),
+        const authorEmp = employees.find((e) => e.id === noteAuthorId);
+        const newNote: Note = {
+          id: 'note_' + Date.now(),
+          code: 'GC-' + Math.floor(1000 + Math.random() * 9000),
+          title: noteTitle.trim(),
+          summary: noteSummary.trim(),
+          content: noteContent.trim() || noteSummary.trim() || noteTitle.trim(),
+          category: noteCategory,
+          color: noteColor,
+          isPinned: noteIsPinned,
+          author: authorEmp?.name || 'Người dùng',
+          authorId: authorEmp?.id,
+          authorCode: authorEmp?.code,
+          authorAvatar: authorEmp?.avatarUrl || '',
+          noteDate: noteDate || new Date().toISOString().slice(0, 10),
+          noteTime: noteTime || '09:00',
+          location: noteLocation.trim(),
+          tags: noteTags,
+          status: 'published',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
-        calendarService.addCustomEvent(payload);
-        if (onSave) onSave(payload);
-        if (onSaveSuccess) onSaveSuccess(`Đã lưu lịch họp "${payload.title}"`);
+        const notes = [newNote, ...noteService.getInitialNotes()];
+        noteService.saveToLocalCache(notes);
+        if (onSaveSuccess) onSaveSuccess(`Đã lưu Ghi chú: "${newNote.title}"`);
       } else if (activeModule === 'task') {
         if (!taskTitle.trim()) {
           setErrors({ taskTitle: 'Vui lòng nhập tên / tiêu đề công việc' });
@@ -394,37 +409,38 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
         taskService.saveToCache(tasks);
         taskService.appendToSheet(newTask).catch(() => {});
         if (onSaveSuccess) onSaveSuccess(`Đã tạo Công việc mới: "${newTask.title}"`);
-      } else if (activeModule === 'note') {
-        if (!noteTitle.trim()) {
-          setErrors({ noteTitle: 'Vui lòng nhập tiêu đề ghi chú' });
+      } else if (activeModule === 'learning') {
+        if (!learningTitle.trim()) {
+          setErrors({ learningTitle: 'Vui lòng nhập tiêu đề bài học / kiến thức' });
           setIsSubmitting(false);
           return;
         }
-        const authorEmp = employees.find((e) => e.id === noteAuthorId);
-        const newNote: Note = {
-          id: 'note_' + Date.now(),
-          code: 'GC-' + Math.floor(1000 + Math.random() * 9000),
-          title: noteTitle.trim(),
-          summary: noteSummary.trim(),
-          content: noteContent.trim() || noteSummary.trim() || noteTitle.trim(),
-          category: noteCategory,
-          color: noteColor,
-          isPinned: noteIsPinned,
-          author: authorEmp?.name || 'Người dùng',
-          authorId: authorEmp?.id,
-          authorCode: authorEmp?.code,
-          authorAvatar: authorEmp?.avatarUrl || '',
-          noteDate: noteDate || new Date().toISOString().slice(0, 10),
-          noteTime: noteTime || '09:00',
-          location: noteLocation.trim(),
-          tags: noteTags,
-          status: 'published',
+        const newEntry: LearningEntry = {
+          id: 'learn_' + Date.now(),
+          code: learningCode.trim() || `HH-${Math.floor(1000 + Math.random() * 9000)}`,
+          title: learningTitle.trim(),
+          summary: learningSummary.trim(),
+          content: learningContent.trim() || learningSummary.trim() || learningTitle.trim(),
+          category: learningCategory,
+          tags: learningTags,
+          sourceType: learningSourceType,
+          sourceName: learningSourceName.trim(),
+          sourceUrl: learningSourceUrl.trim(),
+          links: [],
+          images: [],
+          masteryLevel: learningMasteryLevel,
+          difficulty: learningDifficulty,
+          rating: learningRating,
+          entryDate: learningDate || new Date().toISOString().slice(0, 10),
+          nextReviewDate: learningReviewDate || undefined,
+          isPinned: learningIsPinned,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
-        const notes = [newNote, ...noteService.getInitialNotes()];
-        noteService.saveToLocalCache(notes);
-        if (onSaveSuccess) onSaveSuccess(`Đã lưu Ghi chú: "${newNote.title}"`);
+        const entries = [newEntry, ...learningService.getInitialEntries()];
+        learningService.saveToCache(entries);
+        learningService.appendToSheet(newEntry).catch(() => {});
+        if (onSaveSuccess) onSaveSuccess(`Đã lưu bài học: "${newEntry.title}"`);
       } else if (activeModule === 'cash') {
         if (!cashTitle.trim()) {
           setErrors({ cashTitle: 'Vui lòng nhập nội dung khoản thu / chi' });
@@ -465,45 +481,6 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
             `Đã tạo phiếu ${cashType === 'income' ? 'Thu' : 'Chi'} ${numAmount.toLocaleString('vi-VN')} đ`
           );
         }
-      } else if (activeModule === 'proposal') {
-        if (!proposalTitle.trim()) {
-          setErrors({ proposalTitle: 'Vui lòng nhập tên đề xuất chi phí' });
-          setIsSubmitting(false);
-          return;
-        }
-        const numAmount = Math.abs(Number(proposalAmount)) || 0;
-        if (numAmount <= 0) {
-          setErrors({ proposalAmount: 'Vui lòng nhập số tiền đề xuất hợp lệ (> 0 đ)' });
-          setIsSubmitting(false);
-          return;
-        }
-        const proposerEmp = employees.find((e) => e.id === proposalProposerId);
-        const newProposal: CostProposal = {
-          id: 'prop_' + Date.now(),
-          code: proposalCode.trim() || `CP-${Math.floor(1000 + Math.random() * 9000)}`,
-          title: proposalTitle.trim(),
-          amount: numAmount,
-          proposalDate: proposalDate || new Date().toISOString().slice(0, 10),
-          dueDate: proposalDueDate || new Date().toISOString().slice(0, 10),
-          proposer: proposerEmp?.name || 'Người đề xuất',
-          proposerId: proposerEmp?.id,
-          proposerCode: proposerEmp?.code,
-          department: proposalDepartment || proposerEmp?.department || 'Ban Giám Đốc',
-          account: proposalAccount,
-          reason: proposalReason.trim() || proposalTitle.trim(),
-          approvalStatus: 'pending',
-          status: 'active',
-          isOverBudget: false,
-          note: proposalNote.trim(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        const props = [newProposal, ...googleSheetsService.getInitialProposals()];
-        googleSheetsService.saveToCache(props);
-        googleSheetsService.appendToSheet(newProposal).catch(() => {});
-        if (onSaveSuccess) {
-          onSaveSuccess(`Đã tạo Đề xuất chi phí: "${newProposal.title}" (${numAmount.toLocaleString('vi-VN')} đ)`);
-        }
       }
 
       onClose();
@@ -515,17 +492,17 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     }
   };
 
+  // 4 Tabs: Ghi chú lên đầu, Công việc, Học hỏi, Thu / Chi
   const MODULE_TABS: {
     id: EventModuleType;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     color: string;
   }[] = [
-    { id: 'meeting', label: 'Lịch họp', icon: CalendarIcon, color: 'text-amber-500' },
-    { id: 'task', label: 'Công việc', icon: CheckSquare, color: 'text-blue-500' },
     { id: 'note', label: 'Ghi chú', icon: BookOpen, color: 'text-purple-500' },
+    { id: 'task', label: 'Công việc', icon: CheckSquare, color: 'text-blue-500' },
+    { id: 'learning', label: 'Học hỏi', icon: GraduationCap, color: 'text-indigo-500' },
     { id: 'cash', label: 'Thu / Chi', icon: Wallet, color: 'text-emerald-500' },
-    { id: 'proposal', label: 'Đề xuất CP', icon: Layers, color: 'text-teal-500' },
   ];
 
   return (
@@ -546,7 +523,15 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
           <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-border bg-card shrink-0">
             <div className="flex items-center gap-3 min-w-0">
               <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
-                <CalendarIcon className="w-5 h-5" />
+                {activeModule === 'note' ? (
+                  <BookOpen className="w-5 h-5 text-purple-500" />
+                ) : activeModule === 'task' ? (
+                  <CheckSquare className="w-5 h-5 text-blue-500" />
+                ) : activeModule === 'learning' ? (
+                  <GraduationCap className="w-5 h-5 text-indigo-500" />
+                ) : (
+                  <Wallet className="w-5 h-5 text-emerald-500" />
+                )}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
@@ -555,43 +540,37 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                   </h2>
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                      activeModule === 'task'
-                        ? 'bg-blue-500/10 text-blue-600'
-                        : activeModule === 'note'
+                      activeModule === 'note'
                         ? 'bg-purple-500/10 text-purple-600'
-                        : activeModule === 'cash'
-                        ? cashType === 'income'
-                          ? 'bg-emerald-500/10 text-emerald-600'
-                          : 'bg-rose-500/10 text-rose-600'
-                        : activeModule === 'proposal'
-                        ? 'bg-teal-500/10 text-teal-600'
-                        : 'bg-amber-500/10 text-amber-600'
+                        : activeModule === 'task'
+                        ? 'bg-blue-500/10 text-blue-600'
+                        : activeModule === 'learning'
+                        ? 'bg-indigo-500/10 text-indigo-600'
+                        : cashType === 'income'
+                        ? 'bg-emerald-500/10 text-emerald-600'
+                        : 'bg-rose-500/10 text-rose-600'
                     }`}
                   >
-                    {activeModule === 'task'
-                      ? 'Công việc'
-                      : activeModule === 'note'
+                    {activeModule === 'note'
                       ? 'Ghi chú'
-                      : activeModule === 'cash'
-                      ? cashType === 'income'
-                        ? 'Thu quỹ'
-                        : 'Chi quỹ'
-                      : activeModule === 'proposal'
-                      ? 'Đề xuất CP'
-                      : 'Lịch họp'}
+                      : activeModule === 'task'
+                      ? 'Công việc'
+                      : activeModule === 'learning'
+                      ? 'Học hỏi'
+                      : cashType === 'income'
+                      ? 'Thu quỹ'
+                      : 'Chi quỹ'}
                   </span>
                 </div>
                 <p className="text-[11px] text-muted-foreground truncate">
                   Tạo nhanh cho ngày{' '}
-                  {activeModule === 'task'
-                    ? taskDueDate || taskStartDate
-                    : activeModule === 'meeting'
-                    ? meetingDate
-                    : activeModule === 'note'
+                  {activeModule === 'note'
                     ? noteDate
-                    : activeModule === 'cash'
-                    ? cashDate
-                    : proposalDate || defaultDate || new Date().toISOString().slice(0, 10)}
+                    : activeModule === 'task'
+                    ? taskDueDate || taskStartDate
+                    : activeModule === 'learning'
+                    ? learningDate
+                    : cashDate || defaultDate || new Date().toISOString().slice(0, 10)}
                 </p>
               </div>
             </div>
@@ -663,9 +642,9 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
             </div>
           </div>
 
-          {/* Module Selector Tabs - Clicking simply switches the form below! */}
+          {/* Module Selector Tabs: 4 tabs (Ghi chú, Công việc, Học hỏi, Thu / Chi) */}
           <div className="px-4 sm:px-6 py-2.5 border-b border-border/60 bg-muted/20 shrink-0">
-            <div className="grid grid-cols-5 gap-1.5 p-1 bg-muted/60 rounded-xl border border-border/60">
+            <div className="grid grid-cols-4 gap-2 p-1 bg-muted/60 rounded-xl border border-border/60">
               {MODULE_TABS.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeModule === tab.id;
@@ -701,73 +680,66 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
               )}
 
               {/* ============================================================== */}
-              {/* 1. LỊCH HỌP & SỰ KIỆN                                         */}
+              {/* 1. GHI CHÚ (NOTE) - ĐƯỢC ĐẶT LÊN ĐẦU                           */}
               {/* ============================================================== */}
-              {activeModule === 'meeting' && (
+              {activeModule === 'note' && (
                 <div className="space-y-4 animate-in fade-in-50 duration-200">
-                  {/* Meeting Title */}
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-foreground">
-                      Tiêu đề cuộc họp / Sự kiện <span className="text-rose-500">*</span>
+                      Tiêu đề ghi chú <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
-                      value={meetingTitle}
+                      value={noteTitle}
                       onChange={(e) => {
-                        setMeetingTitle(e.target.value);
-                        setErrors((prev) => ({ ...prev, meetingTitle: '' }));
+                        setNoteTitle(e.target.value);
+                        setErrors((prev) => ({ ...prev, noteTitle: '' }));
                       }}
-                      placeholder="VD: Họp giao ban, Hội thảo khách hàng..."
+                      placeholder="VD: Biên bản cuộc họp ban giám đốc, Kế hoạch triển khai dự án..."
                       className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
-                        errors.meetingTitle ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border'
+                        errors.noteTitle ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border'
                       }`}
                     />
-                    {errors.meetingTitle && (
-                      <p className="text-[11px] text-rose-500">{errors.meetingTitle}</p>
-                    )}
+                    {errors.noteTitle && <p className="text-[11px] text-rose-500">{errors.noteTitle}</p>}
                   </div>
 
-                  {/* Date & Time Row */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-foreground">Tóm tắt ngắn gọn</label>
+                    <input
+                      type="text"
+                      value={noteSummary}
+                      onChange={(e) => setNoteSummary(e.target.value)}
+                      placeholder="Tóm tắt ý chính của ghi chú..."
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">
-                        Ngày diễn ra <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={meetingDate}
-                        onChange={(e) => setMeetingDate(e.target.value)}
+                      <label className="text-xs font-semibold text-foreground">Danh mục ghi chú</label>
+                      <select
+                        value={noteCategory}
+                        onChange={(e) => setNoteCategory(e.target.value as NoteCategory)}
                         className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                        required
-                      />
+                      >
+                        {NOTE_CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Thời gian (Giờ):</label>
-                      <div className="relative">
-                        <Clock className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        <input
-                          type="time"
-                          value={meetingTime}
-                          onChange={(e) => setMeetingTime(e.target.value)}
-                          className="w-full h-9 pl-8 pr-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Host & Category */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <User className="w-3.5 h-3.5 text-primary" />
-                        Người chủ trì / tham gia:
+                        Tác giả ghi chú
                       </label>
                       <select
-                        value={meetingAssigneeId}
-                        onChange={(e) => setMeetingAssigneeId(e.target.value)}
+                        value={noteAuthorId}
+                        onChange={(e) => setNoteAuthorId(e.target.value)}
                         className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       >
-                        <option value="">-- Chọn nhân viên --</option>
                         {employees.map((emp) => (
                           <option key={emp.id} value={emp.id}>
                             {emp.name} {emp.department ? `(${emp.department})` : ''}
@@ -775,64 +747,131 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                         ))}
                       </select>
                     </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Phân loại cuộc họp:</label>
-                      <select
-                        value={meetingCategory}
-                        onChange={(e) => setMeetingCategory(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="Lịch họp nội bộ">Lịch họp nội bộ</option>
-                        <option value="Họp giao ban">Họp giao ban</option>
-                        <option value="Đào tạo & Sự kiện">Đào tạo & Sự kiện</option>
-                        <option value="Gặp khách hàng / Đối tác">Gặp khách hàng / Đối tác</option>
-                      </select>
-                    </div>
                   </div>
 
-                  {/* Location & Priority */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-rose-500" />
-                        Địa điểm / Phòng họp:
-                      </label>
+                      <label className="text-xs font-semibold text-foreground">Ngày ghi chú</label>
                       <input
-                        type="text"
-                        value={meetingLocation}
-                        onChange={(e) => setMeetingLocation(e.target.value)}
-                        placeholder="Phòng họp A1, Google Meet, Zoom..."
+                        type="date"
+                        value={noteDate}
+                        onChange={(e) => setNoteDate(e.target.value)}
                         className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
-
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Mức độ ưu tiên:</label>
-                      <select
-                        value={meetingPriority}
-                        onChange={(e) => setMeetingPriority(e.target.value as CalendarEventPriority)}
+                      <label className="text-xs font-semibold text-foreground">Thời gian</label>
+                      <input
+                        type="time"
+                        value={noteTime}
+                        onChange={(e) => setNoteTime(e.target.value)}
                         className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="low">Thấp</option>
-                        <option value="medium">Trung bình</option>
-                        <option value="high">Cao</option>
-                        <option value="urgent">Khẩn cấp</option>
-                      </select>
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-foreground">Địa điểm</label>
+                      <input
+                        type="text"
+                        value={noteLocation}
+                        onChange={(e) => setNoteLocation(e.target.value)}
+                        placeholder="Văn phòng, Phòng họp..."
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
                     </div>
                   </div>
 
-                  {/* Description */}
+                  {/* Note Color Selection */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Palette className="w-3.5 h-3.5 text-purple-500" />
+                      Màu sắc chủ đề
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {NOTE_COLORS.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => setNoteColor(c.id)}
+                          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${c.bg} ${
+                            noteColor === c.id ? 'ring-2 ring-primary ring-offset-2 scale-110 shadow-sm' : 'opacity-70 hover:opacity-100'
+                          }`}
+                          title={c.label}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Note Content */}
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">Mô tả chi tiết / Ghi chú:</label>
+                    <label className="text-xs font-semibold text-foreground">Nội dung chi tiết ghi chú</label>
                     <textarea
-                      rows={3}
-                      value={meetingDescription}
-                      onChange={(e) => setMeetingDescription(e.target.value)}
-                      placeholder="Nhập nội dung chi tiết hoặc hướng dẫn thực hiện..."
-                      className="w-full p-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      rows={5}
+                      value={noteContent}
+                      onChange={(e) => setNoteContent(e.target.value)}
+                      placeholder="Nhập nội dung biên bản, nhật ký, hướng dẫn..."
+                      className="w-full p-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary custom-scrollbar"
                     />
                   </div>
+
+                  {/* Tags */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">Thẻ phân loại (Tags)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={noteTagInput}
+                        onChange={(e) => setNoteTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddNoteTag();
+                          }
+                        }}
+                        placeholder="VD: ke-hoach, quan-trong..."
+                        className="flex-1 h-8 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNoteTag}
+                        className="h-8 px-2.5 rounded-lg border border-border hover:bg-muted text-foreground text-xs font-semibold"
+                      >
+                        Thêm tag
+                      </button>
+                    </div>
+                    {noteTags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {noteTags.map((t) => (
+                          <span
+                            key={t}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full border border-purple-500/20"
+                          >
+                            #{t}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveNoteTag(t)}
+                              className="hover:text-rose-500 font-bold"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pin Option */}
+                  <label className="flex items-center gap-2 cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      checked={noteIsPinned}
+                      onChange={(e) => setNoteIsPinned(e.target.checked)}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                    />
+                    <span className="text-xs font-medium text-foreground flex items-center gap-1">
+                      <Pin className="w-3.5 h-3.5 text-amber-500" />
+                      Ghim lên đầu trang
+                    </span>
+                  </label>
                 </div>
               )}
 
@@ -1209,49 +1248,69 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
               )}
 
               {/* ============================================================== */}
-              {/* 3. GHI CHÚ (NOTE)                                             */}
+              {/* 3. HỌC HỎI (LEARNING)                                         */}
               {/* ============================================================== */}
-              {activeModule === 'note' && (
+              {activeModule === 'learning' && (
                 <div className="space-y-4 animate-in fade-in-50 duration-200">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">
-                      Tiêu đề ghi chú <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={noteTitle}
-                      onChange={(e) => {
-                        setNoteTitle(e.target.value);
-                        setErrors((prev) => ({ ...prev, noteTitle: '' }));
-                      }}
-                      placeholder="VD: Biên bản cuộc họp ban giám đốc, Kế hoạch triển khai..."
-                      className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
-                        errors.noteTitle ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border'
-                      }`}
-                    />
-                    {errors.noteTitle && <p className="text-[11px] text-rose-500">{errors.noteTitle}</p>}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-foreground">
+                        Mã bài học <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={learningCode}
+                        onChange={(e) => setLearningCode(e.target.value)}
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-card font-mono text-xs font-bold text-indigo-600 focus:outline-none focus:ring-1 focus:ring-primary"
+                        required
+                      />
+                    </div>
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-xs font-semibold text-foreground">
+                        Tiêu đề bài học / Kiến thức <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={learningTitle}
+                        onChange={(e) => {
+                          setLearningTitle(e.target.value);
+                          setErrors((prev) => ({ ...prev, learningTitle: '' }));
+                        }}
+                        placeholder="VD: Kỹ thuật Prompt Engineering nâng cao, Quản trị thời gian..."
+                        className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
+                          errors.learningTitle ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border'
+                        }`}
+                      />
+                      {errors.learningTitle && (
+                        <p className="text-[11px] text-rose-500">{errors.learningTitle}</p>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">Tóm tắt ngắn gọn</label>
+                    <label className="text-xs font-semibold text-foreground">Tóm tắt ngắn gọn cốt lõi</label>
                     <input
                       type="text"
-                      value={noteSummary}
-                      onChange={(e) => setNoteSummary(e.target.value)}
-                      placeholder="Tóm tắt ý chính của ghi chú..."
+                      value={learningSummary}
+                      onChange={(e) => setLearningSummary(e.target.value)}
+                      placeholder="Tóm tắt 1-2 câu quan trọng nhất của bài học..."
                       className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Category & Source Type */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-border bg-muted/20">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Danh mục ghi chú</label>
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <BookMarked className="w-3.5 h-3.5 text-indigo-500" />
+                        Chủ đề / Lĩnh vực
+                      </label>
                       <select
-                        value={noteCategory}
-                        onChange={(e) => setNoteCategory(e.target.value as NoteCategory)}
+                        value={learningCategory}
+                        onChange={(e) => setLearningCategory(e.target.value)}
                         className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       >
-                        {NOTE_CATEGORIES.map((cat) => (
+                        {LEARNING_CATEGORIES.map((cat) => (
                           <option key={cat} value={cat}>
                             {cat}
                           </option>
@@ -1261,83 +1320,132 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
 
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-primary" />
-                        Tác giả ghi chú
+                        <GraduationCap className="w-3.5 h-3.5 text-purple-500" />
+                        Nguồn tài liệu
                       </label>
                       <select
-                        value={noteAuthorId}
-                        onChange={(e) => setNoteAuthorId(e.target.value)}
+                        value={learningSourceType}
+                        onChange={(e) => setSourceType(e.target.value as LearningSourceType)}
                         className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       >
-                        {employees.map((emp) => (
-                          <option key={emp.id} value={emp.id}>
-                            {emp.name} {emp.department ? `(${emp.department})` : ''}
+                        {LEARNING_SOURCE_TYPES.map((st) => (
+                          <option key={st} value={st}>
+                            {st}
                           </option>
                         ))}
                       </select>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Source Name & URL */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Ngày ghi chú</label>
-                      <input
-                        type="date"
-                        value={noteDate}
-                        onChange={(e) => setNoteDate(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Thời gian</label>
-                      <input
-                        type="time"
-                        value={noteTime}
-                        onChange={(e) => setNoteTime(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Địa điểm</label>
+                      <label className="text-xs font-semibold text-foreground">Tên nguồn / Tác giả</label>
                       <input
                         type="text"
-                        value={noteLocation}
-                        onChange={(e) => setNoteLocation(e.target.value)}
-                        placeholder="Văn phòng, Phòng họp..."
+                        value={learningSourceName}
+                        onChange={(e) => setLearningSourceName(e.target.value)}
+                        placeholder="VD: Sách Atomic Habits, Kênh Youtube..."
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        <Link2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        Đường dẫn (Link URL)
+                      </label>
+                      <input
+                        type="url"
+                        value={learningSourceUrl}
+                        onChange={(e) => setLearningSourceUrl(e.target.value)}
+                        placeholder="https://..."
                         className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                     </div>
                   </div>
 
-                  {/* Note Color Selection */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Palette className="w-3.5 h-3.5 text-purple-500" />
-                      Màu sắc chủ đề
-                    </label>
-                    <div className="flex items-center gap-2">
-                      {NOTE_COLORS.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          onClick={() => setNoteColor(c.id)}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${c.bg} ${
-                            noteColor === c.id ? 'ring-2 ring-primary ring-offset-2 scale-110 shadow-sm' : 'opacity-70 hover:opacity-100'
-                          }`}
-                          title={c.label}
-                        />
-                      ))}
+                  {/* Mastery, Difficulty, Rating */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-foreground">Mức độ nắm vững</label>
+                      <select
+                        value={learningMasteryLevel}
+                        onChange={(e) => setMasteryLevel(e.target.value as MasteryLevel)}
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="learning">🔵 Đang học</option>
+                        <option value="practicing">🟠 Đang thực hành</option>
+                        <option value="mastered">🟢 Đã nắm vững</option>
+                        <option value="review_needed">🔴 Cần ôn lại</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-foreground">Độ khó</label>
+                      <select
+                        value={learningDifficulty}
+                        onChange={(e) => setDifficulty(e.target.value as DifficultyLevel)}
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value="beginner">Cơ bản</option>
+                        <option value="intermediate">Trung bình</option>
+                        <option value="advanced">Nâng cao</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                        Đánh giá độ hữu ích ({learningRating}/5)
+                      </label>
+                      <select
+                        value={learningRating}
+                        onChange={(e) => setRating(Number(e.target.value))}
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      >
+                        <option value={5}>⭐⭐⭐⭐⭐ (5/5)</option>
+                        <option value={4}>⭐⭐⭐⭐ (4/5)</option>
+                        <option value={3}>⭐⭐⭐ (3/5)</option>
+                        <option value={2}>⭐⭐ (2/5)</option>
+                        <option value={1}>⭐ (1/5)</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Note Content */}
+                  {/* Dates */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-foreground">
+                        Ngày học <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={learningDate}
+                        onChange={(e) => setLearningDate(e.target.value)}
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-foreground">Lịch ôn tập lại (Spaced Repetition)</label>
+                      <input
+                        type="date"
+                        value={learningReviewDate}
+                        onChange={(e) => setLearningReviewDate(e.target.value)}
+                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Learning Content */}
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">Nội dung chi tiết ghi chú</label>
+                    <label className="text-xs font-semibold text-foreground">Nội dung ghi chép / Kiến thức chi tiết</label>
                     <textarea
                       rows={5}
-                      value={noteContent}
-                      onChange={(e) => setNoteContent(e.target.value)}
-                      placeholder="Nhập nội dung biên bản, nhật ký, hướng dẫn..."
+                      value={learningContent}
+                      onChange={(e) => setLearningContent(e.target.value)}
+                      placeholder="Ghi chép các ý tưởng chính, câu trích dẫn, công thức, bài học rút ra..."
                       className="w-full p-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary custom-scrollbar"
                     />
                   </div>
@@ -1348,36 +1456,36 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                     <div className="flex items-center gap-2">
                       <input
                         type="text"
-                        value={noteTagInput}
-                        onChange={(e) => setNoteTagInput(e.target.value)}
+                        value={learningTagInput}
+                        onChange={(e) => setLearningTagInput(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
-                            handleAddNoteTag();
+                            handleAddLearningTag();
                           }
                         }}
-                        placeholder="VD: ke-hoach, quan-trong..."
+                        placeholder="VD: React, Marketing, AI..."
                         className="flex-1 h-8 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                       <button
                         type="button"
-                        onClick={handleAddNoteTag}
+                        onClick={handleAddLearningTag}
                         className="h-8 px-2.5 rounded-lg border border-border hover:bg-muted text-foreground text-xs font-semibold"
                       >
                         Thêm tag
                       </button>
                     </div>
-                    {noteTags.length > 0 && (
+                    {learningTags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 pt-1">
-                        {noteTags.map((t) => (
+                        {learningTags.map((t) => (
                           <span
                             key={t}
-                            className="inline-flex items-center gap-1 text-[11px] font-medium bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full border border-purple-500/20"
+                            className="inline-flex items-center gap-1 text-[11px] font-medium bg-indigo-500/10 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-500/20"
                           >
                             #{t}
                             <button
                               type="button"
-                              onClick={() => handleRemoveNoteTag(t)}
+                              onClick={() => handleRemoveLearningTag(t)}
                               className="hover:text-rose-500 font-bold"
                             >
                               ×
@@ -1392,13 +1500,13 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                   <label className="flex items-center gap-2 cursor-pointer pt-1">
                     <input
                       type="checkbox"
-                      checked={noteIsPinned}
-                      onChange={(e) => setNoteIsPinned(e.target.checked)}
+                      checked={learningIsPinned}
+                      onChange={(e) => setLearningIsPinned(e.target.checked)}
                       className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                     />
                     <span className="text-xs font-medium text-foreground flex items-center gap-1">
                       <Pin className="w-3.5 h-3.5 text-amber-500" />
-                      Ghim lên đầu trang
+                      Ghim bài học nổi bật
                     </span>
                   </label>
                 </div>
@@ -1613,185 +1721,6 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                   </div>
                 </div>
               )}
-
-              {/* ============================================================== */}
-              {/* 5. ĐỀ XUẤT CHI PHÍ (PROPOSAL)                                 */}
-              {/* ============================================================== */}
-              {activeModule === 'proposal' && (
-                <div className="space-y-4 animate-in fade-in-50 duration-200">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">
-                        Mã đề xuất <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={proposalCode}
-                        onChange={(e) => setProposalCode(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card font-mono text-xs font-bold text-teal-600 focus:outline-none focus:ring-1 focus:ring-primary"
-                        required
-                      />
-                    </div>
-                    <div className="sm:col-span-2 space-y-1">
-                      <label className="text-xs font-semibold text-foreground">
-                        Tên đề xuất chi phí <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={proposalTitle}
-                        onChange={(e) => {
-                          setProposalTitle(e.target.value);
-                          setErrors((prev) => ({ ...prev, proposalTitle: '' }));
-                        }}
-                        placeholder="VD: Mua bản quyền phần mềm thiết kế, Nâng cấp máy tính..."
-                        className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
-                          errors.proposalTitle ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border'
-                        }`}
-                      />
-                      {errors.proposalTitle && (
-                        <p className="text-[11px] text-rose-500">{errors.proposalTitle}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Amount & Account */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">
-                        Số tiền đề xuất (VND) <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <DollarSign className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
-                        <input
-                          type="number"
-                          value={proposalAmount}
-                          onChange={(e) => {
-                            setProposalAmount(e.target.value);
-                            setErrors((prev) => ({ ...prev, proposalAmount: '' }));
-                          }}
-                          placeholder="VD: 15000000"
-                          className={`w-full h-9 pl-8 pr-3 rounded-lg border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary ${
-                            errors.proposalAmount ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border'
-                          }`}
-                        />
-                      </div>
-                      {proposalAmount && Number(proposalAmount) > 0 && (
-                        <p className="text-[11px] text-teal-600 font-medium mt-1">
-                          Bằng chữ: {Number(proposalAmount).toLocaleString('vi-VN')} đ
-                        </p>
-                      )}
-                      {errors.proposalAmount && (
-                        <p className="text-[11px] text-rose-500">{errors.proposalAmount}</p>
-                      )}
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Tài khoản dự kiến chi:</label>
-                      <select
-                        value={proposalAccount}
-                        onChange={(e) => setProposalAccount(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        <option value="Quỹ tiền mặt">Quỹ tiền mặt</option>
-                        <option value="Ngân hàng MB Bank">Ngân hàng MB Bank</option>
-                        <option value="Ngân hàng Vietcombank">Ngân hàng Vietcombank</option>
-                        <option value="Ngân hàng Techcombank">Ngân hàng Techcombank</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Department & Proposer */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-blue-500" />
-                        Phòng ban đề xuất
-                      </label>
-                      <input
-                        type="text"
-                        list="proposal-dept-list"
-                        value={proposalDepartment}
-                        onChange={(e) => setProposalDepartment(e.target.value)}
-                        placeholder="Chọn hoặc nhập phòng ban..."
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                      <datalist id="proposal-dept-list">
-                        {departmentsList.map((d) => (
-                          <option key={d} value={d}>
-                            {d}
-                          </option>
-                        ))}
-                      </datalist>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-primary" />
-                        Người đề xuất
-                      </label>
-                      <select
-                        value={proposalProposerId}
-                        onChange={(e) => setProposalProposerId(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        {employees.map((emp) => (
-                          <option key={emp.id} value={emp.id}>
-                            {emp.name} {emp.department ? `(${emp.department})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Dates */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Ngày đề xuất</label>
-                      <input
-                        type="date"
-                        value={proposalDate}
-                        onChange={(e) => setProposalDate(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Hạn cần chi (Deadline)</label>
-                      <input
-                        type="date"
-                        value={proposalDueDate}
-                        onChange={(e) => setProposalDueDate(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Reason */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">
-                      Lý do / Giải trình nhu cầu chi phí <span className="text-rose-500">*</span>
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={proposalReason}
-                      onChange={(e) => setProposalReason(e.target.value)}
-                      placeholder="Giải trình mục đích sử dụng chi phí, hiệu quả mang lại..."
-                      className="w-full p-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-
-                  {/* Note */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">Ghi chú thêm</label>
-                    <input
-                      type="text"
-                      value={proposalNote}
-                      onChange={(e) => setProposalNote(e.target.value)}
-                      placeholder="Ghi chú thêm cho người phê duyệt..."
-                      className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Sticky Footer with dynamic submit button text */}
@@ -1818,17 +1747,15 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                   <>
                     <Save className="w-3.5 h-3.5" />
                     <span>
-                      {activeModule === 'task'
-                        ? 'Tạo công việc'
-                        : activeModule === 'note'
+                      {activeModule === 'note'
                         ? 'Lưu Ghi chú'
-                        : activeModule === 'cash'
-                        ? cashType === 'income'
-                          ? 'Lưu Phiếu Thu'
-                          : 'Lưu Phiếu Chi'
-                        : activeModule === 'proposal'
-                        ? 'Gửi Đề xuất chi phí'
-                        : 'Lưu Sự kiện'}
+                        : activeModule === 'task'
+                        ? 'Tạo công việc'
+                        : activeModule === 'learning'
+                        ? 'Lưu Bài học'
+                        : cashType === 'income'
+                        ? 'Lưu Phiếu Thu'
+                        : 'Lưu Phiếu Chi'}
                     </span>
                   </>
                 )}

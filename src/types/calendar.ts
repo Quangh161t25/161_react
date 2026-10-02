@@ -6,6 +6,7 @@ export type CalendarEventSource =
   | 'hr_birthday' // Sinh nhật nhân sự
   | 'hr_event' // Sự kiện nhân sự (Thử việc, Ký hợp đồng)
   | 'note' // Ghi chú & Lịch nhắc
+  | 'learning' // Học hỏi & Kiến thức
   | 'custom'; // Lịch họp / Sự kiện riêng
 
 export type CalendarEventPriority = 'low' | 'medium' | 'high' | 'urgent';
