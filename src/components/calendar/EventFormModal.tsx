@@ -297,8 +297,6 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   // Task Subtasks handlers
   const handleAddTaskSubtask = () => {
     if (!taskSubtaskInput.trim()) return;
@@ -345,7 +343,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     const q = noteEmployeeSearch.toLowerCase().trim();
     return employees.filter(
       (e) =>
-        e.name.toLowerCase().includes(q) ||
+        (e.name || '').toLowerCase().includes(q) ||
         (e.code && e.code.toLowerCase().includes(q)) ||
         (e.role && e.role.toLowerCase().includes(q)) ||
         (e.department && e.department.toLowerCase().includes(q))
@@ -820,6 +818,8 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     { id: 'learning', label: 'Học hỏi', icon: GraduationCap, color: 'text-indigo-500' },
     { id: 'cash', label: 'Thu / Chi', icon: Wallet, color: 'text-emerald-500' },
   ];
+
+  if (!isOpen) return null;
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 overflow-hidden">
