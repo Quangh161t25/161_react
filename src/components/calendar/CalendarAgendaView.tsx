@@ -8,6 +8,7 @@ import {
   Calendar as CalendarIcon,
   Clock,
   ExternalLink,
+  GraduationCap,
 } from 'lucide-react';
 import { CalendarEvent, CalendarEventSource } from '../../types/calendar';
 
@@ -50,18 +51,21 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
   const getSourceIcon = (source: CalendarEventSource) => {
     switch (source) {
       case 'work_task':
-        return <CheckSquare className="w-4 h-4 text-blue-500 shrink-0" />;
+        return <CheckSquare className="w-4 h-4 text-blue-600 shrink-0" />;
       case 'work_project':
-        return <FolderKanban className="w-4 h-4 text-cyan-500 shrink-0" />;
+        return <FolderKanban className="w-4 h-4 text-cyan-600 shrink-0" />;
       case 'finance_proposal':
+        return <Wallet className="w-4 h-4 text-orange-600 shrink-0" />;
       case 'finance_cash':
-        return <Wallet className="w-4 h-4 text-emerald-500 shrink-0" />;
+        return <Wallet className="w-4 h-4 text-rose-600 shrink-0" />;
       case 'hr_birthday':
-        return <Cake className="w-4 h-4 text-pink-500 shrink-0" />;
+        return <Cake className="w-4 h-4 text-amber-600 shrink-0" />;
       case 'note':
-        return <BookOpen className="w-4 h-4 text-purple-500 shrink-0" />;
+        return <BookOpen className="w-4 h-4 text-purple-600 shrink-0" />;
+      case 'learning':
+        return <GraduationCap className="w-4 h-4 text-teal-600 shrink-0" />;
       default:
-        return <CalendarIcon className="w-4 h-4 text-amber-500 shrink-0" />;
+        return <CalendarIcon className="w-4 h-4 text-sky-600 shrink-0" />;
     }
   };
 
@@ -124,7 +128,7 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold border border-l-[3px] shadow-xs ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
                           >
                             {getSourceIcon(evt.source)}
                             <span>{evt.categoryName}</span>

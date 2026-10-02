@@ -7,6 +7,7 @@ import {
   BookOpen,
   Calendar as CalendarIcon,
   Clock,
+  GraduationCap,
 } from 'lucide-react';
 import { CalendarEvent, CalendarEventSource } from '../../types/calendar';
 import { getLunarFullInfoFromDateStr } from '../../utils/lunarCalendar';
@@ -74,6 +75,8 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
         return <Cake className="w-3 h-3 shrink-0" />;
       case 'note':
         return <BookOpen className="w-3 h-3 shrink-0" />;
+      case 'learning':
+        return <GraduationCap className="w-3 h-3 shrink-0" />;
       default:
         return <CalendarIcon className="w-3 h-3 shrink-0" />;
     }
@@ -145,7 +148,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                     e.stopPropagation();
                     onSelectEvent(evt);
                   }}
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border truncate cursor-pointer transition-transform hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-l-[3px] shadow-xs truncate cursor-pointer transition-all hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
                   title={evt.title}
                 >
                   {getSourceIcon(evt.source)}
@@ -188,7 +191,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                             e.stopPropagation();
                             onSelectEvent(evt);
                           }}
-                          className={`flex items-center gap-1 px-1.5 py-1 rounded-md text-[10px] font-semibold border shadow-xs transition-transform hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                          className={`flex items-center gap-1 px-1.5 py-1 rounded-md text-[10px] font-semibold border border-l-[3px] shadow-xs transition-all hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
                           title={`${evt.time} - ${evt.title}`}
                         >
                           <Clock className="w-2.5 h-2.5 shrink-0" />

@@ -7,6 +7,7 @@ import {
   BookOpen,
   Calendar as CalendarIcon,
   Plus,
+  GraduationCap,
 } from 'lucide-react';
 import { CalendarEvent, CalendarEventSource } from '../../types/calendar';
 import { getLunarFullInfoFromDateStr } from '../../utils/lunarCalendar';
@@ -102,6 +103,8 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
         return <Cake className="w-3 h-3 shrink-0" />;
       case 'note':
         return <BookOpen className="w-3 h-3 shrink-0" />;
+      case 'learning':
+        return <GraduationCap className="w-3 h-3 shrink-0" />;
       default:
         return <CalendarIcon className="w-3 h-3 shrink-0" />;
     }
@@ -208,7 +211,7 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                       e.stopPropagation();
                       onSelectEvent(evt);
                     }}
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold border cursor-pointer truncate transition-transform hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold border border-l-[3px] shadow-xs cursor-pointer truncate transition-all hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
                     title={`${evt.title}${evt.time ? ` (${evt.time})` : ''} - ${evt.categoryName}`}
                   >
                     {getSourceIcon(evt.source)}

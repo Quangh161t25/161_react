@@ -12,6 +12,7 @@ import {
   Layers,
   AlertTriangle,
   TrendingUp,
+  GraduationCap,
 } from 'lucide-react';
 import { CalendarEvent } from '../../types/calendar';
 
@@ -41,6 +42,7 @@ export const CalendarStatsTab: React.FC<CalendarStatsTabProps> = ({
   const birthdayCount = events.filter((e) => e.source === 'hr_birthday').length;
   const meetingCount = events.filter((e) => e.source === 'custom').length;
   const noteCount = events.filter((e) => e.source === 'note').length;
+  const learningCount = events.filter((e) => e.source === 'learning').length;
 
   // Time-based metrics
   const todayEvents = events.filter((e) => e.startDate === todayStr);
@@ -51,52 +53,60 @@ export const CalendarStatsTab: React.FC<CalendarStatsTabProps> = ({
   // Group by category/source
   const sourceStats = [
     {
+      id: 'note',
+      label: 'Ghi chú & Tài liệu',
+      count: noteCount,
+      color: 'bg-purple-500',
+      text: 'text-purple-600',
+      icon: BookOpen,
+    },
+    {
       id: 'work_task',
       label: 'Công việc & Nhiệm vụ',
       count: taskCount,
       color: 'bg-blue-500',
-      text: 'text-blue-500',
+      text: 'text-blue-600',
       icon: CheckSquare,
     },
     {
-      id: 'work_project',
-      label: 'Dự án & Giai đoạn',
-      count: projectCount,
-      color: 'bg-cyan-500',
-      text: 'text-cyan-500',
-      icon: FolderKanban,
+      id: 'learning',
+      label: 'Học hỏi & Kiến thức',
+      count: learningCount,
+      color: 'bg-teal-500',
+      text: 'text-teal-600',
+      icon: GraduationCap,
     },
     {
       id: 'finance',
       label: 'Thu chi & Đề xuất tài chính',
       count: financeCount,
-      color: 'bg-emerald-500',
-      text: 'text-emerald-500',
+      color: 'bg-rose-500',
+      text: 'text-rose-600',
       icon: Wallet,
     },
     {
       id: 'hr_birthday',
       label: 'Sinh nhật Nhân sự',
       count: birthdayCount,
-      color: 'bg-pink-500',
-      text: 'text-pink-500',
+      color: 'bg-amber-500',
+      text: 'text-amber-600',
       icon: Cake,
+    },
+    {
+      id: 'work_project',
+      label: 'Dự án & Giai đoạn',
+      count: projectCount,
+      color: 'bg-cyan-500',
+      text: 'text-cyan-600',
+      icon: FolderKanban,
     },
     {
       id: 'custom',
       label: 'Lịch họp nội bộ',
       count: meetingCount,
-      color: 'bg-amber-500',
-      text: 'text-amber-500',
+      color: 'bg-sky-500',
+      text: 'text-sky-600',
       icon: CalendarIcon,
-    },
-    {
-      id: 'note',
-      label: 'Ghi chú công tác',
-      count: noteCount,
-      color: 'bg-purple-500',
-      text: 'text-purple-500',
-      icon: BookOpen,
     },
   ];
 

@@ -10,6 +10,7 @@ import {
   MapPin,
   User,
   Plus,
+  GraduationCap,
 } from 'lucide-react';
 import { CalendarEvent, CalendarEventSource } from '../../types/calendar';
 import { getLunarFullInfoFromDateStr } from '../../utils/lunarCalendar';
@@ -45,18 +46,21 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   const getSourceIcon = (source: CalendarEventSource) => {
     switch (source) {
       case 'work_task':
-        return <CheckSquare className="w-4 h-4 text-blue-500 shrink-0" />;
+        return <CheckSquare className="w-4 h-4 text-blue-600 shrink-0" />;
       case 'work_project':
-        return <FolderKanban className="w-4 h-4 text-cyan-500 shrink-0" />;
+        return <FolderKanban className="w-4 h-4 text-cyan-600 shrink-0" />;
       case 'finance_proposal':
+        return <Wallet className="w-4 h-4 text-orange-600 shrink-0" />;
       case 'finance_cash':
-        return <Wallet className="w-4 h-4 text-emerald-500 shrink-0" />;
+        return <Wallet className="w-4 h-4 text-rose-600 shrink-0" />;
       case 'hr_birthday':
-        return <Cake className="w-4 h-4 text-pink-500 shrink-0" />;
+        return <Cake className="w-4 h-4 text-amber-600 shrink-0" />;
       case 'note':
-        return <BookOpen className="w-4 h-4 text-purple-500 shrink-0" />;
+        return <BookOpen className="w-4 h-4 text-purple-600 shrink-0" />;
+      case 'learning':
+        return <GraduationCap className="w-4 h-4 text-teal-600 shrink-0" />;
       default:
-        return <CalendarIcon className="w-4 h-4 text-amber-500 shrink-0" />;
+        return <CalendarIcon className="w-4 h-4 text-sky-600 shrink-0" />;
     }
   };
 
@@ -126,7 +130,7 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
               <div
                 key={evt.id}
                 onClick={() => onSelectEvent(evt)}
-                className={`p-2.5 rounded-xl border flex items-start gap-2.5 cursor-pointer shadow-xs hover:scale-[1.01] transition-transform ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                className={`p-2.5 rounded-xl border border-l-4 flex items-start gap-2.5 cursor-pointer shadow-xs hover:scale-[1.01] transition-transform ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
               >
                 {getSourceIcon(evt.source)}
                 <div className="min-w-0 flex-1">
@@ -163,7 +167,7 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
                     <div
                       key={evt.id}
                       onClick={() => onSelectEvent(evt)}
-                      className={`p-3 rounded-xl border shadow-xs cursor-pointer hover:shadow-md transition-all space-y-1.5 ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                      className={`p-3 rounded-xl border border-l-4 shadow-xs cursor-pointer hover:shadow-md transition-all space-y-1.5 ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">

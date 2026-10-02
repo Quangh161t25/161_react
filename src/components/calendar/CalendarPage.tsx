@@ -394,12 +394,13 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
 
   const selectAllSources = () => {
     setSelectedSources([
+      'note',
       'work_task',
+      'learning',
+      'finance_cash',
       'work_project',
       'finance_proposal',
-      'finance_cash',
       'hr_birthday',
-      'note',
       'custom',
     ]);
   };
@@ -474,14 +475,14 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
     icon: React.ComponentType<{ className?: string }>;
     color: string;
   }[] = [
-    { id: 'note', label: 'Ghi chú & Tài liệu', icon: BookOpen, color: 'text-purple-500' },
-    { id: 'work_task', label: 'Công việc & Nhiệm vụ', icon: CheckSquare, color: 'text-blue-500' },
-    { id: 'learning', label: 'Học hỏi & Kiến thức', icon: GraduationCap, color: 'text-indigo-500' },
-    { id: 'finance_cash', label: 'Phiếu thu & Chi tiền', icon: Wallet, color: 'text-emerald-500' },
-    { id: 'work_project', label: 'Dự án & Giai đoạn', icon: FolderKanban, color: 'text-cyan-500' },
-    { id: 'finance_proposal', label: 'Đề xuất tài chính', icon: Wallet, color: 'text-teal-500' },
-    { id: 'hr_birthday', label: 'Sinh nhật Nhân sự', icon: Cake, color: 'text-pink-500' },
-    { id: 'custom', label: 'Lịch họp nội bộ', icon: CalendarIcon, color: 'text-amber-500' },
+    { id: 'note', label: 'Ghi chú & Tài liệu', icon: BookOpen, color: 'text-purple-600' },
+    { id: 'work_task', label: 'Công việc & Nhiệm vụ', icon: CheckSquare, color: 'text-blue-600' },
+    { id: 'learning', label: 'Học hỏi & Kiến thức', icon: GraduationCap, color: 'text-teal-600' },
+    { id: 'finance_cash', label: 'Phiếu thu & Chi tiền', icon: Wallet, color: 'text-rose-600' },
+    { id: 'work_project', label: 'Dự án & Giai đoạn', icon: FolderKanban, color: 'text-cyan-600' },
+    { id: 'finance_proposal', label: 'Đề xuất tài chính', icon: Wallet, color: 'text-orange-600' },
+    { id: 'hr_birthday', label: 'Sinh nhật Nhân sự', icon: Cake, color: 'text-amber-600' },
+    { id: 'custom', label: 'Lịch họp nội bộ', icon: CalendarIcon, color: 'text-sky-600' },
   ];
 
   return (
@@ -592,14 +593,14 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                       type="button"
                       onClick={() => setIsSourceDropdownOpen(!isSourceDropdownOpen)}
                       className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                        selectedSources.length < 7
+                        selectedSources.length < sourceOptions.length
                           ? 'bg-primary/10 border-primary text-primary'
                           : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
                       }`}
                     >
                       <Layers className="w-3.5 h-3.5" />
                       <span>
-                        {selectedSources.length === 7
+                        {selectedSources.length === sourceOptions.length
                           ? 'Tất cả phân hệ'
                           : `Phân hệ (${selectedSources.length})`}
                       </span>
@@ -620,13 +621,13 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                               setIsSourceDropdownOpen(false);
                             }}
                             className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
-                              selectedSources.length === 7
+                              selectedSources.length === sourceOptions.length
                                 ? 'bg-primary text-primary-foreground font-semibold'
                                 : 'hover:bg-muted text-foreground'
                             }`}
                           >
                             <span>Tất cả phân hệ</span>
-                            {selectedSources.length === 7 && <Check className="w-3.5 h-3.5" />}
+                            {selectedSources.length === sourceOptions.length && <Check className="w-3.5 h-3.5" />}
                           </button>
                           <div className="h-px bg-border my-1" />
                           {sourceOptions.map((opt) => {
