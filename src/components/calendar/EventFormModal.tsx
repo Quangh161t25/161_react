@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   CheckSquare,
@@ -19,15 +19,41 @@ import {
   Plus,
   Trash2,
   Pin,
-  Palette,
   GraduationCap,
   Link2,
   Star,
   BookMarked,
+  Edit3,
+  Eye,
+  Heading1,
+  Heading2,
+  Heading3,
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Quote,
+  Code,
+  Table,
+  Info,
+  Lightbulb,
+  AlertTriangle,
+  FolderOpen,
+  Tag,
+  Users,
+  Sparkles,
+  UserPlus,
+  Search,
+  Check,
+  Calendar as CalendarIcon,
+  MapPin,
+  LocateFixed,
+  Upload,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { CalendarEvent } from '../../types/calendar';
 import { Task, TaskPriority, TaskStatus, TaskSubtask, Project } from '../../types/task';
-import { Note, NoteCategory } from '../../types/note';
+import { Note, NoteCategory, NoteStatus, NoteAttachment, NoteParticipant } from '../../types/note';
 import { LearningEntry, LearningSourceType, MasteryLevel, DifficultyLevel } from '../../types/learning';
 import { CashTransaction } from '../../types/cashTransaction';
 import { Employee } from '../../types/employee';
@@ -37,7 +63,12 @@ import { noteService } from '../../services/noteService';
 import { learningService } from '../../services/learningService';
 import { cashTransactionService } from '../../services/cashTransactionService';
 import { employeeService } from '../../services/employeeService';
+import { catboxService } from '../../services/catboxService';
+import { getSafeAvatarUrl } from '../../utils/avatarUtils';
+import { useAuth } from '../../context/AuthContext';
+import { MarkdownRenderer } from '../notes/MarkdownRenderer';
 import { LEARNING_CATEGORIES, LEARNING_SOURCE_TYPES } from '../../data/learning';
+import { NOTE_CATEGORIES, NOTE_COLOR_THEMES, PRESET_TAGS } from '../../data/notes';
 import { TimePickerInput } from '../common/TimePickerInput';
 
 export type EventModuleType = 'note' | 'task' | 'learning' | 'cash';
@@ -51,26 +82,6 @@ interface EventFormModalProps {
   onSaveSuccess?: (message: string) => void;
 }
 
-const NOTE_CATEGORIES: NoteCategory[] = [
-  'Biên bản cuộc họp',
-  'Nhật ký & Hoạt động',
-  'Ghi chép cá nhân',
-  'Kế hoạch công việc',
-  'Tài liệu kỹ thuật',
-  'Hướng dẫn quy trình',
-  'Ý tưởng & Sáng kiến',
-  'Báo cáo thị trường',
-];
-
-const NOTE_COLORS = [
-  { id: 'blue', label: 'Xanh dương', bg: 'bg-blue-500' },
-  { id: 'emerald', label: 'Xanh ngọc', bg: 'bg-emerald-500' },
-  { id: 'amber', label: 'Vàng cam', bg: 'bg-amber-500' },
-  { id: 'purple', label: 'Tím', bg: 'bg-purple-500' },
-  { id: 'rose', label: 'Đỏ hồng', bg: 'bg-rose-500' },
-  { id: 'slate', label: 'Xám thép', bg: 'bg-slate-500' },
-];
-
 export const EventFormModal: React.FC<EventFormModalProps> = ({
   isOpen,
   defaultDate,
@@ -78,6 +89,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
   onClose,
   onSaveSuccess,
 }) => {
+  const { currentUser } = useAuth();
   const [activeModule, setActiveModule] = useState<EventModuleType>(defaultModule);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -117,20 +129,38 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
   }, []);
 
   // =========================================================================
-  // 1. GHI CHÚ STATES (NOTE)
+  // 1. GHI CHÚ STATES & REFS (NOTE - MATCHING NoteFormDrawer)
   // =========================================================================
+  const noteCoverInputRef = useRef<HTMLInputElement>(null);
+  const noteGalleryInputRef = useRef<HTMLInputElement>(null);
+  const noteContentTextareaRef = useRef<HTMLTextAreaElement>(null);
+
   const [noteTitle, setNoteTitle] = useState('');
   const [noteSummary, setNoteSummary] = useState('');
   const [noteCategory, setNoteCategory] = useState<NoteCategory>('Kế hoạch công việc');
+  const [noteStatus, setNoteStatus] = useState<NoteStatus>('published');
   const [noteColor, setNoteColor] = useState('purple');
   const [noteAuthorId, setNoteAuthorId] = useState('');
   const [noteDate, setNoteDate] = useState('');
   const [noteTime, setNoteTime] = useState('09:00');
   const [noteLocation, setNoteLocation] = useState('');
+  const [noteCoordinates, setNoteCoordinates] = useState('');
+  const [noteIsLocating, setNoteIsLocating] = useState(false);
   const [noteTags, setNoteTags] = useState<string[]>(['Kế hoạch']);
   const [noteTagInput, setNoteTagInput] = useState('');
   const [noteContent, setNoteContent] = useState('');
+  const [noteContentTab, setNoteContentTab] = useState<'edit' | 'preview'>('edit');
   const [noteIsPinned, setNoteIsPinned] = useState(false);
+  const [noteCoverUrl, setNoteCoverUrl] = useState('');
+  const [noteImages, setNoteImages] = useState<string[]>([]);
+  const [noteAttachments, setNoteAttachments] = useState<NoteAttachment[]>([]);
+  const [noteParticipants, setNoteParticipants] = useState<NoteParticipant[]>([]);
+  const [noteActivity, setNoteActivity] = useState('');
+  const [noteEmployeeSearch, setNoteEmployeeSearch] = useState('');
+  const [noteCustomParticipantName, setNoteCustomParticipantName] = useState('');
+  const [noteIsUploadingCover, setNoteIsUploadingCover] = useState(false);
+  const [noteIsUploadingGallery, setNoteIsUploadingGallery] = useState(false);
+  const [notePasteToast, setNotePasteToast] = useState<string | null>(null);
 
   // =========================================================================
   // 2. CÔNG VIỆC STATES (TASK - MATCHING IMAGE 2)
@@ -309,18 +339,296 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     setTaskTags(taskTags.filter((t) => t !== tag));
   };
 
+  // Filtered Note Employees for Search
+  const filteredNoteEmployees = useMemo(() => {
+    if (!noteEmployeeSearch.trim()) return employees;
+    const q = noteEmployeeSearch.toLowerCase().trim();
+    return employees.filter(
+      (e) =>
+        e.name.toLowerCase().includes(q) ||
+        (e.code && e.code.toLowerCase().includes(q)) ||
+        (e.role && e.role.toLowerCase().includes(q)) ||
+        (e.department && e.department.toLowerCase().includes(q))
+    );
+  }, [employees, noteEmployeeSearch]);
+
   // Note Tags handlers
-  const handleAddNoteTag = () => {
-    const trimmed = noteTagInput.trim().replace(/^#/, '');
-    if (trimmed && !noteTags.includes(trimmed)) {
-      setNoteTags([...noteTags, trimmed]);
+  const handleAddNoteTag = (tagToAdd?: string) => {
+    const val = (tagToAdd || noteTagInput).trim().replace(/^#/, '');
+    if (!val) return;
+    if (!noteTags.includes(val)) {
+      setNoteTags([...noteTags, val]);
     }
     setNoteTagInput('');
   };
 
-  const handleRemoveNoteTag = (tag: string) => {
-    setNoteTags(noteTags.filter((t) => t !== tag));
+  const handleRemoveNoteTag = (tagToRemove: string) => {
+    setNoteTags(noteTags.filter((t) => t !== tagToRemove));
   };
+
+  // Note Markdown Markup Insertion
+  const insertNoteContentMarkup = (before: string, after: string = '', defaultPlaceholder: string = 'nội dung') => {
+    const textarea = noteContentTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = noteContent.substring(start, end);
+    const isBlock =
+      before.startsWith('#') ||
+      before.startsWith('>') ||
+      before.startsWith('```') ||
+      before.startsWith('- ') ||
+      before.startsWith('1. ') ||
+      before.startsWith('|');
+
+    let prefix = before;
+    if (isBlock && start > 0) {
+      if (noteContent[start - 1] !== '\n') {
+        prefix = '\n\n' + before;
+      } else if (start > 1 && noteContent[start - 2] !== '\n') {
+        prefix = '\n' + before;
+      }
+    }
+
+    const placeholder = selectedText || defaultPlaceholder;
+    const replacement = `${prefix}${placeholder}${after}`;
+
+    const newContent = noteContent.substring(0, start) + replacement + noteContent.substring(end);
+    setNoteContent(newContent);
+
+    setTimeout(() => {
+      textarea.focus();
+      const selectStart = start + prefix.length;
+      const selectEnd = selectStart + placeholder.length;
+      textarea.setSelectionRange(selectStart, selectEnd);
+    }, 50);
+  };
+
+  // Note Participant Handlers
+  const handleNoteToggleEmployeeParticipant = (emp: Employee) => {
+    const isAlready = noteParticipants.some(
+      (p) => (p.id && p.id === emp.id) || (p.code && p.code === emp.code) || p.name === emp.name
+    );
+    if (isAlready) {
+      setNoteParticipants((prev) =>
+        prev.filter(
+          (p) =>
+            !(
+              (p.id && p.id === emp.id) ||
+              (p.code && p.code === emp.code) ||
+              p.name === emp.name
+            )
+        )
+      );
+    } else {
+      const newPart: NoteParticipant = {
+        id: emp.id,
+        code: emp.code,
+        name: emp.name,
+        avatarUrl: emp.avatarUrl,
+        role: emp.role,
+        department: emp.department,
+      };
+      setNoteParticipants((prev) => [...prev, newPart]);
+    }
+  };
+
+  const handleNoteAddCustomParticipant = () => {
+    const trimmed = noteCustomParticipantName.trim();
+    if (!trimmed) return;
+    if (!noteParticipants.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
+      setNoteParticipants((prev) => [
+        ...prev,
+        {
+          id: 'custom_' + Date.now(),
+          name: trimmed,
+          role: 'Khách / Bạn bè',
+        },
+      ]);
+    }
+    setNoteCustomParticipantName('');
+  };
+
+  const handleNoteRemoveParticipant = (idOrName: string) => {
+    setNoteParticipants((prev) =>
+      prev.filter((p) => (p.id || p.name) !== idOrName && p.name !== idOrName)
+    );
+  };
+
+  // Note GPS Geolocation Handler
+  const handleNoteGetCurrentLocation = (silent: boolean = false) => {
+    if (!navigator.geolocation) {
+      if (!silent) alert('Trình duyệt của bạn không hỗ trợ định vị GPS.');
+      return;
+    }
+    setNoteIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        setNoteIsLocating(false);
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        setNoteCoordinates(`${lat}° N, ${lng}° E`);
+
+        // Reverse geocoding via OpenStreetMap Nominatim
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            { headers: { 'Accept-Language': 'vi' } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.display_name) {
+              setNoteLocation(data.display_name);
+            }
+          }
+        } catch (err) {
+          console.warn('Reverse geocode failed:', err);
+        }
+      },
+      (err) => {
+        setNoteIsLocating(false);
+        if (!silent) alert(`Không thể lấy vị trí GPS: ${err.message}`);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
+  // Note Image Upload Handlers
+  const handleNoteCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setNoteIsUploadingCover(true);
+    setNotePasteToast('☁️ Đang tải ảnh bìa lên Catbox...');
+    try {
+      const url = await catboxService.uploadFile(file);
+      setNoteCoverUrl(url);
+      setNotePasteToast('☁️ Đã lưu ảnh bìa lên Catbox thành công!');
+      setTimeout(() => setNotePasteToast(null), 3000);
+    } catch (err) {
+      console.warn('Catbox cover upload failed, fallback to local data URL:', err);
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        if (evt.target?.result) {
+          setNoteCoverUrl(evt.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setNoteIsUploadingCover(false);
+    }
+  };
+
+  const handleNoteGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setNoteIsUploadingGallery(true);
+    setNotePasteToast('☁️ Đang tải ảnh lên Catbox...');
+    try {
+      const fileList = Array.from(files);
+      for (const file of fileList) {
+        try {
+          const url = await catboxService.uploadFile(file);
+          setNoteImages((prev) => [...prev, url]);
+          const newAttach: NoteAttachment = {
+            id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            name: file.name,
+            url,
+            type: 'image',
+            size: `${(file.size / 1024).toFixed(1)} KB`,
+          };
+          setNoteAttachments((prev) => [...prev, newAttach]);
+        } catch (fileErr) {
+          console.warn('Catbox upload failed for file, fallback to local:', fileErr);
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            if (evt.target?.result) {
+              const localUrl = evt.target.result as string;
+              setNoteImages((prev) => [...prev, localUrl]);
+              const newAttach: NoteAttachment = {
+                id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                name: file.name,
+                url: localUrl,
+                type: 'image',
+                size: `${(file.size / 1024).toFixed(1)} KB`,
+              };
+              setNoteAttachments((prev) => [...prev, newAttach]);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+      setNotePasteToast('✅ Đã lưu ảnh vào thư viện đính kèm (Catbox)!');
+      setTimeout(() => setNotePasteToast(null), 3000);
+    } finally {
+      setNoteIsUploadingGallery(false);
+    }
+  };
+
+  // Clipboard Paste Image Handler (Ctrl + V) for Note
+  const processNotePastedImage = async (file: File) => {
+    setNotePasteToast('☁️ Đang tải ảnh Clipboard lên Catbox...');
+    let url = '';
+    try {
+      url = await catboxService.uploadFile(file);
+    } catch (err) {
+      console.warn('Catbox upload failed for pasted image, fallback to local:', err);
+      url = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (evt) => resolve((evt.target?.result as string) || '');
+        reader.readAsDataURL(file);
+      });
+    }
+
+    if (url) {
+      setNoteImages((prev) => [...prev, url]);
+      const newAttach: NoteAttachment = {
+        id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        name: `Anh_dan_${Date.now().toString().slice(-4)}.png`,
+        url,
+        type: 'image',
+        size: `${(file.size / 1024).toFixed(1)} KB`,
+      };
+      setNoteAttachments((prev) => [...prev, newAttach]);
+
+      const textarea = noteContentTextareaRef.current;
+      if (textarea && document.activeElement === textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const imgMarkdown = `\n![Hình ảnh đính kèm](${url})\n`;
+        const newContent = noteContent.substring(0, start) + imgMarkdown + noteContent.substring(end);
+        setNoteContent(newContent);
+      }
+
+      setNotePasteToast('✅ Đã tải ảnh lên Catbox & chèn vào bài viết (Ctrl + V)!');
+      setTimeout(() => setNotePasteToast(null), 3500);
+    }
+  };
+
+  // Window-level Ctrl+V listener when Note tab is active in Modal
+  useEffect(() => {
+    if (!isOpen || activeModule !== 'note') return;
+    const handleGlobalPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            processNotePastedImage(file);
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', handleGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleGlobalPaste);
+    };
+  }, [isOpen, activeModule, noteContent]);
 
   // Learning Tags handlers
   const handleAddLearningTag = () => {
@@ -344,7 +652,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     try {
       if (activeModule === 'note') {
         if (!noteTitle.trim()) {
-          setErrors({ noteTitle: 'Vui lòng nhập tiêu đề ghi chú' });
+          setErrors({ noteTitle: 'Vui lòng nhập tiêu đề bài viết/ghi chú' });
           setIsSubmitting(false);
           return;
         }
@@ -353,25 +661,32 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
           id: 'note_' + Date.now(),
           code: 'GC-' + Math.floor(1000 + Math.random() * 9000),
           title: noteTitle.trim(),
-          summary: noteSummary.trim(),
+          summary: noteSummary.trim() || undefined,
           content: noteContent.trim() || noteSummary.trim() || noteTitle.trim(),
-          category: noteCategory,
-          color: noteColor,
+          category: (noteCategory || 'Ghi chép cá nhân') as NoteCategory,
+          status: noteStatus,
           isPinned: noteIsPinned,
-          author: authorEmp?.name || 'Người dùng',
-          authorId: authorEmp?.id,
-          authorCode: authorEmp?.code,
-          authorAvatar: authorEmp?.avatarUrl || '',
+          color: noteColor,
+          coverUrl: noteCoverUrl.trim() || undefined,
           noteDate: noteDate || new Date().toISOString().slice(0, 10),
           noteTime: noteTime || '09:00',
-          location: noteLocation.trim(),
-          tags: noteTags,
-          status: 'published',
+          location: noteLocation.trim() || undefined,
+          coordinates: noteCoordinates.trim() || undefined,
+          tags: noteTags.length > 0 ? noteTags : [],
+          author: authorEmp?.name || currentUser?.name || currentUser?.username || 'Người dùng',
+          authorId: authorEmp?.id,
+          authorCode: authorEmp?.code,
+          authorAvatar: authorEmp?.avatarUrl || currentUser?.avatarUrl || '',
+          attachments: noteAttachments.length > 0 ? noteAttachments : undefined,
+          images: noteImages.length > 0 ? noteImages : undefined,
+          participants: noteParticipants.length > 0 ? noteParticipants : undefined,
+          activity: noteActivity.trim() || undefined,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
         const notes = [newNote, ...noteService.getInitialNotes()];
         noteService.saveToLocalCache(notes);
+        noteService.appendToSheet(newNote).catch(() => {});
         if (onSaveSuccess) onSaveSuccess(`Đã lưu Ghi chú: "${newNote.title}"`);
       } else if (activeModule === 'task') {
         if (!taskTitle.trim()) {
@@ -680,199 +995,801 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                 </div>
               )}
 
+              {/* Paste Toast Notification for Note */}
+              {activeModule === 'note' && notePasteToast && (
+                <div className="bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center justify-between shadow-md transition-all animate-in slide-in-from-top duration-150">
+                  <span className="flex items-center gap-1.5">
+                    <ImageIcon className="w-4 h-4" />
+                    {notePasteToast}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setNotePasteToast(null)}
+                    className="text-white/80 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
               {/* ============================================================== */}
-              {/* 1. GHI CHÚ (NOTE) - ĐƯỢC ĐẶT LÊN ĐẦU                           */}
+              {/* 1. GHI CHÚ (NOTE) - FULL 4 PHẦN CHUẨN THEO NoteFormDrawer     */}
               {/* ============================================================== */}
               {activeModule === 'note' && (
-                <div className="space-y-4 animate-in fade-in-50 duration-200">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">
-                      Tiêu đề ghi chú <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={noteTitle}
-                      onChange={(e) => {
-                        setNoteTitle(e.target.value);
-                        setErrors((prev) => ({ ...prev, noteTitle: '' }));
-                      }}
-                      placeholder="VD: Biên bản cuộc họp ban giám đốc, Kế hoạch triển khai dự án..."
-                      className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
-                        errors.noteTitle ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border'
-                      }`}
-                    />
-                    {errors.noteTitle && <p className="text-[11px] text-rose-500">{errors.noteTitle}</p>}
-                  </div>
+                <div className="space-y-5 animate-in fade-in-50 duration-200">
+                  {/* 1. TIÊU ĐỀ & NỘI DUNG BÀI VIẾT */}
+                  <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
+                    <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Edit3 className="w-4 h-4 text-primary" />
+                        <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                          1. Tiêu đề & Nội dung bài viết
+                        </h4>
+                      </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">Tóm tắt ngắn gọn</label>
-                    <input
-                      type="text"
-                      value={noteSummary}
-                      onChange={(e) => setNoteSummary(e.target.value)}
-                      placeholder="Tóm tắt ý chính của ghi chú..."
-                      className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Danh mục ghi chú</label>
-                      <select
-                        value={noteCategory}
-                        onChange={(e) => setNoteCategory(e.target.value as NoteCategory)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        {NOTE_CATEGORIES.map((cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-primary" />
-                        Tác giả ghi chú
-                      </label>
-                      <select
-                        value={noteAuthorId}
-                        onChange={(e) => setNoteAuthorId(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      >
-                        {employees.map((emp) => (
-                          <option key={emp.id} value={emp.id}>
-                            {emp.name} {emp.department ? `(${emp.department})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Ngày ghi chú</label>
-                      <input
-                        type="date"
-                        value={noteDate}
-                        onChange={(e) => setNoteDate(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Thời gian (24h)</label>
-                      <TimePickerInput
-                        value={noteTime}
-                        onChange={(val) => setNoteTime(val)}
-                        placeholder="09:00"
-                        force24h={true}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Địa điểm</label>
-                      <input
-                        type="text"
-                        value={noteLocation}
-                        onChange={(e) => setNoteLocation(e.target.value)}
-                        placeholder="Văn phòng, Phòng họp..."
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Note Color Selection */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Palette className="w-3.5 h-3.5 text-purple-500" />
-                      Màu sắc chủ đề
-                    </label>
-                    <div className="flex items-center gap-2">
-                      {NOTE_COLORS.map((c) => (
+                      {/* Editor / Preview Switcher */}
+                      <div className="flex items-center rounded-xl border border-border p-0.5 bg-muted/30 text-xs">
                         <button
-                          key={c.id}
                           type="button"
-                          onClick={() => setNoteColor(c.id)}
-                          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${c.bg} ${
-                            noteColor === c.id ? 'ring-2 ring-primary ring-offset-2 scale-110 shadow-sm' : 'opacity-70 hover:opacity-100'
+                          onClick={() => setNoteContentTab('edit')}
+                          className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                            noteContentTab === 'edit'
+                              ? 'bg-card text-foreground shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground'
                           }`}
-                          title={c.label}
-                        />
-                      ))}
+                        >
+                          <Edit3 className="w-3.5 h-3.5" /> Soạn thảo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNoteContentTab('preview')}
+                          className={`px-3 py-1.5 rounded-lg font-medium transition-colors flex items-center gap-1.5 ${
+                            noteContentTab === 'preview'
+                              ? 'bg-card text-foreground shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Xem trước
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Note Content */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">Nội dung chi tiết ghi chú</label>
-                    <textarea
-                      rows={5}
-                      value={noteContent}
-                      onChange={(e) => setNoteContent(e.target.value)}
-                      placeholder="Nhập nội dung biên bản, nhật ký, hướng dẫn..."
-                      className="w-full p-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary custom-scrollbar"
-                    />
-                  </div>
-
-                  {/* Tags */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground">Thẻ phân loại (Tags)</label>
-                    <div className="flex items-center gap-2">
+                    {/* Title */}
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1">
+                        Tiêu đề bài viết / Ghi chú <span className="text-rose-500">*</span>
+                      </label>
                       <input
                         type="text"
-                        value={noteTagInput}
-                        onChange={(e) => setNoteTagInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleAddNoteTag();
-                          }
+                        placeholder="Ví dụ: Biên bản Cuộc họp Chiến lược Q4/2026..."
+                        value={noteTitle}
+                        onChange={(e) => {
+                          setNoteTitle(e.target.value);
+                          setErrors((prev) => ({ ...prev, noteTitle: '' }));
                         }}
-                        placeholder="VD: ke-hoach, quan-trong..."
-                        className="flex-1 h-8 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        className={`w-full rounded-xl border ${
+                          errors.noteTitle ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border'
+                        } bg-background px-3.5 py-2.5 text-sm font-medium text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all`}
                       />
-                      <button
-                        type="button"
-                        onClick={handleAddNoteTag}
-                        className="h-8 px-2.5 rounded-lg border border-border hover:bg-muted text-foreground text-xs font-semibold"
-                      >
-                        Thêm tag
-                      </button>
+                      {errors.noteTitle && (
+                        <p className="text-xs text-rose-500 mt-1">{errors.noteTitle}</p>
+                      )}
                     </div>
-                    {noteTags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 pt-1">
-                        {noteTags.map((t) => (
+
+                    {/* Summary */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                        Tóm tắt nhanh (Lead / Summary)
+                      </label>
+                      <textarea
+                        rows={2}
+                        placeholder="Mô tả tóm tắt nội dung chính giúp người xem nắm bắt nhanh..."
+                        value={noteSummary}
+                        onChange={(e) => setNoteSummary(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all resize-none"
+                      />
+                    </div>
+
+                    {/* Main Content Area */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                        Nội dung chi tiết (Markdown / Web Rich Content)
+                      </label>
+
+                      {noteContentTab === 'edit' ? (
+                        <div className="space-y-2">
+                          {/* Rich Toolbar */}
+                          <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl border border-border bg-muted/20">
+                            <button
+                              type="button"
+                              title="Tiêu đề H1"
+                              onClick={() => insertNoteContentMarkup('# ')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <Heading1 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Tiêu đề H2"
+                              onClick={() => insertNoteContentMarkup('## ')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <Heading2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Tiêu đề H3"
+                              onClick={() => insertNoteContentMarkup('### ')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <Heading3 className="w-4 h-4" />
+                            </button>
+                            <div className="w-[1px] h-4 bg-border mx-1" />
+                            <button
+                              type="button"
+                              title="Chữ đậm"
+                              onClick={() => insertNoteContentMarkup('**', '**')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <Bold className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Chữ nghiêng"
+                              onClick={() => insertNoteContentMarkup('*', '*')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <Italic className="w-4 h-4" />
+                            </button>
+                            <div className="w-[1px] h-4 bg-border mx-1" />
+                            <button
+                              type="button"
+                              title="Danh sách gạch đầu dòng"
+                              onClick={() => insertNoteContentMarkup('- ')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <List className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Danh sách đánh số"
+                              onClick={() => insertNoteContentMarkup('1. ')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <ListOrdered className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Checklist công việc"
+                              onClick={() => insertNoteContentMarkup('- [ ] ')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <CheckSquare className="w-4 h-4" />
+                            </button>
+                            <div className="w-[1px] h-4 bg-border mx-1" />
+                            <button
+                              type="button"
+                              title="Trích dẫn"
+                              onClick={() => insertNoteContentMarkup('> ')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <Quote className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              title="Khối mã nguồn (Code block)"
+                              onClick={() => insertNoteContentMarkup('```typescript\n', '\n```')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <Code className="w-4 h-4" />
+                            </button>
+                            <div className="w-[1px] h-4 bg-border mx-1" />
+                            <button
+                              type="button"
+                              title="Bảng dữ liệu Markdown"
+                              onClick={() =>
+                                insertNoteContentMarkup(
+                                  '| Cột 1 | Cột 2 | Cột 3 |\n| --- | --- | --- |\n| Dữ liệu 1 | Dữ liệu 2 | Dữ liệu 3 |\n',
+                                  '',
+                                  ''
+                                )
+                              }
+                              className="p-1.5 rounded-lg hover:bg-muted text-foreground transition-colors"
+                            >
+                              <Table className="w-4 h-4" />
+                            </button>
+                            <div className="w-[1px] h-4 bg-border mx-1" />
+                            <button
+                              type="button"
+                              title="Hộp lưu ý (Note callout)"
+                              onClick={() => insertNoteContentMarkup('> [!NOTE]\n> ', '', 'Nhập nội dung lưu ý quan trọng tại đây...')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-primary transition-colors text-xs flex items-center gap-1"
+                            >
+                              <Info className="w-3.5 h-3.5" /> Note
+                            </button>
+                            <button
+                              type="button"
+                              title="Hộp mẹo hay (Tip callout)"
+                              onClick={() => insertNoteContentMarkup('> [!TIP]\n> ', '', 'Nhập mẹo hay hoặc hướng dẫn thực thi...')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-emerald-600 dark:text-emerald-400 transition-colors text-xs flex items-center gap-1"
+                            >
+                              <Lightbulb className="w-3.5 h-3.5" /> Mẹo
+                            </button>
+                            <button
+                              type="button"
+                              title="Hộp cảnh báo (Warning callout)"
+                              onClick={() => insertNoteContentMarkup('> [!WARNING]\n> ', '', 'Cảnh báo rủi ro hoặc lưu ý bắt buộc...')}
+                              className="p-1.5 rounded-lg hover:bg-muted text-amber-600 dark:text-amber-400 transition-colors text-xs flex items-center gap-1"
+                            >
+                              <AlertTriangle className="w-3.5 h-3.5" /> Cảnh báo
+                            </button>
+                          </div>
+
+                          {/* Textarea */}
+                          <textarea
+                            ref={noteContentTextareaRef}
+                            rows={10}
+                            placeholder="Soạn thảo nội dung chi tiết bài viết, biên bản hoặc ghi nhớ..."
+                            value={noteContent}
+                            onChange={(e) => setNoteContent(e.target.value)}
+                            className="w-full rounded-xl border border-border bg-background p-4 text-xs sm:text-sm font-mono leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all resize-y"
+                          />
+                        </div>
+                      ) : (
+                        /* Live Preview */
+                        <div className="rounded-xl border border-border/80 bg-background/50 p-5 min-h-[220px]">
+                          <MarkdownRenderer content={noteContent} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 2. CHUYÊN MỤC, THẺ & TRẠNG THÁI */}
+                  <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
+                    <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                      <div className="flex items-center gap-2">
+                        <FolderOpen className="w-4 h-4 text-primary" />
+                        <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                          2. Chuyên mục, Thẻ & Trạng thái
+                        </h4>
+                      </div>
+
+                      {/* Theme Color Picker - Tucked neatly into header as small dots */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Màu sắc:</span>
+                        {NOTE_COLOR_THEMES.map((theme) => (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            title={theme.name}
+                            onClick={() => setNoteColor(theme.id)}
+                            className={`w-5 h-5 rounded-full ${theme.badge} border transition-all ${
+                              noteColor === theme.id ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Category, Status, Author & Pin */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                          Chuyên mục
+                        </label>
+                        <select
+                          value={noteCategory}
+                          onChange={(e) => setNoteCategory(e.target.value as NoteCategory)}
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          <option value="">-- Chọn chuyên mục --</option>
+                          {NOTE_CATEGORIES.map((cat) => (
+                            <option key={cat} value={cat}>
+                              {cat}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                          Trạng thái
+                        </label>
+                        <select
+                          value={noteStatus}
+                          onChange={(e) => setNoteStatus(e.target.value as NoteStatus)}
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          <option value="published">Đã công bố / Xuất bản</option>
+                          <option value="draft">Bản nháp</option>
+                          <option value="archived">Lưu trữ</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                          Tác giả ghi chép
+                        </label>
+                        <select
+                          value={noteAuthorId}
+                          onChange={(e) => setNoteAuthorId(e.target.value)}
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        >
+                          {employees.map((emp) => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name} {emp.department ? `(${emp.department})` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                          Ghim ưu tiên
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setNoteIsPinned(!noteIsPinned)}
+                          className={`w-full h-[38px] rounded-xl border px-3 flex items-center justify-center gap-2 text-xs font-medium transition-all ${
+                            noteIsPinned
+                              ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold'
+                              : 'border-border bg-background text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <Pin className={`w-3.5 h-3.5 ${noteIsPinned ? 'fill-current' : ''}`} />
+                          {noteIsPinned ? 'Đang ghim lên đầu' : 'Không ghim'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tags Input */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                        Thẻ phân loại (Tags) - Nhấn Enter để thêm
+                      </label>
+                      <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl border border-border bg-background min-h-[42px]">
+                        {noteTags.map((t, idx) => (
                           <span
-                            key={t}
-                            className="inline-flex items-center gap-1 text-[11px] font-medium bg-purple-500/10 text-purple-600 px-2 py-0.5 rounded-full border border-purple-500/20"
+                            key={idx}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium border border-primary/20"
                           >
+                            <Tag className="w-3 h-3" />
                             #{t}
                             <button
                               type="button"
                               onClick={() => handleRemoveNoteTag(t)}
-                              className="hover:text-rose-500 font-bold"
+                              className="hover:text-rose-500 transition-colors ml-0.5 font-bold"
                             >
                               ×
                             </button>
                           </span>
                         ))}
+                        <input
+                          type="text"
+                          placeholder={noteTags.length === 0 ? 'Thêm thẻ (nhập rồi Enter)...' : 'Thêm tiếp...'}
+                          value={noteTagInput}
+                          onChange={(e) => setNoteTagInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddNoteTag();
+                            }
+                          }}
+                          onBlur={() => {
+                            if (noteTagInput.trim()) handleAddNoteTag();
+                          }}
+                          className="flex-1 min-w-[120px] bg-transparent text-xs text-foreground placeholder:text-muted-foreground/60 outline-none px-1 py-0.5"
+                        />
                       </div>
-                    )}
+
+                      {/* Preset Tag Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className="text-[11px] text-muted-foreground mr-1">Gợi ý nhanh:</span>
+                        {PRESET_TAGS.slice(0, 8).map((pt) => {
+                          const isSelected = noteTags.includes(pt);
+                          return (
+                            <button
+                              key={pt}
+                              type="button"
+                              onClick={() => (isSelected ? handleRemoveNoteTag(pt) : handleAddNoteTag(pt))}
+                              className={`text-[11px] px-2 py-0.5 rounded-md border transition-all ${
+                                isSelected
+                                  ? 'bg-primary/15 border-primary/30 text-primary font-medium'
+                                  : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
+                              }`}
+                            >
+                              +{pt}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Pin Option */}
-                  <label className="flex items-center gap-2 cursor-pointer pt-1">
-                    <input
-                      type="checkbox"
-                      checked={noteIsPinned}
-                      onChange={(e) => setNoteIsPinned(e.target.checked)}
-                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                    />
-                    <span className="text-xs font-medium text-foreground flex items-center gap-1">
-                      <Pin className="w-3.5 h-3.5 text-amber-500" />
-                      Ghim lên đầu trang
-                    </span>
-                  </label>
+                  {/* 3. ĐỐI TƯỢNG NHÂN VIÊN & ĐI CÙNG AI (NHẬT KÝ) */}
+                  <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-primary" />
+                        <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                          3. Đối tượng nhân viên & Đi cùng ai (Nhật ký)
+                        </h4>
+                        {noteParticipants.length > 0 && (
+                          <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+                            {noteParticipants.length} người
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Diary template button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!noteCategory) setNoteCategory('Nhật ký & Hoạt động');
+                          if (!noteActivity) setNoteActivity('Đi cà phê & Trò chuyện');
+                          if (!noteTitle) setNoteTitle(`Nhật ký ngày ${noteDate || new Date().toLocaleDateString('vi-VN')}`);
+                          if (!noteContent) {
+                            const names = noteParticipants.map((p) => p.name).join(', ') || 'Bạn bè / Đồng nghiệp';
+                            setNoteContent(`## 📖 Nhật ký Hoạt động\n- **Thời gian:** ${noteTime || '09:00'}, ngày ${noteDate || new Date().toLocaleDateString('vi-VN')}\n- **Địa điểm:** ${noteLocation || 'Tại quán cà phê / Ngoài trời'}\n- **Đi cùng:** ${names}\n\n### 🌟 Hôm nay làm gì & Có gì vui:\n1. Gặp mặt trò chuyện và chia sẻ câu chuyện cùng mọi người.\n2. Cùng nhau thưởng thức đồ uống và thư giãn.\n3. Những kỷ niệm và khoảnh khắc đáng nhớ trong ngày.\n\n> [!NOTE]\n> Hãy ghi lại cảm xúc và trải nghiệm tuyệt vời cùng bạn bè!`);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium border border-emerald-500/30 transition-colors"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" /> Dùng mẫu Nhật ký đi chơi
+                      </button>
+                    </div>
+
+                    {/* Activity input & suggestions */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                        Hoạt động / Đi đâu làm gì
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ví dụ: Đi uống cà phê cuối tuần, Ăn tối liên hoan, Khảo sát mặt bằng..."
+                        value={noteActivity}
+                        onChange={(e) => setNoteActivity(e.target.value)}
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className="text-[11px] text-muted-foreground mr-1">Gợi ý hoạt động:</span>
+                        {['Đi cà phê', 'Ăn uống liên hoan', 'Khảo sát mặt bằng', 'Họp bàn chiến lược', 'Dã ngoại team-building', 'Đào tạo nội bộ'].map((act) => (
+                          <button
+                            key={act}
+                            type="button"
+                            onClick={() => setNoteActivity(act)}
+                            className={`text-[11px] px-2.5 py-0.5 rounded-md border transition-all ${
+                              noteActivity === act
+                                ? 'bg-primary text-primary-foreground font-semibold border-primary'
+                                : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
+                            }`}
+                          >
+                            {act}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Selected Participants List */}
+                    {noteParticipants.length > 0 && (
+                      <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                          Danh sách người tham gia đã chọn ({noteParticipants.length})
+                        </label>
+                        <div className="flex flex-wrap gap-2 p-2.5 rounded-xl border border-border bg-background">
+                          {noteParticipants.map((p) => {
+                            const avatar = getSafeAvatarUrl(p.avatarUrl, p.name);
+                            return (
+                              <span
+                                key={p.id || p.name}
+                                className="inline-flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-xs font-medium"
+                              >
+                                <img
+                                  src={avatar}
+                                  alt={p.name}
+                                  className="w-5 h-5 rounded-full object-cover border border-primary/30"
+                                />
+                                <span className="max-w-[120px] truncate">{p.name}</span>
+                                {p.role && <span className="text-[10px] text-muted-foreground hidden sm:inline">({p.role})</span>}
+                                <button
+                                  type="button"
+                                  onClick={() => handleNoteRemoveParticipant(p.id || p.name)}
+                                  className="hover:text-destructive transition-colors ml-0.5 text-xs font-bold"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Employee Picker */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                        Chọn nhân viên công ty tham gia
+                      </label>
+                      <div className="relative mb-2">
+                        <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="Tìm kiếm nhân viên trong công ty để thêm..."
+                          value={noteEmployeeSearch}
+                          onChange={(e) => setNoteEmployeeSearch(e.target.value)}
+                          className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-background overflow-hidden">
+                        <div className="max-h-44 overflow-y-auto p-2 divide-y divide-border/40 space-y-1 custom-scrollbar">
+                          {filteredNoteEmployees.length > 0 ? (
+                            filteredNoteEmployees.map((emp) => {
+                              const isSelected = noteParticipants.some(
+                                (p) => (p.id && p.id === emp.id) || (p.code && p.code === emp.code) || p.name === emp.name
+                              );
+                              const avatar = getSafeAvatarUrl(emp.avatarUrl, emp.name);
+
+                              return (
+                                <button
+                                  key={emp.id || emp.code}
+                                  type="button"
+                                  onClick={() => handleNoteToggleEmployeeParticipant(emp)}
+                                  className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                                    isSelected
+                                      ? 'bg-primary/10 border border-primary/30 text-primary'
+                                      : 'hover:bg-muted/60 text-foreground'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <img
+                                      src={avatar}
+                                      alt={emp.name}
+                                      className="w-7 h-7 rounded-full object-cover border border-border shrink-0"
+                                    />
+                                    <div className="min-w-0">
+                                      <div className="text-xs font-semibold truncate flex items-center gap-1.5">
+                                        <span>{emp.name}</span>
+                                        {emp.code && (
+                                          <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.2 rounded">
+                                            {emp.code}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-[11px] text-muted-foreground truncate">
+                                        {emp.role} {emp.department ? `• ${emp.department}` : ''}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="shrink-0 ml-2">
+                                    {isSelected ? (
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/20 px-2 py-0.5 rounded-full">
+                                        <Check className="w-3 h-3" /> Đã chọn
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full group-hover:text-foreground">
+                                        <Plus className="w-3 h-3" /> Chọn
+                                      </span>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="p-3 text-center text-xs text-muted-foreground">
+                              Không tìm thấy nhân viên phù hợp với từ khóa "{noteEmployeeSearch}".
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Add External Friend / Guest */}
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          type="text"
+                          placeholder="Hoặc nhập tên người ngoài / bạn bè (Ví dụ: Anh Nam - Đối tác)..."
+                          value={noteCustomParticipantName}
+                          onChange={(e) => setNoteCustomParticipantName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleNoteAddCustomParticipant();
+                            }
+                          }}
+                          className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleNoteAddCustomParticipant}
+                          disabled={!noteCustomParticipantName.trim()}
+                          className="px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1 shrink-0"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" /> Thêm người ngoài
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4. THỜI GIAN, VỊ TRÍ & ẢNH ĐÍNH KÈM */}
+                  <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
+                    <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                      <CalendarIcon className="w-4 h-4 text-primary" />
+                      <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                        4. Thời gian, Vị trí & Ảnh đính kèm
+                      </h4>
+                    </div>
+
+                    {/* Event Date & Time */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                          Ngày sự kiện / thực hiện
+                        </label>
+                        <div className="relative">
+                          <CalendarIcon className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                          <input
+                            type="date"
+                            value={noteDate}
+                            onChange={(e) => setNoteDate(e.target.value)}
+                            className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                          Giờ sự kiện / thực hiện (24h)
+                        </label>
+                        <TimePickerInput
+                          value={noteTime}
+                          onChange={(val) => setNoteTime(val)}
+                          placeholder="09:00"
+                          force24h={true}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Location with GPS */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-muted-foreground">
+                          Vị trí / Địa điểm (GPS)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => handleNoteGetCurrentLocation(false)}
+                          disabled={noteIsLocating}
+                          className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline disabled:opacity-50"
+                        >
+                          <LocateFixed className={`w-3.5 h-3.5 ${noteIsLocating ? 'animate-spin' : ''}`} />
+                          {noteIsLocating ? 'Đang xác định GPS...' : 'Lấy vị trí GPS hiện tại'}
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="relative">
+                          <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                          <input
+                            type="text"
+                            placeholder="Tên địa điểm / Địa chỉ..."
+                            value={noteLocation}
+                            onChange={(e) => setNoteLocation(e.target.value)}
+                            className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Tọa độ GPS (Ví dụ: 10.7951° N, 106.7218° E)"
+                          value={noteCoordinates}
+                          onChange={(e) => setNoteCoordinates(e.target.value)}
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Cover Banner */}
+                    <div>
+                      <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                        Ảnh bìa bài viết (Cover Banner)
+                      </label>
+                      {noteCoverUrl ? (
+                        <div className="relative rounded-xl overflow-hidden border border-border h-36 sm:h-44 group">
+                          <img src={noteCoverUrl} alt="Cover Preview" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => noteCoverInputRef.current?.click()}
+                              disabled={noteIsUploadingCover}
+                              className="px-3 py-1.5 rounded-lg bg-white/90 text-foreground text-xs font-medium hover:bg-white flex items-center gap-1.5 shadow-md disabled:opacity-60"
+                            >
+                              {noteIsUploadingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                              {noteIsUploadingCover ? 'Đang tải lên...' : 'Thay ảnh'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setNoteCoverUrl('')}
+                              className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-medium hover:bg-destructive/90 flex items-center gap-1.5 shadow-md"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Xóa ảnh
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => noteCoverInputRef.current?.click()}
+                          className="border-2 border-dashed border-border hover:border-primary/60 rounded-xl p-4 sm:p-6 text-center cursor-pointer transition-colors bg-muted/10 hover:bg-muted/20"
+                        >
+                          <div className="mx-auto w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+                            {noteIsUploadingCover ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                          </div>
+                          <p className="text-xs font-semibold text-foreground">
+                            {noteIsUploadingCover ? 'Đang tải ảnh bìa lên Catbox...' : 'Nhấn để tải lên ảnh bìa'}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Hỗ trợ định dạng JPG, PNG, WEBP (Lưu trực tiếp lên đám mây Catbox)
+                          </p>
+                        </div>
+                      )}
+                      <input
+                        ref={noteCoverInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleNoteCoverUpload}
+                        className="hidden"
+                      />
+                    </div>
+
+                    {/* Image Gallery */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-semibold text-muted-foreground">
+                          Thư viện hình ảnh đính kèm (Catbox / Ctrl+V)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => noteGalleryInputRef.current?.click()}
+                          disabled={noteIsUploadingGallery}
+                          className="inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline disabled:opacity-50"
+                        >
+                          {noteIsUploadingGallery ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                          {noteIsUploadingGallery ? 'Đang tải...' : 'Thêm ảnh'}
+                        </button>
+                      </div>
+
+                      {noteImages.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {noteImages.map((img, idx) => (
+                            <div key={idx} className="relative rounded-lg overflow-hidden border border-border group aspect-video">
+                              <img src={img} alt={`Gallery ${idx + 1}`} className="w-full h-full object-cover" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNoteImages(noteImages.filter((_, i) => i !== idx));
+                                  setNoteAttachments(noteAttachments.filter((a) => a.url !== img));
+                                }}
+                                className="absolute top-1 right-1 p-1 rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-rose-600"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground italic">
+                          Chưa có hình ảnh đính kèm nào. Bạn có thể nhấn Thêm ảnh hoặc bấm Ctrl+V để dán trực tiếp.
+                        </p>
+                      )}
+                      <input
+                        ref={noteGalleryInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleNoteGalleryUpload}
+                        className="hidden"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
