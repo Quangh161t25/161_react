@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   CheckSquare,
   FolderKanban,
@@ -8,7 +8,6 @@ import {
   Calendar as CalendarIcon,
   Clock,
   ExternalLink,
-  ArrowUpDown,
 } from 'lucide-react';
 import { CalendarEvent, CalendarEventSource } from '../../types/calendar';
 
@@ -23,17 +22,14 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
   onSelectEvent,
   onNavigateToModule,
 }) => {
-  // Mặc định load lại sắp xếp theo ngày lớn tới nhỏ (mới nhất đến cũ nhất)
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-
-  // Sort events by date & time
+  // Luôn sắp xếp theo ngày lớn tới nhỏ (mới nhất đến cũ nhất)
   const sorted = [...events].sort((a, b) => {
     const cmp = a.startDate.localeCompare(b.startDate);
     if (cmp !== 0) {
-      return sortOrder === 'desc' ? -cmp : cmp;
+      return -cmp;
     }
     if (a.time && b.time) {
-      return sortOrder === 'desc' ? b.time.localeCompare(a.time) : a.time.localeCompare(b.time);
+      return b.time.localeCompare(a.time);
     }
     if (a.time) return -1;
     if (b.time) return 1;
@@ -69,13 +65,11 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
     }
   };
 
-  const dateKeys = Object.keys(grouped).sort((a, b) => {
-    return sortOrder === 'desc' ? b.localeCompare(a) : a.localeCompare(b);
-  });
+  const dateKeys = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
   return (
     <div className="bg-card flex-1 flex flex-col min-h-[500px] overflow-hidden">
-      <div className="p-4 border-b border-border bg-muted/40 flex items-center justify-between gap-3 flex-wrap">
+      <div className="p-4 border-b border-border bg-muted/40 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-foreground">
             Lịch biểu & Danh sách Lịch trình
@@ -84,21 +78,9 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
             Tổng hợp tất cả các hạn chót, sự kiện, sinh nhật và phiếu thu chi theo thứ tự thời gian
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border bg-background hover:bg-muted text-xs font-medium text-foreground transition-colors shadow-2xs"
-            title="Nhấn để đổi thứ tự sắp xếp theo ngày"
-          >
-            <ArrowUpDown className="w-3.5 h-3.5 text-primary shrink-0" />
-            <span>{sortOrder === 'desc' ? 'Ngày: Lớn → Nhỏ (Mới nhất)' : 'Ngày: Nhỏ → Lớn (Cũ nhất)'}</span>
-          </button>
-
-          <span className="text-xs font-bold px-2.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-            {events.length} mục
-          </span>
-        </div>
+        <span className="text-xs font-bold px-2.5 py-1.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+          {events.length} mục
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar space-y-6">

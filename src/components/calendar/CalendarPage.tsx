@@ -26,6 +26,7 @@ import {
   CalendarViewMode,
 } from '../../types/calendar';
 import { calendarService } from '../../services/calendarService';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { CalendarMonthView } from './CalendarMonthView';
 import { CalendarWeekView } from './CalendarWeekView';
 import { CalendarDayView } from './CalendarDayView';
@@ -33,6 +34,25 @@ import { CalendarAgendaView } from './CalendarAgendaView';
 import { CalendarStatsTab } from './CalendarStatsTab';
 import { EventDetailModal } from './EventDetailModal';
 import { EventFormModal, EventModuleType } from './EventFormModal';
+
+import { NoteDetailDrawer } from '../notes/NoteDetailDrawer';
+import { EmployeeDetailDrawer } from '../employee/EmployeeDetailDrawer';
+import { TaskDetailDrawer } from '../work/tasks/TaskDetailDrawer';
+import { ProjectDetailDrawer } from '../work/projects/ProjectDetailDrawer';
+import { CashTransactionDetailDrawer } from '../finance/CashTransactionDetailDrawer';
+import { CostProposalDetailDrawer } from '../finance/CostProposalDetailDrawer';
+
+import { Note } from '../../types/note';
+import { Employee } from '../../types/employee';
+import { Task, Project, TaskStatus } from '../../types/task';
+import { CashTransaction } from '../../types/cashTransaction';
+import { CostProposal } from '../../types/cost-proposal';
+
+import { noteService } from '../../services/noteService';
+import { employeeService } from '../../services/employeeService';
+import { taskService, projectService } from '../../services/taskService';
+import { cashTransactionService } from '../../services/cashTransactionService';
+import { googleSheetsService } from '../../services/googleSheetsService';
 
 interface CalendarPageProps {
   onBack?: () => void;
@@ -46,9 +66,23 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   // Top Tabs: 'list' (Lịch biểu) | 'stats' (Thống kê)
   const [activeTopTab, setActiveTopTab] = useState<'list' | 'stats'>('list');
 
+  const isMobile = useIsMobile();
+
   // Current view date state
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
+  // Trên điện thoại: mặc định kiểu xem Lịch biểu danh sách ('agenda'), trên máy tính: 'month'
+  const [viewMode, setViewMode] = useState<CalendarViewMode>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'agenda' : 'month'
+  );
+
+  // Tự động đồng bộ kiểu xem tương thích khi chuyển đổi giữa điện thoại và máy tính
+  useEffect(() => {
+    if (isMobile) {
+      setViewMode((prev) => (prev === 'month' || prev === 'week' ? 'agenda' : prev));
+    } else {
+      setViewMode((prev) => (prev === 'agenda' ? 'month' : prev));
+    }
+  }, [isMobile]);
 
   // Aggregated events data
   const [allEvents, setAllEvents] = useState<CalendarEvent[]>(() =>
@@ -72,7 +106,28 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   // Modals & UI States
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [selectedEventForDetail, setSelectedEventForDetail] = useState<CalendarEvent | null>(null);
+
+  // Module-specific detail drawer states
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null);
+  const [allNotesList, setAllNotesList] = useState<Note[]>([]);
+
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [allEmployeesList, setAllEmployeesList] = useState<Employee[]>([]);
+
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [allTasksList, setAllTasksList] = useState<Task[]>([]);
+
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [allProjectsList, setAllProjectsList] = useState<Project[]>([]);
+
+  const [selectedCashTx, setSelectedCashTx] = useState<CashTransaction | null>(null);
+  const [allCashTxsList, setAllCashTxsList] = useState<CashTransaction[]>([]);
+
+  const [selectedProposal, setSelectedProposal] = useState<CostProposal | null>(null);
+  const [allProposalsList, setAllProposalsList] = useState<CostProposal[]>([]);
+
+  const [selectedCustomEvent, setSelectedCustomEvent] = useState<CalendarEvent | null>(null);
+
   const [formModalState, setFormModalState] = useState<{
     isOpen: boolean;
     defaultDate?: string;
@@ -87,6 +142,156 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
       setToastMessage(null);
     }, 3000);
   }, []);
+
+  const closeAllDrawers = useCallback(() => {
+    setSelectedNote(null);
+    setSelectedEmployee(null);
+    setSelectedTask(null);
+    setSelectedProject(null);
+    setSelectedCashTx(null);
+    setSelectedProposal(null);
+    setSelectedCustomEvent(null);
+  }, []);
+
+  const handleSelectEvent = useCallback((evt: CalendarEvent) => {
+    closeAllDrawers();
+
+    // 1. Ghi chú (Note)
+    if (evt.source === 'note') {
+      const notes = noteService.getInitialNotes();
+      setAllNotesList(notes);
+      const rawId = evt.id.startsWith('note_') ? evt.id.replace('note_', '') : evt.id;
+      const found = notes.find((n) => n.id === rawId || (evt.sourceId && n.code === evt.sourceId));
+      if (found) {
+        setSelectedNote(found);
+        return;
+      }
+    }
+
+    // 2. Nhân sự & Sinh nhật (Employee / Birthday)
+    if (evt.source === 'hr_birthday' || evt.source === 'hr_event') {
+      const emps = employeeService.getInitialEmployees();
+      setAllEmployeesList(emps);
+      const rawId = evt.id.startsWith('emp_birth_')
+        ? evt.id.replace('emp_birth_', '')
+        : evt.id.startsWith('emp_start_')
+        ? evt.id.replace('emp_start_', '')
+        : evt.id;
+      const found = emps.find((e) => e.id === rawId || (evt.sourceId && e.code === evt.sourceId));
+      if (found) {
+        setSelectedEmployee(found);
+        return;
+      }
+    }
+
+    // 3. Công việc (Task)
+    if (evt.source === 'work_task') {
+      const tasks = taskService.getInitialTasks();
+      setAllTasksList(tasks);
+      const rawId = evt.id.startsWith('task_due_') ? evt.id.replace('task_due_', '') : evt.id;
+      const found = tasks.find((t) => t.id === rawId || (evt.sourceId && t.code === evt.sourceId));
+      if (found) {
+        setSelectedTask(found);
+        return;
+      }
+    }
+
+    // 4. Dự án (Project)
+    if (evt.source === 'work_project') {
+      const projs = projectService.getInitialProjects();
+      const tasks = taskService.getInitialTasks();
+      setAllProjectsList(projs);
+      setAllTasksList(tasks);
+      const rawId = evt.id.startsWith('proj_end_') ? evt.id.replace('proj_end_', '') : evt.id;
+      const found = projs.find((p) => p.id === rawId || (evt.sourceId && p.code === evt.sourceId));
+      if (found) {
+        setSelectedProject(found);
+        return;
+      }
+    }
+
+    // 5. Phiếu thu / chi (Finance Cash Transaction)
+    if (evt.source === 'finance_cash') {
+      const txs = cashTransactionService.getInitialTransactions();
+      setAllCashTxsList(txs);
+      const rawId = evt.id.startsWith('tx_') ? evt.id.replace('tx_', '') : evt.id;
+      const found = txs.find((t) => t.id === rawId || (evt.sourceId && t.code === evt.sourceId));
+      if (found) {
+        setSelectedCashTx(found);
+        return;
+      }
+    }
+
+    // 6. Đề xuất chi phí (Finance Cost Proposal)
+    if (evt.source === 'finance_proposal') {
+      const props = googleSheetsService.getInitialProposals();
+      setAllProposalsList(props);
+      const rawId = evt.id.startsWith('prop_') ? evt.id.replace('prop_', '') : evt.id;
+      const found = props.find((p) => p.id === rawId || (evt.sourceId && p.code === evt.sourceId));
+      if (found) {
+        setSelectedProposal(found);
+        return;
+      }
+    }
+
+    // Mặc định: Sự kiện lịch họp riêng (Custom Event)
+    setSelectedCustomEvent(evt);
+  }, [closeAllDrawers]);
+
+  const handleToggleSubtask = (taskId: string, subtaskId: string) => {
+    const updated = allTasksList.map((t) => {
+      if (t.id === taskId) {
+        const subtasks = (t.subtasks || []).map((st) =>
+          st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        );
+        return { ...t, subtasks };
+      }
+      return t;
+    });
+    taskService.saveToCache(updated);
+    setAllTasksList(updated);
+    if (selectedTask && selectedTask.id === taskId) {
+      const cur = updated.find((t) => t.id === taskId);
+      if (cur) setSelectedTask(cur);
+    }
+  };
+
+  const handleTaskStatusChange = (taskId: string, newStatus: TaskStatus) => {
+    const updated = allTasksList.map((t) =>
+      t.id === taskId ? { ...t, status: newStatus } : t
+    );
+    taskService.saveToCache(updated);
+    setAllTasksList(updated);
+    if (selectedTask && selectedTask.id === taskId) {
+      const cur = updated.find((t) => t.id === taskId);
+      if (cur) setSelectedTask(cur);
+    }
+    setAllEvents(calendarService.aggregateAllEvents());
+  };
+
+  const handleAddTaskComment = (taskId: string, content: string) => {
+    const newComment = {
+      id: `cm_${Date.now()}`,
+      author: 'Tôi',
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = allTasksList.map((t) => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          comments: [...(t.comments || []), newComment],
+        };
+      }
+      return t;
+    });
+    taskService.saveToCache(updated);
+    setAllTasksList(updated);
+    if (selectedTask && selectedTask.id === taskId) {
+      const cur = updated.find((t) => t.id === taskId);
+      if (cur) setSelectedTask(cur);
+    }
+  };
 
   // Re-aggregate on mount
   useEffect(() => {
@@ -610,7 +815,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                   year={currentYear}
                   month={currentMonth}
                   events={filteredEvents}
-                  onSelectEvent={(evt) => setSelectedEventForDetail(evt)}
+                  onSelectEvent={handleSelectEvent}
                   onAddEventForDate={(dateStr) => setFormModalState({ isOpen: true, defaultDate: dateStr })}
                   onSelectDate={(date) => {
                     setCurrentDate(date);
@@ -623,7 +828,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                 <CalendarWeekView
                   currentDate={currentDate}
                   events={filteredEvents}
-                  onSelectEvent={(evt) => setSelectedEventForDetail(evt)}
+                  onSelectEvent={handleSelectEvent}
                   onAddEventForDate={(dateStr) => setFormModalState({ isOpen: true, defaultDate: dateStr })}
                   onSelectDate={(date) => {
                     setCurrentDate(date);
@@ -636,7 +841,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                 <CalendarDayView
                   currentDate={currentDate}
                   events={filteredEvents}
-                  onSelectEvent={(evt) => setSelectedEventForDetail(evt)}
+                  onSelectEvent={handleSelectEvent}
                   onAddEventForDate={(dateStr) => setFormModalState({ isOpen: true, defaultDate: dateStr })}
                 />
               )}
@@ -644,7 +849,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
               {viewMode === 'agenda' && (
                 <CalendarAgendaView
                   events={filteredEvents}
-                  onSelectEvent={(evt) => setSelectedEventForDetail(evt)}
+                  onSelectEvent={handleSelectEvent}
                   onNavigateToModule={onNavigate}
                 />
               )}
@@ -664,11 +869,239 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
         </div>
       </div>
 
-      {/* Modals */}
+      {/* Module Detail Drawers */}
+      {selectedNote && (
+        <NoteDetailDrawer
+          isOpen={!!selectedNote}
+          note={selectedNote}
+          allNotes={allNotesList}
+          currentIndex={Math.max(0, allNotesList.findIndex((n) => n.id === selectedNote.id))}
+          totalCount={allNotesList.length}
+          onClose={() => setSelectedNote(null)}
+          onNavigate={(nextNote) => setSelectedNote(nextNote)}
+          onEdit={() => {
+            setSelectedNote(null);
+            if (onNavigate) onNavigate('/ghi-chu');
+          }}
+          onDelete={(noteId) => {
+            const updated = allNotesList.filter((n) => n.id !== noteId);
+            noteService.saveToCache(updated);
+            const target = allNotesList.find((n) => n.id === noteId);
+            if (target?.code) {
+              noteService.deleteFromSheet(target.code);
+            }
+            setAllNotesList(updated);
+            setSelectedNote(null);
+            setAllEvents(calendarService.aggregateAllEvents());
+            showToast('Đã xóa ghi chú');
+          }}
+          onTogglePin={(noteId) => {
+            const updated = allNotesList.map((n) => {
+              if (n.id === noteId) {
+                const next = !n.isPinned;
+                if (n.code) noteService.updateInSheet(n.code, { isPinned: next });
+                return { ...n, isPinned: next };
+              }
+              return n;
+            });
+            noteService.saveToCache(updated);
+            setAllNotesList(updated);
+            setSelectedNote((prev) => (prev ? { ...prev, isPinned: !prev.isPinned } : null));
+          }}
+        />
+      )}
+
+      {selectedEmployee && (
+        <EmployeeDetailDrawer
+          employee={selectedEmployee}
+          currentIndex={Math.max(0, allEmployeesList.findIndex((e) => e.id === selectedEmployee.id))}
+          totalCount={allEmployeesList.length}
+          onClose={() => setSelectedEmployee(null)}
+          onPrev={() => {
+            const idx = allEmployeesList.findIndex((e) => e.id === selectedEmployee.id);
+            if (idx > 0) setSelectedEmployee(allEmployeesList[idx - 1]);
+          }}
+          onNext={() => {
+            const idx = allEmployeesList.findIndex((e) => e.id === selectedEmployee.id);
+            if (idx < allEmployeesList.length - 1) setSelectedEmployee(allEmployeesList[idx + 1]);
+          }}
+          onEdit={() => {
+            setSelectedEmployee(null);
+            if (onNavigate) onNavigate('/he-thong/nhan-vien');
+          }}
+          onDelete={(id) => {
+            const updated = allEmployeesList.filter((e) => e.id !== id);
+            employeeService.saveToCache(updated);
+            setAllEmployeesList(updated);
+            setSelectedEmployee(null);
+            setAllEvents(calendarService.aggregateAllEvents());
+            showToast('Đã xóa nhân sự');
+          }}
+        />
+      )}
+
+      {selectedTask && (
+        <TaskDetailDrawer
+          task={selectedTask}
+          currentIndex={Math.max(0, allTasksList.findIndex((t) => t.id === selectedTask.id))}
+          totalCount={allTasksList.length}
+          onClose={() => setSelectedTask(null)}
+          onPrev={() => {
+            const idx = allTasksList.findIndex((t) => t.id === selectedTask.id);
+            if (idx > 0) setSelectedTask(allTasksList[idx - 1]);
+          }}
+          onNext={() => {
+            const idx = allTasksList.findIndex((t) => t.id === selectedTask.id);
+            if (idx < allTasksList.length - 1) setSelectedTask(allTasksList[idx + 1]);
+          }}
+          onEdit={() => {
+            setSelectedTask(null);
+            if (onNavigate) onNavigate('/cong-viec/danh-sach');
+          }}
+          onDelete={(id) => {
+            const updated = allTasksList.filter((t) => t.id !== id);
+            taskService.saveToCache(updated);
+            setAllTasksList(updated);
+            setSelectedTask(null);
+            setAllEvents(calendarService.aggregateAllEvents());
+            showToast('Đã xóa công việc');
+          }}
+          onToggleSubtask={handleToggleSubtask}
+          onStatusChange={handleTaskStatusChange}
+          onAddComment={handleAddTaskComment}
+        />
+      )}
+
+      {selectedProject && (
+        <ProjectDetailDrawer
+          project={selectedProject}
+          allTasks={allTasksList}
+          currentIndex={Math.max(0, allProjectsList.findIndex((p) => p.id === selectedProject.id))}
+          totalCount={allProjectsList.length}
+          onClose={() => setSelectedProject(null)}
+          onPrev={() => {
+            const idx = allProjectsList.findIndex((p) => p.id === selectedProject.id);
+            if (idx > 0) setSelectedProject(allProjectsList[idx - 1]);
+          }}
+          onNext={() => {
+            const idx = allProjectsList.findIndex((p) => p.id === selectedProject.id);
+            if (idx < allProjectsList.length - 1) setSelectedProject(allProjectsList[idx + 1]);
+          }}
+          onEdit={() => {
+            setSelectedProject(null);
+            if (onNavigate) onNavigate('/cong-viec/du-an');
+          }}
+          onDelete={(id) => {
+            const updated = allProjectsList.filter((p) => p.id !== id);
+            projectService.saveToCache(updated);
+            setAllProjectsList(updated);
+            setSelectedProject(null);
+            setAllEvents(calendarService.aggregateAllEvents());
+            showToast('Đã xóa dự án');
+          }}
+          onSelectTask={(task) => {
+            setSelectedProject(null);
+            setSelectedTask(task);
+          }}
+        />
+      )}
+
+      {selectedCashTx && (
+        <CashTransactionDetailDrawer
+          isOpen={!!selectedCashTx}
+          transaction={selectedCashTx}
+          allTransactions={allCashTxsList}
+          currentIndex={Math.max(0, allCashTxsList.findIndex((t) => t.id === selectedCashTx.id))}
+          totalCount={allCashTxsList.length}
+          onClose={() => setSelectedCashTx(null)}
+          onPrev={() => {
+            const idx = allCashTxsList.findIndex((t) => t.id === selectedCashTx.id);
+            if (idx > 0) setSelectedCashTx(allCashTxsList[idx - 1]);
+          }}
+          onNext={() => {
+            const idx = allCashTxsList.findIndex((t) => t.id === selectedCashTx.id);
+            if (idx < allCashTxsList.length - 1) setSelectedCashTx(allCashTxsList[idx + 1]);
+          }}
+          onNavigate={(tx) => setSelectedCashTx(tx)}
+          onEdit={() => {
+            setSelectedCashTx(null);
+            if (onNavigate) onNavigate('/tai-chinh/thu-chi');
+          }}
+          onDelete={(id) => {
+            const tx = allCashTxsList.find((t) => t.id === id);
+            const updated = allCashTxsList.filter((t) => t.id !== id);
+            cashTransactionService.saveToCache(updated);
+            if (tx?.code) {
+              cashTransactionService.deleteFromSheet(tx.code);
+            }
+            setAllCashTxsList(updated);
+            setSelectedCashTx(null);
+            setAllEvents(calendarService.aggregateAllEvents());
+            showToast('Đã xóa phiếu thu chi');
+          }}
+          onTogglePin={(id) => {
+            const updated = allCashTxsList.map((t) =>
+              t.id === id ? { ...t, isPinned: !t.isPinned } : t
+            );
+            cashTransactionService.saveToCache(updated);
+            setAllCashTxsList(updated);
+            setSelectedCashTx((prev) => (prev ? { ...prev, isPinned: !prev.isPinned } : null));
+          }}
+          onViewProposal={(code) => {
+            const props = googleSheetsService.getInitialProposals();
+            const found = props.find((p) => p.code === code);
+            if (found) {
+              setSelectedCashTx(null);
+              setAllProposalsList(props);
+              setSelectedProposal(found);
+            } else if (onNavigate) {
+              onNavigate('/tai-chinh/de-xuat-chi-phi');
+            }
+          }}
+          onNavigateToModule={onNavigate}
+        />
+      )}
+
+      {selectedProposal && (
+        <CostProposalDetailDrawer
+          proposal={selectedProposal}
+          currentIndex={Math.max(0, allProposalsList.findIndex((p) => p.id === selectedProposal.id))}
+          totalCount={allProposalsList.length}
+          onClose={() => setSelectedProposal(null)}
+          onPrev={() => {
+            const idx = allProposalsList.findIndex((p) => p.id === selectedProposal.id);
+            if (idx > 0) setSelectedProposal(allProposalsList[idx - 1]);
+          }}
+          onNext={() => {
+            const idx = allProposalsList.findIndex((p) => p.id === selectedProposal.id);
+            if (idx < allProposalsList.length - 1) setSelectedProposal(allProposalsList[idx + 1]);
+          }}
+          onEdit={() => {
+            setSelectedProposal(null);
+            if (onNavigate) onNavigate('/tai-chinh/de-xuat-chi-phi');
+          }}
+          onDelete={(id) => {
+            const updated = allProposalsList.filter((p) => p.id !== id);
+            googleSheetsService.saveToCache(updated);
+            setAllProposalsList(updated);
+            setSelectedProposal(null);
+            setAllEvents(calendarService.aggregateAllEvents());
+            showToast('Đã xóa đề xuất chi phí');
+          }}
+          onCopy={() => {
+            showToast('Đã sao chép nội dung đề xuất');
+          }}
+          onSubmitForApproval={() => {
+            showToast('Đã gửi đề xuất chi phí để phê duyệt');
+          }}
+        />
+      )}
+
+      {/* Custom Event Modal (for meetings and events created within Calendar) */}
       <EventDetailModal
-        event={selectedEventForDetail}
-        isOpen={!!selectedEventForDetail}
-        onClose={() => setSelectedEventForDetail(null)}
+        event={selectedCustomEvent}
+        isOpen={!!selectedCustomEvent}
+        onClose={() => setSelectedCustomEvent(null)}
         onNavigateToModule={onNavigate}
         onDeleteCustomEvent={handleDeleteCustomEvent}
       />

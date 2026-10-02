@@ -38,6 +38,7 @@ import {
   TableDensity,
 } from '../common/ColumnCustomizerPopover';
 import { useAutoSync } from '../../hooks/useAutoSync';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 import { useSettings } from '../../context/SettingsContext';
 import { TablePagination } from '../common/TablePagination';
@@ -137,7 +138,17 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+
+  const isMobile = useIsMobile();
+  // Trên điện thoại: mặc định dạng thẻ Grid card, trên máy tính: dạng Bảng Table
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'grid' : 'table'
+  );
+
+  // Tự động đồng bộ kiểu xem tương thích khi chuyển đổi giữa điện thoại và máy tính
+  useEffect(() => {
+    setViewMode(isMobile ? 'grid' : 'table');
+  }, [isMobile]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);

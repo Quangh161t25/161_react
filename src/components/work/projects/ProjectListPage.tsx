@@ -25,6 +25,7 @@ import { useAutoSync } from '../../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../../common/RealtimeSyncBadge';
 import { useSettings } from '../../../context/SettingsContext';
 import { TablePagination } from '../../common/TablePagination';
+import { useIsMobile } from '../../../hooks/useIsMobile';
 
 interface ProjectListPageProps {
   onBack: () => void;
@@ -42,7 +43,17 @@ export const ProjectListPage: React.FC<ProjectListPageProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | ProjectStatus>('all');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+
+  const isMobile = useIsMobile();
+  // Trên điện thoại: mặc định dạng thẻ Grid card, trên máy tính: dạng Bảng Table
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'grid' : 'table'
+  );
+
+  // Tự động đồng bộ kiểu xem tương thích khi chuyển đổi giữa điện thoại và máy tính
+  useEffect(() => {
+    setViewMode(isMobile ? 'grid' : 'table');
+  }, [isMobile]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Smart Realtime Auto-Sync Hook (25s interval, focus refresh, instant badge)

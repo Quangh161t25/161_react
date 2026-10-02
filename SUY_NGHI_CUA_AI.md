@@ -156,3 +156,112 @@ Khi trả lời:
 6. **Bàn giao kết quả:**
    * Gửi phản hồi ngắn gọn, nêu rõ 2 điểm đã làm: mặc định ngày lớn tới nhỏ + bổ sung nút đảo chiều linh hoạt, kèm đường dẫn file cụ thể.
 
+---
+
+### Case Study #2: Tự động chuyển đổi kiểu xem thông minh cho Điện thoại (Mobile View Mode)
+* **Thời điểm:** 2026-10-02 08:33
+* **Phản hồi của bạn:**  
+  `"KIỂU XEM KHÁC NHAU. MÁY TÍNH 1 KIỂU XEM KHI MỞ SANG ĐIỆN THOẠI PHẢI ĐỔI KIỂU XEM THÀNH ĐIỆN THOẠI CHỨ . SAO VẪN DÙNG KIỂU XEM CŨ"`
+
+#### Diễn biến suy nghĩ nội tâm của AI khi nhận phản hồi trên:
+
+1. **Nhận thức "vấn đề cốt lõi" (Root Cause Awakening):**
+   * AI lập tức hiểu ra: Trên máy tính, màn hình rộng nên kiểu xem mặc định là dạng **Bảng (Table)** hoặc **Tháng (Month View)** rất hợp lý. Nhưng khi mở web trên điện thoại, hệ thống vẫn "cố chấp" dùng kiểu xem cũ của máy tính (Table 10-15 cột phải cuộn ngang mỏi tay; Lịch Tháng chia 7 cột bé xíu 40px bị ép chữ).
+   * Trong khi đó, hệ thống thực ra đã có sẵn các giao diện card/grid và agenda dành riêng cho điện thoại cực đẹp, nhưng code trước đây lại fix cứng `useState('table')` và `useState('month')` khi khởi tạo!
+
+2. **Khảo sát toàn bộ các module trong hệ thống:**
+   * AI rà soát tất cả các trang chính:
+     * **Lịch biểu (`CalendarPage`):** Máy tính xem Tháng (`month`), nhưng điện thoại bắt buộc phải là Lịch biểu danh sách (`agenda`) đọc theo ngày dọc.
+     * **Học hỏi (`LearningPage`):** Máy tính xem Bảng (`table`), điện thoại phải tự chuyển sang Thẻ Card (`grid`) có ảnh bìa, tóm tắt, thẻ tag.
+     * **Ghi chú (`NotePage`):** Máy tính xem Bảng, điện thoại chuyển sang Thẻ Card (`grid`) hiển thị Markdown preview trực quan.
+     * **Nhân sự (`EmployeePage`):** Máy tính xem Bảng, điện thoại chuyển sang Thẻ Card (`grid`) có avatar, trạng thái, nút gọi điện/email.
+     * **Mật khẩu (`PasswordPage`):** Máy tính xem Bảng, điện thoại chuyển sang Thẻ Két an toàn (`grid`).
+     * **Tài chính (`CashTransactionPage`, `CostProposalPage`):** Tương tự, tự chuyển sang Thẻ Card trên điện thoại.
+     * **Dự án (`ProjectListPage`):** Tự chuyển sang Thẻ Card trên điện thoại.
+
+3. **Thiết kế giải pháp chuyên nghiệp & Tự động thích ứng:**
+   * Tạo hook dùng chung `useIsMobile(breakpoint = 768)` chuẩn theo Tailwind CSS:
+     * Tự động nhận diện khi người dùng truy cập từ điện thoại hoặc xoay màn hình/đổi kích thước cửa sổ.
+     * Khi phát hiện điện thoại: Tự động đổi `viewMode` sang kiểu xem điện thoại (`grid` hoặc `agenda`).
+     * Khi phát hiện máy tính: Tự động giữ kiểu xem máy tính (`table` hoặc `month`).
+     * Người dùng vẫn hoàn toàn có thể bấm nút chuyển đổi thủ công nếu muốn xem dạng khác.
+
+4. **Tối ưu hóa bổ trợ cho giao diện điện thoại mượt mà:**
+   * **Nút Menu trên Header:** Thay vì icon thu gọn của máy tính (`PanelLeftClose`), trên điện thoại hiển thị chuẩn icon Hamburger `Menu` 3 gạch, khi mở menu thì chuyển thành dấu `X`.
+   * **Thanh Sidebar:** Thêm nút bấm `X` ở góc trên để người dùng điện thoại có thể tắt menu dễ dàng mà không cần với tay chạm vào vùng tối.
+   * **Ngăn kéo (Drawer):** Loại bỏ khoảng thụt lề thừa `pl-6`, bung full 100% màn hình điện thoại giúp trải nghiệm xem và sửa bài học/chi tiết rộng rãi, sắc nét.
+
+5. **Xác minh & Biên dịch:**
+   * Chạy `npm run build` thành công 100% không phát sinh lỗi kiểu dữ liệu hay component.
+
+---
+
+### Case Study #3: Ẩn nút bấm sắp xếp trên giao diện nhưng vẫn giữ nguyên logic sắp xếp
+* **Thời điểm:** 2026-10-02 08:42
+* **Câu lệnh gốc & Ảnh chụp của bạn:**  
+  `"sao có cái nút này ở đây.. xóa đi nhưng khi load lại thì vẫn sắp xếp theo ngày lớn nhỏ,"` + kèm ảnh chụp nút bấm `[ Ngày & Giờ (Lớn → Nhỏ) ]`.
+
+#### Diễn biến suy nghĩ nội tâm của AI khi nhận câu lệnh trên:
+
+1. **Nhìn ảnh & Nhận diện ngay đối tượng:**
+   * AI nhìn ảnh chụp thấy nút bấm màu xanh `[ ⇣≡ Ngày & Giờ (Lớn → Nhỏ) ]` trên thanh công cụ.
+   * *Suy nghĩ của AI:* "Người dùng muốn giao diện thật gọn gàng, sạch sẽ, không cần nút bấm này hiển thị trên thanh công cụ làm chật mắt. Nhưng người dùng nhấn mạnh: *'xóa đi nhưng khi load lại thì vẫn sắp xếp theo ngày lớn nhỏ'*, nghĩa là logic sắp xếp mặc định từ ngày mới nhất tới cũ nhất (descending) phải được giữ nguyên 100% ngầm bên dưới!"
+
+2. **Truy vết & Xử lý:**
+   * Tìm thấy nút bấm này trong `src/components/notes/NotePage.tsx` (dòng 1366–1400) và kiểm tra cả nút tương tự ở `src/components/calendar/CalendarAgendaView.tsx`.
+   * Tiến hành xóa bỏ khối JSX hiển thị nút bấm khỏi thanh công cụ.
+   * Giữ nguyên tuyệt đối state khởi tạo và thuật toán sort:
+     * `sortField = 'dateTime'`, `sortDirection = 'desc'` trong `NotePage.tsx`.
+     * `b.startDate.localeCompare(a.startDate)` (ngày lớn tới nhỏ) trong `CalendarAgendaView.tsx`.
+   * Như vậy: Giao diện hoàn toàn sạch đẹp, không có nút thừa, nhưng mỗi lần load lại trang thì toàn bộ dữ liệu vẫn tự động được xếp chuẩn từ ngày lớn tới nhỏ đúng như mong muốn.
+
+3. **Kiểm tra biên dịch:**
+   * Chạy `npm run build` hoàn tất không có bất kỳ lỗi nào.
+
+---
+
+### Case Study #4: Mở ngăn kéo chi tiết (Detail Drawer) theo chuẩn từng module khi click vào lịch trình
+* **Thời điểm:** 2026-10-02 09:12
+* **Câu lệnh gốc & Ảnh đính kèm của bạn:**  
+  `"khi click vào mấy cái hiện ra ở đây sẽ mở ra kiểu xem như ở các modul cơ mà k phải là mở ra popop như ảnh 3"`  
+  *(Kèm 3 ảnh: Ảnh 1 & 2 là giao diện Lịch theo ngày và Agenda list chứa các sự kiện Ghi chú, Thu chi, Công việc; Ảnh 3 là popup hộp thoại `EventDetailModal` nhỏ màu trắng hiện ra khi click vào một mục).*
+
+#### Diễn biến suy nghĩ nội tâm của AI khi nhận câu lệnh trên:
+
+1. **Hiểu sâu sắc trải nghiệm người dùng (UX Empathy):**
+   * *Quan sát ảnh 3:* Khi người dùng bấm vào một sự kiện trên lịch trình (ví dụ một bài Ghi chú, hoặc một Phiếu thu chi, hoặc một Nhiệm vụ), hệ thống hiện tại đang hiển thị một dialog popup nhỏ (`EventDetailModal`) rất đơn điệu: chỉ có tiêu đề, ngày tháng và nút "Đi tới module".
+   * *Suy nghĩ của AI:* "Người dùng cảm thấy popup này quá sơ sài và gượng gạo! Ở từng module riêng biệt (Ghi chú, Thu chi, Nhân sự, Công việc, Dự án, Đề xuất CP), hệ thống vốn dĩ đã có các **Ngăn kéo chi tiết (Detail Drawer)** cực kỳ xịn xò, hỗ trợ xem trước Markdown, danh sách công việc con (checklist), bình luận, phiếu thu chi song ngữ có thể in ấn, hồ sơ nhân sự đầy đủ ảnh thẻ và tài khoản ngân hàng, chuyển qua lại giữa các mục (Next/Prev)... Người dùng muốn khi bấm vào bất kỳ mục nào trên Lịch biểu, nó phải mở ngay Drawer chuẩn chỉnh chuyên nghiệp của chính module đó ra để xem và thao tác, chứ không phải một chiếc popup tạm bợ!"
+
+2. **Phân tích kiến trúc điều hướng sự kiện (Architecture Mapping):**
+   * Dữ liệu trong `CalendarPage` được tổng hợp từ `calendarService.aggregateAllEvents()` với thuộc tính `source`:
+     * `note` ➔ Module Ghi chú.
+     * `hr_birthday` / `hr_event` ➔ Module Nhân sự.
+     * `work_task` ➔ Module Công việc.
+     * `work_project` ➔ Module Dự án.
+     * `finance_cash` ➔ Module Thu chi tiền mặt & ngân hàng.
+     * `finance_proposal` ➔ Module Đề xuất chi phí.
+     * `custom` ➔ Lịch họp nội bộ / sự kiện người dùng tự tạo trong Lịch biểu.
+
+3. **Thiết kế giải pháp tích hợp thông minh:**
+   * Thay vì chỉ có một state `selectedEventForDetail` mở `EventDetailModal`:
+     * Bổ sung state và danh sách tương ứng cho từng module: `selectedNote`, `selectedEmployee`, `selectedTask`, `selectedProject`, `selectedCashTx`, `selectedProposal`, và `selectedCustomEvent`.
+     * Khi người dùng click vào bất kỳ sự kiện nào (trong chế độ xem Tháng, Tuần, Ngày, hay Lịch trình Agenda):
+       * Hàm `handleSelectEvent(evt)` tự động kiểm tra `evt.source`.
+       * Trích xuất ID gốc hoặc mã (code) để tìm kiếm đối tượng hoàn chỉnh từ bộ nhớ dịch vụ tương ứng (`noteService`, `employeeService`, `taskService`, `projectService`, `cashTransactionService`, `googleSheetsService`).
+       * Mở chính xác Ngăn kéo chi tiết tương ứng:
+         * **Ghi chú:** Mở `NoteDetailDrawer` (đầy đủ nội dung định dạng Markdown, danh sách người tham gia, đính kèm, ghim, xóa, copy).
+         * **Sinh nhật / Nhân sự:** Mở `EmployeeDetailDrawer` (hồ sơ nhân sự, phòng ban, chức vụ, số tài khoản, CCCD, ngày sinh).
+         * **Công việc:** Mở `TaskDetailDrawer` (tiến độ %, danh sách subtasks có thể tích hoàn thành trực tiếp, ghi chú, bình luận).
+         * **Dự án:** Mở `ProjectDetailDrawer` (ngân sách, khách hàng, tiến độ dự án, các công việc liên kết).
+         * **Thu chi tiền:** Mở `CashTransactionDetailDrawer` (phiếu thu/chi mẫu chuẩn, tài khoản, đối tượng nộp/nhận, số tiền bằng chữ, in phiếu).
+         * **Đề xuất CP:** Mở `CostProposalDetailDrawer` (bảng chi tiết chi phí, trạng thái phê duyệt).
+         * **Lịch họp tự tạo:** Mở `EventDetailModal` riêng của Lịch biểu.
+   * Đồng thời hỗ trợ đầy đủ các thao tác ngay trên Drawer: Sửa, Xóa (tự động đồng bộ và làm mới lịch biểu ngay lập tức), Ghim, Chuyển tiếp mục trước/sau.
+
+4. **Xác minh & Tự kiểm tra (Verification):**
+   * Chạy lệnh kiểm thử `npm run build` toàn dự án.
+   * Kết quả: Biên dịch thành công 100% trong 9.96 giây, không có bất kỳ lỗi TypeScript hay runtime nào.
+
+
+
+

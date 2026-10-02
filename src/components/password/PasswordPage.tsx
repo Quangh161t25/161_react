@@ -42,6 +42,7 @@ import {
 } from '../../types/password';
 import { PASSWORD_CATEGORIES } from '../../data/passwords';
 import { passwordService } from '../../services/passwordService';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { PasswordFormDrawer } from './PasswordFormDrawer';
 import { PasswordDetailDrawer } from './PasswordDetailDrawer';
 import { PasswordGeneratorModal } from './PasswordGeneratorModal';
@@ -105,7 +106,17 @@ export const PasswordPage: React.FC<PasswordPageProps> = ({ onBack }) => {
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+
+  const isMobile = useIsMobile();
+  // Trên điện thoại: mặc định dạng thẻ Grid card, trên máy tính: dạng Bảng Table
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'grid' : 'table'
+  );
+
+  // Tự động đồng bộ kiểu xem tương thích khi chuyển đổi giữa điện thoại và máy tính
+  useEffect(() => {
+    setViewMode(isMobile ? 'grid' : 'table');
+  }, [isMobile]);
   const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
   const [copiedId, setCopiedId] = useState<string | null>(null);
 

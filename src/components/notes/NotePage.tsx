@@ -33,6 +33,7 @@ import {
 import { Note, NoteCategory, NoteStatus } from '../../types/note';
 import { NOTE_CATEGORIES } from '../../data/notes';
 import { noteService } from '../../services/noteService';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import { NoteDetailDrawer } from './NoteDetailDrawer';
 import { NoteFormDrawer } from './NoteFormDrawer';
 import { NoteStatsTab } from './NoteStatsTab';
@@ -127,7 +128,16 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
   const [isParticipantDropdownOpen, setIsParticipantDropdownOpen] = useState(false);
 
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const isMobile = useIsMobile();
+  // Trên điện thoại: mặc định dạng thẻ Grid card, trên máy tính: dạng Bảng Table
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? 'grid' : 'table'
+  );
+
+  // Tự động đồng bộ kiểu xem tương thích khi chuyển đổi giữa điện thoại và máy tính
+  useEffect(() => {
+    setViewMode(isMobile ? 'grid' : 'table');
+  }, [isMobile]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [syncToastMessage, setSyncToastMessage] = useState<string | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
@@ -1351,42 +1361,6 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                   >
                     <Pin className={`w-3.5 h-3.5 ${onlyPinned ? 'fill-current' : ''}`} />
                     <span>Ghim</span>
-                  </button>
-
-                  {/* Sort Order Toggle Button */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (sortField !== 'dateTime') {
-                        setSortField('dateTime');
-                        setSortDirection('desc');
-                      } else {
-                        setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'));
-                      }
-                    }}
-                    title={`Đang sắp xếp: ${
-                      sortField === 'dateTime'
-                        ? `Ngày & Giờ (${sortDirection === 'desc' ? 'Lớn → Nhỏ / Mới nhất' : 'Nhỏ → Lớn / Cũ nhất'})`
-                        : `${sortField} (${sortDirection})`
-                    }. Bấm để đổi chiều.`}
-                    className={`h-8 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition-all ${
-                      sortField === 'dateTime'
-                        ? 'bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-2xs'
-                        : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {sortDirection === 'desc' ? (
-                      <ArrowDownWideNarrow className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    ) : (
-                      <ArrowUpNarrowWide className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    )}
-                    <span>
-                      {sortField === 'dateTime'
-                        ? sortDirection === 'desc'
-                          ? 'Ngày & Giờ (Lớn → Nhỏ)'
-                          : 'Ngày & Giờ (Nhỏ → Lớn)'
-                        : `Xếp theo: ${sortField}`}
-                    </span>
                   </button>
                 </div>
 

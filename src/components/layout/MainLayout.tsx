@@ -51,6 +51,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
         {/* Header Component */}
         <Header
           isCollapsed={isSidebarCollapsed}
+          isMobileOpen={isSidebarOpen}
           onToggleSidebar={handleToggleSidebar}
           activePath={activePath}
           onNavigate={onNavigate}

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   PanelLeftClose,
   PanelLeft,
+  Menu,
+  X,
   House,
   Clock,
   Bell,
@@ -21,6 +23,7 @@ import { ChangePasswordModal } from '../auth/ChangePasswordModal';
 
 interface HeaderProps {
   isCollapsed: boolean;
+  isMobileOpen?: boolean;
   onToggleSidebar: () => void;
   activePath: string;
   onNavigate: (path: string) => void;
@@ -28,6 +31,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   isCollapsed,
+  isMobileOpen,
   onToggleSidebar,
   activePath,
   onNavigate,
@@ -228,14 +232,25 @@ export const Header: React.FC<HeaderProps> = ({
         <button
           type="button"
           onClick={onToggleSidebar}
-          aria-label={isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
+          aria-label={isMobileOpen ? 'Đóng menu' : isCollapsed ? 'Mở rộng sidebar' : 'Thu gọn sidebar'}
           className="h-8 w-8 flex items-center justify-center rounded-lg bg-muted/60 border border-border/80 text-muted-foreground hover:text-primary hover:bg-primary/5 hover:border-primary/20 transition-all active:scale-90 shrink-0"
         >
-          {isCollapsed ? (
-            <PanelLeft className="w-3.5 h-3.5" aria-hidden="true" />
-          ) : (
-            <PanelLeftClose className="w-3.5 h-3.5" aria-hidden="true" />
-          )}
+          {/* Trên Mobile: Hiện icon Menu 3 gạch hoặc X */}
+          <div className="md:hidden flex items-center justify-center">
+            {isMobileOpen ? (
+              <X className="w-4 h-4 text-foreground" />
+            ) : (
+              <Menu className="w-4 h-4 text-foreground" />
+            )}
+          </div>
+          {/* Trên Desktop: Hiện icon thu gọn / mở rộng sidebar */}
+          <div className="hidden md:flex items-center justify-center">
+            {isCollapsed ? (
+              <PanelLeft className="w-3.5 h-3.5" aria-hidden="true" />
+            ) : (
+              <PanelLeftClose className="w-3.5 h-3.5" aria-hidden="true" />
+            )}
+          </div>
         </button>
 
         {/* Dynamic Breadcrumbs */}

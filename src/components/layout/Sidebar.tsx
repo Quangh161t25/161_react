@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 import { NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../data/navigation';
 import { NavItem } from '../../types';
 
@@ -89,12 +89,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar Container */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 bg-card border-r border-border/40 flex flex-col overflow-hidden transition-all duration-300 md:relative ${
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        } ${isCollapsed ? 'w-[72px]' : 'w-[240px]'}`}
+          isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+        } w-[280px] max-w-[85vw] md:max-w-none ${isCollapsed ? 'md:w-[72px]' : 'md:w-[240px]'}`}
       >
         {/* Header / Logo */}
-        <div className="flex h-12 md:h-14 items-center px-3 shrink-0 overflow-hidden border-b border-border/50">
-          <div className="flex items-center gap-3 min-w-[200px]">
+        <div className="flex h-12 md:h-14 items-center justify-between px-3 shrink-0 overflow-hidden border-b border-border/50">
+          <div className="flex items-center gap-3 min-w-0">
             <div className="h-8 w-8 rounded-lg bg-primary shadow-sm flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 text-white" aria-hidden="true" />
             </div>
@@ -109,6 +109,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
           </div>
+
+          {/* Close button on mobile */}
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="md:hidden p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+            title="Đóng menu"
+            aria-label="Đóng menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Main Navigation */}
