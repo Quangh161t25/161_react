@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getSafeAvatarUrl } from '../../utils/avatarUtils';
 import {
   X,
   ChevronLeft,
@@ -209,9 +210,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
     }
   };
 
-  const avatarUrl =
-    employee.avatarUrl ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(employee.name || 'User')}&background=1d4ed8&color=fff`;
+  const avatarUrl = getSafeAvatarUrl(employee.avatarUrl, employee.name);
 
   return (
     <>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { getSafeAvatarUrl } from '../../utils/avatarUtils';
 import {
   ArrowLeft,
   Search,
@@ -474,9 +475,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         status: formData.status || 'working',
         createdAt: dateStr,
         updatedAt: dateStr,
-        avatarUrl:
-          formData.avatarUrl ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name || 'User')}&background=1d4ed8&color=fff`,
+        avatarUrl: getSafeAvatarUrl(formData.avatarUrl, formData.name),
         dob: formData.dob || '',
         maritalStatus: formData.maritalStatus || '',
         nationality: formData.nationality || '',
@@ -870,7 +869,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
           <td key={colId} style={colStyle} className={tdBaseClass}>
             <div className={`flex items-center ${justifyClass} gap-2 min-w-0`}>
               <img
-                src={emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=1d4ed8&color=fff`}
+                src={getSafeAvatarUrl(emp.avatarUrl, emp.name)}
                 alt={emp.name}
                 className="w-6 h-6 rounded-full object-cover border border-border shrink-0"
               />
@@ -1021,7 +1020,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
           <td key={colId} style={colStyle} className={tdBaseClass}>
             <div className={`flex items-center ${justifyClass}`}>
               <img
-                src={emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}`}
+                src={getSafeAvatarUrl(emp.avatarUrl, emp.name)}
                 alt=""
                 className="w-7 h-7 rounded-md object-cover border border-border shrink-0"
               />
@@ -1802,7 +1801,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
                             <img
-                              src={emp.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=1d4ed8&color=fff`}
+                              src={getSafeAvatarUrl(emp.avatarUrl, emp.name)}
                               alt={emp.name}
                               className="w-11 h-11 rounded-xl object-cover border border-border shrink-0"
                             />

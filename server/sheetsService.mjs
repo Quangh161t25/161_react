@@ -539,6 +539,21 @@ export function employeeTo47Row(e) {
 
 export const employeeToRow = employeeTo47Row;
 
+export function getInitialsAvatarSvg(name, bg = '1d4ed8', color = 'fff') {
+  const cleanName = (name || 'User').trim();
+  const words = cleanName.split(/\s+/).filter(Boolean);
+  let initials = 'U';
+  if (words.length === 1) {
+    initials = words[0].slice(0, 2).toUpperCase();
+  } else if (words.length > 1) {
+    initials = (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  }
+  const hexBg = bg.startsWith('#') ? bg : `#${bg}`;
+  const hexColor = color.startsWith('#') ? color : `#${color}`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" rx="20" fill="${hexBg}"/><text x="50%" y="50%" dominant-baseline="central" text-anchor="middle" fill="${hexColor}" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="40" font-weight="700">${initials}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 export function rowToEmployee(r, idx) {
   let bankAccounts = [];
   if (r[47]) {
@@ -600,7 +615,9 @@ export function rowToEmployee(r, idx) {
     status,
     createdAt: (r[10] || '').trim(),
     updatedAt: (r[11] || '').trim(),
-    avatarUrl: (r[13] || '').trim() || `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=1d4ed8&color=fff`,
+    avatarUrl: ((r[13] || '').trim() && !(r[13] || '').includes('ui-avatars.com'))
+      ? (r[13] || '').trim()
+      : getInitialsAvatarSvg(name || 'User', '1d4ed8', 'ffffff'),
     dob: (r[14] || '').trim(),
     maritalStatus: (r[15] || '').trim(),
     nationality: (r[16] || '').trim(),
@@ -777,6 +794,7 @@ export async function updateEmployeeInSheet(employee) {
   const rows = data.values || [];
 
   let rowIndex = -1;
+  let existingRow = null;
   rows.forEach((r, idx) => {
     if (idx === 0) return;
     const code = r[12] || r[11] || '';
@@ -788,8 +806,14 @@ export async function updateEmployeeInSheet(employee) {
       (employee.name && name === employee.name)
     ) {
       rowIndex = idx + 1; // 1-based row index
+      existingRow = r;
     }
   });
+
+  // Preserve existing password if not provided in update payload
+  if ((!employee.password || !employee.password.trim()) && existingRow && existingRow[2]) {
+    employee.password = existingRow[2].trim();
+  }
 
   const rowData = employeeTo47Row(employee);
 

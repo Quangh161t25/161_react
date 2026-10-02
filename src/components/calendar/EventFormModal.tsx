@@ -13,6 +13,11 @@ import {
   Building2,
   DollarSign,
   Loader2,
+  PanelRightClose,
+  PanelRight,
+  PanelRightOpen,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import { CalendarEvent, CalendarEventPriority } from '../../types/calendar';
 import { Task } from '../../types/task';
@@ -78,6 +83,37 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
   const [employees, setEmployees] = useState<Employee[]>(() =>
     employeeService.getInitialEmployees()
   );
+
+  type DrawerWidthMode = 'narrow' | 'normal' | 'wide' | 'fullscreen';
+  const [widthMode, setWidthMode] = useState<DrawerWidthMode>('normal');
+  const [prevWidthMode, setPrevWidthMode] = useState<DrawerWidthMode>('normal');
+
+  const toggleFullscreen = () => {
+    if (widthMode === 'fullscreen') {
+      setWidthMode(prevWidthMode || 'normal');
+    } else {
+      setPrevWidthMode(widthMode);
+      setWidthMode('fullscreen');
+    }
+  };
+
+  const getDrawerWidthStyle = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) {
+      return '100vw';
+    }
+    switch (widthMode) {
+      case 'narrow':
+        return 'min(540px, 100vw)';
+      case 'normal':
+        return 'min(768px, 100vw)';
+      case 'wide':
+        return 'min(1080px, 100vw)';
+      case 'fullscreen':
+        return '100vw';
+      default:
+        return 'min(768px, 100vw)';
+    }
+  };
 
   useEffect(() => {
     if (defaultDate) {
@@ -285,60 +321,141 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-background/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in-0 duration-200"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 overflow-hidden"
     >
-      <div className="bg-card w-full max-w-xl rounded-2xl border border-border shadow-2xl overflow-hidden flex flex-col space-y-3.5 p-4 sm:p-5 my-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border pb-3">
-          <div>
-            <h2 className="text-sm sm:text-base font-bold text-foreground flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-primary" />
-              <span>Thêm mới vào Lịch biểu hệ thống</span>
-            </h2>
-            <p className="text-[11px] text-muted-foreground">
-              Tạo nhanh công việc, ghi chú, tài chính hoặc lịch họp cho ngày {startDate}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-background/80 backdrop-blur-xs transition-opacity duration-300"
+        onClick={onClose}
+      />
 
-        {/* Module Selector Tabs */}
-        <div className="grid grid-cols-5 gap-1 p-1 bg-muted/60 rounded-xl border border-border/60">
-          {MODULE_TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeModule === tab.id;
-            return (
+      {/* Drawer Container */}
+      <div className="fixed inset-y-0 right-0 flex max-w-full">
+        <div
+          className="relative bg-card border-l border-border shadow-2xl flex flex-col h-full transform transition-all duration-300 ease-in-out animate-in slide-in-from-right"
+          style={{ width: getDrawerWidthStyle() }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-border bg-card shrink-0">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+                <CalendarIcon className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm sm:text-base font-bold text-foreground leading-tight truncate">
+                    Thêm mới vào Lịch biểu
+                  </h2>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary shrink-0">
+                    {activeModule === 'task'
+                      ? 'Công việc'
+                      : activeModule === 'note'
+                      ? 'Ghi chú'
+                      : activeModule === 'cash'
+                      ? (cashType === 'income' ? 'Thu quỹ' : 'Chi quỹ')
+                      : activeModule === 'proposal'
+                      ? 'Đề xuất CP'
+                      : 'Lịch họp'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  Tạo nhanh cho ngày {startDate}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1 shrink-0">
+              {/* Width Controls */}
+              <div className="hidden sm:flex items-center border border-border rounded-lg bg-background p-0.5 mr-1">
+                <button
+                  type="button"
+                  title="Gọn"
+                  onClick={() => setWidthMode('narrow')}
+                  className={`p-1 rounded text-xs transition-colors ${
+                    widthMode === 'narrow' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <PanelRightClose className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  title="Chuẩn"
+                  onClick={() => setWidthMode('normal')}
+                  className={`p-1 rounded text-xs transition-colors ${
+                    widthMode === 'normal' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <PanelRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  title="Rộng"
+                  onClick={() => setWidthMode('wide')}
+                  className={`p-1 rounded text-xs transition-colors ${
+                    widthMode === 'wide' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <PanelRightOpen className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  title={widthMode === 'fullscreen' ? 'Thu nhỏ' : 'Toàn màn hình'}
+                  onClick={toggleFullscreen}
+                  className={`p-1 rounded text-xs transition-colors ${
+                    widthMode === 'fullscreen' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {widthMode === 'fullscreen' ? (
+                    <Minimize2 className="w-3.5 h-3.5" />
+                  ) : (
+                    <Maximize2 className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+
               <button
-                key={tab.id}
                 type="button"
-                onClick={() => {
-                  setActiveModule(tab.id);
-                  setErrors({});
-                }}
-                className={`py-1.5 px-1 rounded-lg text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1 transition-all ${
-                  isActive
-                    ? 'bg-card text-foreground shadow-xs border border-border'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
-                }`}
+                onClick={onClose}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? tab.color : ''}`} />
-                <span className="truncate text-[10px] sm:text-xs">{tab.label}</span>
+                <X className="w-4 h-4" />
               </button>
-            );
-          })}
-        </div>
+            </div>
+          </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="space-y-3 text-xs">
+          {/* Module Selector Tabs */}
+          <div className="px-4 sm:px-6 py-2.5 border-b border-border/60 bg-muted/20 shrink-0">
+            <div className="grid grid-cols-5 gap-1.5 p-1 bg-muted/60 rounded-xl border border-border/60">
+              {MODULE_TABS.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeModule === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveModule(tab.id);
+                      setErrors({});
+                    }}
+                    className={`py-2 px-1.5 rounded-lg text-xs font-semibold flex flex-col sm:flex-row items-center justify-center gap-1.5 transition-all ${
+                      isActive
+                        ? 'bg-card text-foreground shadow-xs border border-border font-bold'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                    }`}
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${isActive ? tab.color : ''}`} />
+                    <span className="truncate text-[10px] sm:text-xs">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Form Body - Scrollable */}
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-4 text-xs custom-scrollbar">
           {errors.form && (
             <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs">
               {errors.form}
@@ -639,38 +756,43 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
             />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={onClose}
-              className="px-3.5 py-1.5 rounded-xl border border-border hover:bg-muted text-foreground font-medium transition-colors"
-            >
-              Hủy
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-4 py-1.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Đang lưu...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-3.5 h-3.5" />
-                  <span>
-                    Lưu {activeModule === 'task' ? 'Công việc' : activeModule === 'note' ? 'Ghi chú' : activeModule === 'cash' ? 'Phiếu thu chi' : activeModule === 'proposal' ? 'Đề xuất' : 'Sự kiện'}
-                  </span>
-                </>
-              )}
-            </button>
-          </div>
-        </form>
+            </div>
+
+            {/* Sticky Footer */}
+            <div className="px-4 sm:px-6 py-3 border-t border-border bg-card flex items-center justify-end gap-2.5 shrink-0 shadow-xs">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl border border-border hover:bg-muted text-foreground text-xs font-semibold transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang lưu...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    <span>
+                      Lưu {activeModule === 'task' ? 'Công việc' : activeModule === 'note' ? 'Ghi chú' : activeModule === 'cash' ? (cashType === 'income' ? 'Phiếu thu' : 'Phiếu chi') : activeModule === 'proposal' ? 'Đề xuất CP' : 'Sự kiện'}
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
+
+export const EventFormDrawer = EventFormModal;

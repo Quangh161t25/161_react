@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getSafeAvatarUrl } from '../../utils/avatarUtils';
 import {
   X,
   ChevronLeft,
@@ -338,10 +339,7 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                   <img
                     alt={note.author}
                     className="w-11 h-11 rounded-full border border-border shadow-xs object-cover"
-                    src={
-                      note.authorAvatar ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(note.author)}&background=1d4ed8&color=fff`
-                    }
+                    src={getSafeAvatarUrl(note.authorAvatar, note.author)}
                   />
                   <div>
                     <h4 className="text-xs font-bold text-foreground">{note.author}</h4>
@@ -491,9 +489,7 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                   {note.participants && note.participants.length > 0 && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 pt-1">
                       {note.participants.map((p, idx) => {
-                        const avatar =
-                          p.avatarUrl ||
-                          `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1d4ed8&color=fff`;
+                        const avatar = getSafeAvatarUrl(p.avatarUrl, p.name);
 
                         return (
                           <div

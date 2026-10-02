@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getSafeAvatarUrl } from '../../utils/avatarUtils';
 import {
   X,
   CircleUser,
@@ -630,9 +631,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
     }
   };
 
-  const displayAvatar =
-    avatarUrl ||
-    `https://ui-avatars.com/api/?name=${encodeURIComponent(name || 'User')}&background=1d4ed8&color=fff`;
+  const displayAvatar = getSafeAvatarUrl(avatarUrl, name);
 
   return (
     <>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { getSafeAvatarUrl } from '../../utils/avatarUtils';
 import {
   X,
   FileText,
@@ -1200,9 +1201,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 {participants.length > 0 ? (
                   <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-border bg-background/60 mb-3">
                     {participants.map((p, idx) => {
-                      const avatar =
-                        p.avatarUrl ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=1d4ed8&color=fff`;
+                      const avatar = getSafeAvatarUrl(p.avatarUrl, p.name);
                       return (
                         <div
                           key={p.id || p.code || idx}
@@ -1266,9 +1265,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                               (p.code && p.code === emp.code) ||
                               p.name === emp.name
                           );
-                          const avatar =
-                            emp.avatarUrl ||
-                            `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=1d4ed8&color=fff`;
+                          const avatar = getSafeAvatarUrl(emp.avatarUrl, emp.name);
 
                           return (
                             <button

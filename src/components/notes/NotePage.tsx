@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { getSafeAvatarUrl } from '../../utils/avatarUtils';
 import {
   ArrowLeft,
   Search,
@@ -527,10 +528,10 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         tags: formData.tags || [],
         attachments: formData.attachments || [],
         author: formData.author || currentUser?.name || currentUser?.username || 'admin',
-        authorAvatar:
-          formData.authorAvatar ||
-          currentUser?.avatarUrl ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || currentUser?.username || 'admin')}&background=1d4ed8&color=fff`,
+        authorAvatar: getSafeAvatarUrl(
+          formData.authorAvatar || currentUser?.avatarUrl,
+          formData.author || currentUser?.name || currentUser?.username || 'admin'
+        ),
         createdAt: new Date().toISOString().split('T')[0],
         updatedAt: new Date().toISOString().split('T')[0],
       };
@@ -859,10 +860,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                   {parts.slice(0, 3).map((p, idx) => (
                     <img
                       key={p.id || idx}
-                      src={
-                        p.avatarUrl ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff`
-                      }
+                      src={getSafeAvatarUrl(p.avatarUrl, p.name, '#3b82f6')}
                       alt={p.name}
                       title={`${p.name}${p.role ? ` (${p.role})` : ''}`}
                       className="inline-block h-6 w-6 rounded-full ring-2 ring-background object-cover shrink-0"
@@ -1332,10 +1330,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                                 }`}
                               >
                                 <img
-                                  src={
-                                    p.avatarUrl ||
-                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff`
-                                  }
+                                  src={getSafeAvatarUrl(p.avatarUrl, p.name, '#3b82f6')}
                                   alt=""
                                   className="w-5 h-5 rounded-full object-cover shrink-0"
                                 />
@@ -1784,10 +1779,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                                       {note.participants.slice(0, 3).map((p, idx) => (
                                         <img
                                           key={p.id || idx}
-                                          src={
-                                            p.avatarUrl ||
-                                            `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff`
-                                          }
+                                          src={getSafeAvatarUrl(p.avatarUrl, p.name, '#3b82f6')}
                                           alt={p.name}
                                           title={p.name}
                                           className="inline-block h-4 w-4 rounded-full ring-1 ring-background object-cover shrink-0"

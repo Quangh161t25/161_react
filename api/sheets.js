@@ -124,10 +124,119 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, count: result.count });
     }
 
+    // --- AUTHENTICATION (SECURE SERVER-SIDE) ---
+    if ((action === 'login' || action === 'auth/login') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const usernameInput = (body.username || '').trim().toLowerCase();
+      const passwordInput = (body.password || '').trim();
+
+      if (!usernameInput) {
+        return res.status(400).json({ success: false, error: 'Vui lòng nhập tên tài khoản!' });
+      }
+
+      const employees = await fetchEmployeesFromSheet();
+      const cleanPhoneInput = usernameInput.replace(/[\s.-]/g, '');
+
+      const matchedEmp = (employees || []).find((emp) => {
+        const u = (emp.username || '').toLowerCase().trim();
+        const code = (emp.code || '').toLowerCase().trim();
+        const email = (emp.email || '').toLowerCase().trim();
+        const phone = (emp.phone || '').toLowerCase().trim().replace(/[\s.-]/g, '');
+        return (
+          u === usernameInput ||
+          code === usernameInput ||
+          email === usernameInput ||
+          (phone && phone === cleanPhoneInput)
+        );
+      });
+
+      if (!matchedEmp) {
+        return res.status(401).json({
+          success: false,
+          error: 'Tên tài khoản hoặc mật khẩu không chính xác!',
+        });
+      }
+
+      if (matchedEmp.status === 'resigned' || matchedEmp.isActiveAccount === false) {
+        return res.status(403).json({
+          success: false,
+          error: 'Tài khoản này đã bị khóa hoặc đã nghỉ việc trên Google Sheet!',
+        });
+      }
+
+      const expectedPassword = (matchedEmp.password || '123456').trim();
+      if (passwordInput !== expectedPassword) {
+        return res.status(401).json({
+          success: false,
+          error: 'Tên tài khoản hoặc mật khẩu không chính xác!',
+        });
+      }
+
+      // Safe user info without password
+      const user = {
+        id: matchedEmp.id,
+        name: matchedEmp.name,
+        username: matchedEmp.username || matchedEmp.code || usernameInput,
+        title: matchedEmp.role || 'Nhân viên',
+        role: matchedEmp.role || 'Nhân viên',
+        department: matchedEmp.department || 'Phòng ban',
+        avatarUrl: matchedEmp.avatarUrl,
+        isOnline: true,
+        email: matchedEmp.email,
+        phone: matchedEmp.phone,
+        code: matchedEmp.code,
+      };
+
+      return res.status(200).json({ success: true, user });
+    }
+
+    if ((action === 'change-password' || action === 'auth/change-password') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const { userId, userCode, username, currentPassword, newPassword } = body;
+
+      if (!newPassword || !newPassword.trim()) {
+        return res.status(400).json({ success: false, error: 'Mật khẩu mới không được để trống!' });
+      }
+
+      const employees = await fetchEmployeesFromSheet();
+      const currentId = (userId || '').trim();
+      const currentCode = (userCode || '').toLowerCase().trim();
+      const currentUsername = (username || '').toLowerCase().trim();
+
+      const empIndex = (employees || []).findIndex((e) => {
+        return (
+          (currentId && e.id === currentId) ||
+          (currentCode && (e.code || '').toLowerCase().trim() === currentCode) ||
+          (currentUsername && (e.username || '').toLowerCase().trim() === currentUsername)
+        );
+      });
+
+      if (empIndex === -1) {
+        return res.status(404).json({ success: false, error: 'Không tìm thấy thông tin tài khoản trên hệ thống!' });
+      }
+
+      const emp = employees[empIndex];
+      const expectedPassword = (emp.password || '123456').trim();
+      if ((currentPassword || '').trim() !== expectedPassword) {
+        return res.status(401).json({ success: false, error: 'Mật khẩu hiện tại không chính xác!' });
+      }
+
+      const updatedEmp = {
+        ...emp,
+        password: newPassword.trim(),
+        updatedAt: new Date().toLocaleDateString('vi-VN'),
+      };
+
+      await updateEmployeeInSheet(updatedEmp);
+      return res.status(200).json({ success: true, message: 'Đổi mật khẩu thành công!' });
+    }
+
     // --- EMPLOYEES ---
     if (action === 'employees' && req.method === 'GET') {
       const employees = await fetchEmployeesFromSheet();
-      return res.status(200).json({ success: true, data: employees });
+      // SECURITY: Strip plain text passwords from public employee list
+      const safeEmployees = (employees || []).map(({ password, ...safe }) => safe);
+      return res.status(200).json({ success: true, data: safeEmployees });
     }
 
     if ((action === 'employees' || action === 'append-employee') && req.method === 'POST') {

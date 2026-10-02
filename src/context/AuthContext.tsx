@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { employeeService } from '../services/employeeService';
-import { Employee } from '../types/employee';
+import { getInitialsAvatar, getSafeAvatarUrl } from '../utils/avatarUtils';
 
 export interface AuthUser {
   id?: string;
@@ -23,7 +22,7 @@ export const DEFAULT_USER: AuthUser = {
   title: 'Tổng Giám Đốc',
   role: 'Ban Giám Đốc',
   department: 'Ban Giám Đốc',
-  avatarUrl: 'https://ui-avatars.com/api/?name=Le+Minh+Cong&background=0f172a&color=fff',
+  avatarUrl: getInitialsAvatar('Lê Minh Công', '#0f172a', '#ffffff'),
   isOnline: true,
   email: 'cong.le@company.vn',
   phone: '0901 234 567',
@@ -69,89 +68,62 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = useCallback(
     async (usernameInput: string, passwordInput?: string): Promise<{ success: boolean; error?: string; user?: AuthUser }> => {
-      const cleanUsername = (usernameInput || '').trim().toLowerCase();
+      const cleanUsername = (usernameInput || '').trim();
       const cleanPassword = (passwordInput || '').trim();
 
       if (!cleanUsername) {
         return { success: false, error: 'Vui lòng nhập tên tài khoản!' };
       }
 
-      // Strictly fetch latest employee records from Google Sheets
-      let employees: Employee[] = [];
       try {
-        employees = await employeeService.fetchFromSheet();
-      } catch {
-        employees = employeeService.getInitialEmployees();
-      }
+        const res = await fetch('/api/sheets/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: cleanUsername,
+            password: cleanPassword,
+          }),
+        });
 
-      if (!employees || employees.length === 0) {
-        employees = employeeService.getInitialEmployees();
-      }
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return {
+            success: false,
+            error: data.error || 'Tên tài khoản hoặc mật khẩu không chính xác!',
+          };
+        }
 
-      // Search against employee list from Google Sheet
-      const cleanPhoneInput = cleanUsername.replace(/[\s.-]/g, '');
-      const matchedEmp = employees.find((emp) => {
-        const u = (emp.username || '').toLowerCase().trim();
-        const code = (emp.code || '').toLowerCase().trim();
-        const email = (emp.email || '').toLowerCase().trim();
-        const phone = (emp.phone || '').toLowerCase().trim().replace(/[\s.-]/g, '');
-        return (
-          u === cleanUsername ||
-          code === cleanUsername ||
-          email === cleanUsername ||
-          (phone && phone === cleanPhoneInput)
-        );
-      });
+        const matchedUser = data.user;
+        const authUser: AuthUser = {
+          id: matchedUser.id,
+          name: matchedUser.name,
+          username: matchedUser.username || cleanUsername,
+          title: matchedUser.title || matchedUser.role || 'Nhân viên',
+          role: matchedUser.role || 'Nhân viên',
+          department: matchedUser.department || 'Phòng ban',
+          avatarUrl: getSafeAvatarUrl(matchedUser.avatarUrl, matchedUser.name),
+          isOnline: true,
+          email: matchedUser.email,
+          phone: matchedUser.phone,
+          code: matchedUser.code,
+        };
 
-      if (!matchedEmp) {
+        setCurrentUser(authUser);
+        setIsAuthenticated(true);
+        try {
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+        } catch (err) {
+          console.warn('Failed to save auth user to storage:', err);
+        }
+
+        return { success: true, user: authUser };
+      } catch (err: any) {
+        console.error('Login request failed:', err);
         return {
           success: false,
-          error: `Tài khoản "${usernameInput}" không tồn tại trên hệ thống Google Sheet!`,
+          error: err?.message || 'Không thể kết nối đến máy chủ xác thực. Vui lòng thử lại sau!',
         };
       }
-
-      // Check if account is active
-      if (matchedEmp.status === 'resigned' || matchedEmp.isActiveAccount === false) {
-        return {
-          success: false,
-          error: 'Tài khoản này đã bị khóa hoặc đã nghỉ việc trên Google Sheet!',
-        };
-      }
-
-      // Check Password from Google Sheet (defaults to 123456 if empty)
-      const expectedPassword = (matchedEmp.password || '123456').trim();
-      if (cleanPassword !== expectedPassword) {
-        return {
-          success: false,
-          error: 'Mật khẩu không chính xác. Vui lòng kiểm tra lại!',
-        };
-      }
-
-      const authUser: AuthUser = {
-        id: matchedEmp.id,
-        name: matchedEmp.name,
-        username: matchedEmp.username || matchedEmp.code || cleanUsername,
-        title: matchedEmp.role || 'Nhân viên',
-        role: matchedEmp.role || 'Nhân viên',
-        department: matchedEmp.department || 'Phòng ban',
-        avatarUrl:
-          matchedEmp.avatarUrl ||
-          `https://ui-avatars.com/api/?name=${encodeURIComponent(matchedEmp.name)}&background=1d4ed8&color=fff`,
-        isOnline: true,
-        email: matchedEmp.email,
-        phone: matchedEmp.phone,
-        code: matchedEmp.code,
-      };
-
-      setCurrentUser(authUser);
-      setIsAuthenticated(true);
-      try {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
-      } catch (err) {
-        console.warn('Failed to save auth user to storage:', err);
-      }
-
-      return { success: true, user: authUser };
     },
     []
   );
@@ -180,58 +152,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const changePassword = useCallback(
     async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
-      let employees: Employee[] = [];
+      if (!newPassword || !newPassword.trim()) {
+        return { success: false, error: 'Mật khẩu mới không được để trống!' };
+      }
+
       try {
-        employees = await employeeService.fetchFromSheet();
-      } catch {
-        employees = employeeService.getInitialEmployees();
+        const res = await fetch('/api/sheets/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: currentUser.id,
+            userCode: currentUser.code,
+            username: currentUser.username,
+            currentPassword,
+            newPassword,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          return {
+            success: false,
+            error: data.error || 'Mật khẩu hiện tại không chính xác!',
+          };
+        }
+
+        return { success: true };
+      } catch (err: any) {
+        console.error('Change password failed:', err);
+        return {
+          success: false,
+          error: err?.message || 'Không thể kết nối đến máy chủ để đổi mật khẩu.',
+        };
       }
-
-      if (!employees || employees.length === 0) {
-        employees = employeeService.getInitialEmployees();
-      }
-
-      const currentId = currentUser.id;
-      const currentUsername = (currentUser.username || '').toLowerCase().trim();
-      const currentCode = (currentUser.code || '').toLowerCase().trim();
-      const currentEmail = (currentUser.email || '').toLowerCase().trim();
-
-      const empIndex = employees.findIndex((e) => {
-        return (
-          (currentId && e.id === currentId) ||
-          (currentCode && (e.code || '').toLowerCase().trim() === currentCode) ||
-          (currentUsername && (e.username || '').toLowerCase().trim() === currentUsername) ||
-          (currentEmail && (e.email || '').toLowerCase().trim() === currentEmail)
-        );
-      });
-
-      if (empIndex === -1) {
-        return { success: false, error: 'Không tìm thấy thông tin nhân viên trên Google Sheet!' };
-      }
-
-      const emp = employees[empIndex];
-      const expectedPassword = (emp.password || '123456').trim();
-      if (currentPassword.trim() !== expectedPassword) {
-        return { success: false, error: 'Mật khẩu hiện tại không chính xác!' };
-      }
-
-      // Update password
-      const updatedEmp: Employee = {
-        ...emp,
-        password: newPassword.trim(),
-        updatedAt: new Date().toLocaleDateString('vi-VN'),
-      };
-
-      employees[empIndex] = updatedEmp;
-      employeeService.saveToCache(employees);
-
-      // Realtime 2-way sync directly to Google Sheet row
-      const ok = await employeeService.updateInSheet(updatedEmp);
-      if (!ok) {
-        console.warn('Sync to Google Sheet returned false, but local cache was updated');
-      }
-
-      return { success: true };
     },
     [currentUser]
   );

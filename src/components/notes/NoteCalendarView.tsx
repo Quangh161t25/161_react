@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { getSafeAvatarUrl } from '../../utils/avatarUtils';
 import {
   ChevronLeft,
   ChevronRight,
@@ -881,10 +882,7 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
                                 {note.participants.slice(0, 3).map((p, idx) => (
                                   <img
                                     key={p.id || idx}
-                                    src={
-                                      p.avatarUrl ||
-                                      `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=3b82f6&color=fff`
-                                    }
+                                    src={getSafeAvatarUrl(p.avatarUrl, p.name, '#3b82f6')}
                                     alt={p.name}
                                     title={p.name}
                                     className="inline-block h-4 w-4 rounded-full ring-1 ring-background object-cover shrink-0"
