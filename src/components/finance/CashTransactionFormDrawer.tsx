@@ -38,6 +38,7 @@ import {
   Counterparty,
   CounterpartyType,
 } from '../../types/financeMaster';
+import { TimePickerInput } from '../common/TimePickerInput';
 import { Employee } from '../../types/employee';
 import {
   financeCategoryService,
@@ -813,13 +814,13 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
                   <div>
                     <label className="text-xs font-medium mb-1.5 flex items-center gap-1 text-muted-foreground">
                       <Clock className="w-3 h-3" />
-                      Giờ giao dịch
+                      Giờ giao dịch (24h)
                     </label>
-                    <input
-                      type="time"
+                    <TimePickerInput
                       value={transactionTime}
-                      onChange={(e) => setTransactionTime(e.target.value)}
-                      className="flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                      onChange={(val) => setTransactionTime(val)}
+                      placeholder="09:00"
+                      force24h={true}
                     />
                   </div>
 

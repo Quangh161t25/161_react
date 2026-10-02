@@ -11,6 +11,7 @@ interface TimePickerInputProps {
   id?: string;
   name?: string;
   showPresets?: boolean;
+  force24h?: boolean;
 }
 
 const PRESET_HOURS_24 = [
@@ -35,9 +36,10 @@ export const TimePickerInput: React.FC<TimePickerInputProps> = ({
   id,
   name,
   showPresets = true,
+  force24h = false,
 }) => {
   const { settings } = useSettings();
-  const is24h = settings.timeFormat === '24h';
+  const is24h = force24h ? true : settings?.timeFormat !== '12h';
 
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -203,7 +205,7 @@ export const TimePickerInput: React.FC<TimePickerInputProps> = ({
     <div ref={containerRef} className={`relative inline-block w-full ${className}`}>
       {/* Input container */}
       <div
-        className={`group flex items-center w-full rounded-xl border bg-background text-foreground transition-all ${
+        className={`group flex items-center w-full h-9 rounded-lg border bg-card text-foreground transition-all ${
           isOpen
             ? 'border-primary ring-2 ring-primary/20 shadow-xs'
             : 'border-border hover:border-border/80'
@@ -213,7 +215,7 @@ export const TimePickerInput: React.FC<TimePickerInputProps> = ({
           type="button"
           tabIndex={-1}
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          className="pl-3 pr-2 py-2 text-muted-foreground group-hover:text-primary transition-colors flex items-center justify-center"
+          className="pl-2.5 pr-1.5 py-1.5 text-muted-foreground group-hover:text-primary transition-colors flex items-center justify-center shrink-0"
           title={is24h ? 'Mở bảng chọn giờ (24h)' : 'Mở bảng chọn giờ (12h SA/CH)'}
         >
           <Clock className="w-3.5 h-3.5" />
@@ -225,11 +227,11 @@ export const TimePickerInput: React.FC<TimePickerInputProps> = ({
           type="text"
           disabled={disabled}
           value={inputValue}
-          placeholder={placeholder || (is24h ? 'HH:mm (vd: 14:30)' : 'hh:mm SA/CH')}
+          placeholder={placeholder || (is24h ? 'HH:mm (vd: 09:00)' : 'hh:mm SA/CH')}
           onChange={handleDirectInputChange}
           onFocus={() => setIsOpen(true)}
           onBlur={handleInputBlur}
-          className="w-full bg-transparent py-2 pr-2 text-xs font-medium text-foreground placeholder:text-muted-foreground/60 outline-none"
+          className="w-full bg-transparent py-1.5 pr-2 text-xs font-medium text-foreground placeholder:text-muted-foreground/60 outline-none"
         />
 
         {/* Clear button */}

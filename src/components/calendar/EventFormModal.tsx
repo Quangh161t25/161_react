@@ -38,6 +38,7 @@ import { learningService } from '../../services/learningService';
 import { cashTransactionService } from '../../services/cashTransactionService';
 import { employeeService } from '../../services/employeeService';
 import { LEARNING_CATEGORIES, LEARNING_SOURCE_TYPES } from '../../data/learning';
+import { TimePickerInput } from '../common/TimePickerInput';
 
 export type EventModuleType = 'note' | 'task' | 'learning' | 'cash';
 
@@ -760,12 +761,12 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Thời gian</label>
-                      <input
-                        type="time"
+                      <label className="text-xs font-semibold text-foreground">Thời gian (24h)</label>
+                      <TimePickerInput
                         value={noteTime}
-                        onChange={(e) => setNoteTime(e.target.value)}
-                        className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                        onChange={(val) => setNoteTime(val)}
+                        placeholder="09:00"
+                        force24h={true}
                       />
                     </div>
                     <div className="space-y-1">
@@ -1672,7 +1673,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                   {/* Date & Submitter */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-foreground">Ngày & Giờ giao dịch</label>
+                      <label className="text-xs font-semibold text-foreground">Ngày & Giờ giao dịch (24h)</label>
                       <div className="grid grid-cols-2 gap-2">
                         <input
                           type="date"
@@ -1680,11 +1681,11 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                           onChange={(e) => setCashDate(e.target.value)}
                           className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                         />
-                        <input
-                          type="time"
+                        <TimePickerInput
                           value={cashTime}
-                          onChange={(e) => setCashTime(e.target.value)}
-                          className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                          onChange={(val) => setCashTime(val)}
+                          placeholder="09:00"
+                          force24h={true}
                         />
                       </div>
                     </div>
