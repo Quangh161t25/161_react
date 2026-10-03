@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CheckSquare,
   FolderKanban,
@@ -18,6 +18,7 @@ interface CalendarWeekViewProps {
   onSelectEvent: (event: CalendarEvent) => void;
   onAddEventForDate: (dateStr: string) => void;
   onSelectDate?: (date: Date) => void;
+  onMoveEvent?: (eventId: string, targetDateStr: string, targetTimeStr?: string) => void;
 }
 
 export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
@@ -26,7 +27,10 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
   onSelectEvent,
   onAddEventForDate,
   onSelectDate,
+  onMoveEvent,
 }) => {
+  const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   // Find Monday of the current week
   const curr = new Date(currentDate);
   const dayOfWeek = curr.getDay(); // 0 = Sun, 1 = Mon ...
@@ -135,32 +139,70 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
         </div>
         {weekDays.map((wd) => {
           const allDayEvts = events.filter((e) => e.startDate === wd.dateStr && e.allDay);
+          const slotKey = `all_day_${wd.dateStr}`;
+          const isSlotHovered = dragOverSlot === slotKey;
+
           return (
             <div
               key={wd.dateStr}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDragEnter={() => setDragOverSlot(slotKey)}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setDragOverSlot(null);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverSlot(null);
+                const id = e.dataTransfer.getData('text/plain') || draggedEventId;
+                if (id) {
+                  onMoveEvent?.(id, wd.dateStr, undefined);
+                  setDraggedEventId(null);
+                }
+              }}
               onClick={() => onAddEventForDate(wd.dateStr)}
-              className="p-1 flex flex-col gap-1 overflow-y-auto max-h-[80px] custom-scrollbar"
+              className={`p-1 flex flex-col gap-1 overflow-y-auto max-h-[80px] custom-scrollbar transition-all ${
+                isSlotHovered ? 'bg-primary/20 ring-2 ring-primary ring-inset' : ''
+              }`}
             >
-              {allDayEvts.map((evt) => (
-                <div
-                  key={evt.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectEvent(evt);
-                  }}
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-l-[3px] shadow-xs truncate cursor-pointer transition-all hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
-                  title={`${evt.title}${evt.amount !== undefined ? ` [${evt.categoryName.includes('Chi') ? '-' : '+'}${evt.amount.toLocaleString('vi-VN')} đ]` : ''}${evt.description ? `\n${evt.description}` : ''}`}
-                >
-                  {getSourceIcon(evt.source)}
-                  <span className="truncate flex-1">{evt.title}</span>
-                  {evt.amount !== undefined && evt.amount !== null && (
-                    <span className="font-mono text-[9px] font-bold shrink-0 opacity-90">
-                      {evt.categoryName.includes('Chi') ? '-' : '+'}
-                      {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
-                    </span>
-                  )}
-                </div>
-              ))}
+              {allDayEvts.map((evt) => {
+                const isDraggable = evt.source !== 'hr_birthday';
+                const isBeingDragged = draggedEventId === evt.id;
+
+                return (
+                  <div
+                    key={evt.id}
+                    draggable={isDraggable}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', evt.id);
+                      e.dataTransfer.effectAllowed = 'move';
+                      setDraggedEventId(evt.id);
+                    }}
+                    onDragEnd={() => setDraggedEventId(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectEvent(evt);
+                    }}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-l-[3px] shadow-xs truncate transition-all ${
+                      isDraggable ? 'cursor-grab active:cursor-grabbing hover:scale-[1.02]' : 'cursor-pointer'
+                    } ${isBeingDragged ? 'opacity-40 scale-95 ring-2 ring-primary' : ''} ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                    title={`${evt.title}${evt.amount !== undefined ? ` [${evt.categoryName.includes('Chi') ? '-' : '+'}${evt.amount.toLocaleString('vi-VN')} đ]` : ''}${evt.description ? `\n${evt.description}` : ''}`}
+                  >
+                    {getSourceIcon(evt.source)}
+                    <span className="truncate flex-1">{evt.title}</span>
+                    {evt.amount !== undefined && evt.amount !== null && (
+                      <span className="font-mono text-[9px] font-bold shrink-0 opacity-90">
+                        {evt.categoryName.includes('Chi') ? '-' : '+'}
+                        {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
@@ -183,34 +225,71 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                   const timedEvts = events.filter(
                     (e) => e.startDate === wd.dateStr && e.time && e.time.startsWith(hourPrefix)
                   );
+                  const slotKey = `${wd.dateStr}_${hour}`;
+                  const isSlotHovered = dragOverSlot === slotKey;
 
                   return (
                     <div
                       key={wd.dateStr}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDragEnter={() => setDragOverSlot(slotKey)}
+                      onDragLeave={(e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                          setDragOverSlot(null);
+                        }
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setDragOverSlot(null);
+                        const id = e.dataTransfer.getData('text/plain') || draggedEventId;
+                        if (id) {
+                          onMoveEvent?.(id, wd.dateStr, hour);
+                          setDraggedEventId(null);
+                        }
+                      }}
                       onClick={() => onAddEventForDate(wd.dateStr)}
-                      className="p-1 relative flex flex-col gap-1 cursor-pointer"
+                      className={`p-1 relative flex flex-col gap-1 cursor-pointer transition-all ${
+                        isSlotHovered ? 'bg-primary/20 ring-2 ring-primary ring-inset' : ''
+                      }`}
                     >
-                      {timedEvts.map((evt) => (
-                        <div
-                          key={evt.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectEvent(evt);
-                          }}
-                          className={`flex items-center gap-1 px-1.5 py-1 rounded-md text-[10px] font-semibold border border-l-[3px] shadow-xs transition-all hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
-                          title={`${evt.time} - ${evt.title}${evt.amount !== undefined ? ` [${evt.categoryName.includes('Chi') ? '-' : '+'}${evt.amount.toLocaleString('vi-VN')} đ]` : ''}${evt.description ? `\n${evt.description}` : ''}`}
-                        >
-                          <Clock className="w-2.5 h-2.5 shrink-0" />
-                          <span className="font-mono text-[9px]">{evt.time}</span>
-                          <span className="truncate flex-1 font-bold">{evt.title}</span>
-                          {evt.amount !== undefined && evt.amount !== null && (
-                            <span className="font-mono text-[9px] font-bold shrink-0">
-                              {evt.categoryName.includes('Chi') ? '-' : '+'}
-                              {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
-                            </span>
-                          )}
-                        </div>
-                      ))}
+                      {timedEvts.map((evt) => {
+                        const isDraggable = evt.source !== 'hr_birthday';
+                        const isBeingDragged = draggedEventId === evt.id;
+
+                        return (
+                          <div
+                            key={evt.id}
+                            draggable={isDraggable}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', evt.id);
+                              e.dataTransfer.effectAllowed = 'move';
+                              setDraggedEventId(evt.id);
+                            }}
+                            onDragEnd={() => setDraggedEventId(null)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectEvent(evt);
+                            }}
+                            className={`flex items-center gap-1 px-1.5 py-1 rounded-md text-[10px] font-semibold border border-l-[3px] shadow-xs transition-all ${
+                              isDraggable ? 'cursor-grab active:cursor-grabbing hover:scale-[1.02]' : 'cursor-pointer'
+                            } ${isBeingDragged ? 'opacity-40 scale-95 ring-2 ring-primary' : ''} ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                            title={`${evt.time} - ${evt.title}${evt.amount !== undefined ? ` [${evt.categoryName.includes('Chi') ? '-' : '+'}${evt.amount.toLocaleString('vi-VN')} đ]` : ''}${evt.description ? `\n${evt.description}` : ''}`}
+                          >
+                            <Clock className="w-2.5 h-2.5 shrink-0" />
+                            <span className="font-mono text-[9px]">{evt.time}</span>
+                            <span className="truncate flex-1 font-bold">{evt.title}</span>
+                            {evt.amount !== undefined && evt.amount !== null && (
+                              <span className="font-mono text-[9px] font-bold shrink-0">
+                                {evt.categoryName.includes('Chi') ? '-' : '+'}
+                                {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   );
                 })}

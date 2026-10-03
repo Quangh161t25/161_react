@@ -386,6 +386,18 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
     showToast('Đã xóa sự kiện thành công');
   };
 
+  // Handle Drag & Drop move event (Snap to rounded hour)
+  const handleMoveEvent = (eventId: string, newDateStr: string, newTimeStr?: string) => {
+    const res = calendarService.updateEventSchedule(eventId, newDateStr, newTimeStr);
+    if (res.success) {
+      const fresh = calendarService.aggregateAllEvents();
+      setAllEvents(fresh);
+      showToast(`✅ ${res.message}`);
+    } else {
+      showToast(`⚠️ ${res.message}`);
+    }
+  };
+
   const toggleSource = (source: CalendarEventSource) => {
     setSelectedSources((prev) =>
       prev.includes(source) ? prev.filter((s) => s !== source) : [...prev, source]
@@ -837,6 +849,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                     setCurrentDate(date);
                     setViewMode('day');
                   }}
+                  onMoveEvent={handleMoveEvent}
                 />
               )}
 
@@ -850,6 +863,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                     setCurrentDate(date);
                     setViewMode('day');
                   }}
+                  onMoveEvent={handleMoveEvent}
                 />
               )}
 
@@ -859,6 +873,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                   events={filteredEvents}
                   onSelectEvent={handleSelectEvent}
                   onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
+                  onMoveEvent={handleMoveEvent}
                 />
               )}
 

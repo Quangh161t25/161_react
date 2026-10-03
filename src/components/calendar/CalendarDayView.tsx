@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CheckSquare,
   FolderKanban,
@@ -20,6 +20,7 @@ interface CalendarDayViewProps {
   events: CalendarEvent[];
   onSelectEvent: (event: CalendarEvent) => void;
   onAddEventForDate: (dateStr: string) => void;
+  onMoveEvent?: (eventId: string, targetDateStr: string, targetTimeStr?: string) => void;
 }
 
 export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
@@ -27,7 +28,11 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
   events,
   onSelectEvent,
   onAddEventForDate,
+  onMoveEvent,
 }) => {
+  const [dragOverSlot, setDragOverSlot] = useState<string | null>(null);
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
+
   const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
 
   const dayEvents = events.filter((e) => e.startDate === dateStr);
@@ -120,55 +125,108 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
       </div>
 
       {/* All-Day Events Banner */}
-      {allDayEvents.length > 0 && (
-        <div className="p-3 bg-muted/20 border-b border-border space-y-2">
+      <div
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        }}
+        onDragEnter={() => setDragOverSlot('all_day')}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setDragOverSlot(null);
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOverSlot(null);
+          const id = e.dataTransfer.getData('text/plain') || draggedEventId;
+          if (id) {
+            onMoveEvent?.(id, dateStr, undefined);
+            setDraggedEventId(null);
+          }
+        }}
+        className={`p-3 border-b border-border space-y-2 transition-all ${
+          dragOverSlot === 'all_day'
+            ? 'bg-primary/15 ring-2 ring-primary ring-inset'
+            : 'bg-muted/20'
+        }`}
+      >
+        <div className="flex items-center justify-between">
           <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
             Sự kiện & Hạn chót cả ngày ({allDayEvents.length})
           </span>
+          {dragOverSlot === 'all_day' && (
+            <span className="text-[11px] font-bold text-primary animate-pulse">
+              ⬇️ Thả để chuyển thành sự kiện cả ngày
+            </span>
+          )}
+        </div>
+
+        {allDayEvents.length === 0 ? (
+          <div className="py-2 text-center text-xs text-muted-foreground/50 border border-dashed border-border/60 rounded-xl">
+            Kéo thả vào đây để chuyển sự kiện thành "Cả ngày"
+          </div>
+        ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-            {allDayEvents.map((evt) => (
-              <div
-                key={evt.id}
-                onClick={() => onSelectEvent(evt)}
-                className={`p-2.5 rounded-xl border border-l-4 flex items-start gap-2.5 cursor-pointer shadow-xs hover:scale-[1.01] transition-transform ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
-              >
-                {getSourceIcon(evt.source)}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-semibold opacity-70 block">
-                      {evt.categoryName}
-                    </span>
-                    {evt.amount !== undefined && evt.amount !== null && (
-                      <span
-                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold font-mono whitespace-nowrap shadow-2xs ${
-                          evt.categoryName.includes('Chi') || (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu'))
-                            ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30'
-                            : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
-                        }`}
-                      >
-                        {evt.categoryName.includes('Chi') ? '-' : '+'}
-                        {evt.amount.toLocaleString('vi-VN')} ₫
+            {allDayEvents.map((evt) => {
+              const isDraggable = evt.source !== 'hr_birthday';
+              const isBeingDragged = draggedEventId === evt.id;
+
+              return (
+                <div
+                  key={evt.id}
+                  draggable={isDraggable}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', evt.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDraggedEventId(evt.id);
+                  }}
+                  onDragEnd={() => setDraggedEventId(null)}
+                  onClick={() => onSelectEvent(evt)}
+                  className={`p-2.5 rounded-xl border border-l-4 flex items-start gap-2.5 shadow-xs transition-all ${
+                    isDraggable ? 'cursor-grab active:cursor-grabbing hover:scale-[1.01]' : 'cursor-pointer'
+                  } ${isBeingDragged ? 'opacity-40 scale-95 ring-2 ring-primary' : ''} ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                  title={isDraggable ? 'Kéo để dời khung giờ hoặc ngày' : evt.title}
+                >
+                  {getSourceIcon(evt.source)}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-semibold opacity-70 block">
+                        {evt.categoryName}
                       </span>
+                      {evt.amount !== undefined && evt.amount !== null && (
+                        <span
+                          className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold font-mono whitespace-nowrap shadow-2xs ${
+                            evt.categoryName.includes('Chi') || (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu'))
+                              ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                              : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                          }`}
+                        >
+                          {evt.categoryName.includes('Chi') ? '-' : '+'}
+                          {evt.amount.toLocaleString('vi-VN')} ₫
+                        </span>
+                      )}
+                    </div>
+                    <div className="font-bold text-xs truncate mt-0.5">{evt.title}</div>
+                    {evt.description && (
+                      <p className="text-[11px] text-foreground/85 font-normal line-clamp-2 mt-1 leading-snug break-words bg-background/30 p-1.5 rounded-lg border border-border/30">
+                        {evt.description}
+                      </p>
                     )}
                   </div>
-                  <div className="font-bold text-xs truncate mt-0.5">{evt.title}</div>
-                  {evt.description && (
-                    <p className="text-[11px] text-foreground/85 font-normal line-clamp-2 mt-1 leading-snug break-words bg-background/30 p-1.5 rounded-lg border border-border/30">
-                      {evt.description}
-                    </p>
-                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Hourly Timeline */}
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-3">
         {HOURS.map((hour) => {
           const hourPrefix = hour.slice(0, 2);
           const evtsAtHour = timedEvents.filter((e) => e.time && e.time.startsWith(hourPrefix));
+          const isSlotHovered = dragOverSlot === hour;
 
           return (
             <div key={hour} className="flex items-start gap-3 group">
@@ -176,71 +234,118 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
                 {hour}
               </span>
 
-              <div className="flex-1 min-h-[44px] p-2 rounded-xl border border-dashed border-border/70 hover:border-primary/50 bg-background/50 hover:bg-muted/10 transition-colors flex flex-col gap-2">
-                {evtsAtHour.length === 0 ? (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+                onDragEnter={() => setDragOverSlot(hour)}
+                onDragLeave={(e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setDragOverSlot(null);
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOverSlot(null);
+                  const id = e.dataTransfer.getData('text/plain') || draggedEventId;
+                  if (id) {
+                    onMoveEvent?.(id, dateStr, hour);
+                    setDraggedEventId(null);
+                  }
+                }}
+                className={`flex-1 min-h-[48px] p-2 rounded-xl border border-dashed transition-all flex flex-col gap-2 ${
+                  isSlotHovered
+                    ? 'border-primary bg-primary/15 ring-2 ring-primary/40 shadow-sm'
+                    : 'border-border/70 hover:border-primary/50 bg-background/50 hover:bg-muted/10'
+                }`}
+              >
+                {/* Visual Snap-to-Hour drop guide */}
+                {isSlotHovered && (
+                  <div className="text-[11px] font-bold text-primary flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-primary/20 border border-primary/40 animate-pulse">
+                    <span>⬇️ Thả để đặt lịch vào đúng {hour} tròn (không có phút lẻ)</span>
+                  </div>
+                )}
+
+                {evtsAtHour.length === 0 && !isSlotHovered ? (
                   <span className="text-[11px] text-muted-foreground/40 italic py-1">
                     Trống lịch
                   </span>
                 ) : (
-                  evtsAtHour.map((evt) => (
-                    <div
-                      key={evt.id}
-                      onClick={() => onSelectEvent(evt)}
-                      className={`p-3 rounded-xl border border-l-4 shadow-xs cursor-pointer hover:shadow-md transition-all space-y-1.5 ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
-                    >
-                      <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {getSourceIcon(evt.source)}
-                          <span className="font-bold text-xs text-foreground truncate">
-                            {evt.title}
-                          </span>
+                  evtsAtHour.map((evt) => {
+                    const isDraggable = evt.source !== 'hr_birthday';
+                    const isBeingDragged = draggedEventId === evt.id;
 
-                          {/* Hiển thị số tiền chi tiêu / thu quỹ ngay cạnh tiêu đề */}
-                          {evt.amount !== undefined && evt.amount !== null && (
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold font-mono shadow-2xs whitespace-nowrap shrink-0 ${
-                                evt.categoryName.includes('Chi') ||
-                                (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu'))
-                                  ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30'
-                                  : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
-                              }`}
-                            >
-                              {evt.categoryName.includes('Chi') ? '-' : '+'}
-                              {evt.amount.toLocaleString('vi-VN')} ₫
+                    return (
+                      <div
+                        key={evt.id}
+                        draggable={isDraggable}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', evt.id);
+                          e.dataTransfer.effectAllowed = 'move';
+                          setDraggedEventId(evt.id);
+                        }}
+                        onDragEnd={() => setDraggedEventId(null)}
+                        onClick={() => onSelectEvent(evt)}
+                        className={`p-3 rounded-xl border border-l-4 shadow-xs transition-all space-y-1.5 ${
+                          isDraggable ? 'cursor-grab active:cursor-grabbing hover:shadow-md' : 'cursor-pointer'
+                        } ${isBeingDragged ? 'opacity-40 scale-95 ring-2 ring-primary' : ''} ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                        title={isDraggable ? 'Kéo thả để dời sang giờ khác' : evt.title}
+                      >
+                        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            {getSourceIcon(evt.source)}
+                            <span className="font-bold text-xs text-foreground truncate">
+                              {evt.title}
                             </span>
-                          )}
+
+                            {/* Hiển thị số tiền chi tiêu / thu quỹ ngay cạnh tiêu đề */}
+                            {evt.amount !== undefined && evt.amount !== null && (
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold font-mono shadow-2xs whitespace-nowrap shrink-0 ${
+                                  evt.categoryName.includes('Chi') ||
+                                  (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu'))
+                                    ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                                    : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                                }`}
+                              >
+                                {evt.categoryName.includes('Chi') ? '-' : '+'}
+                                {evt.amount.toLocaleString('vi-VN')} ₫
+                              </span>
+                            )}
+                          </div>
+
+                          <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-background/80 border border-border shrink-0">
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            {evt.time}
+                          </span>
                         </div>
 
-                        <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-background/80 border border-border shrink-0">
-                          <Clock className="w-3 h-3 inline mr-1" />
-                          {evt.time}
-                        </span>
-                      </div>
-
-                      {/* Hiển thị nội dung ghi chú (hoặc mô tả chi tiết nếu có) */}
-                      {evt.description && (
-                        <p className="text-xs text-foreground/85 font-normal line-clamp-3 leading-relaxed break-words bg-background/40 p-2 rounded-lg border border-border/40 mt-1">
-                          {evt.description}
-                        </p>
-                      )}
-
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-0.5">
-                        {evt.location && (
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
-                            <span>{evt.location}</span>
-                          </div>
+                        {/* Hiển thị nội dung ghi chú (hoặc mô tả chi tiết nếu có) */}
+                        {evt.description && (
+                          <p className="text-xs text-foreground/85 font-normal line-clamp-3 leading-relaxed break-words bg-background/40 p-2 rounded-lg border border-border/40 mt-1">
+                            {evt.description}
+                          </p>
                         )}
 
-                        {evt.assigneeName && (
-                          <div className="flex items-center gap-1.5">
-                            <User className="w-3 h-3 text-blue-500 shrink-0" />
-                            <span>{evt.assigneeName} {evt.assigneeCode ? `(${evt.assigneeCode})` : ''}</span>
-                          </div>
-                        )}
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-0.5">
+                          {evt.location && (
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                              <span>{evt.location}</span>
+                            </div>
+                          )}
+
+                          {evt.assigneeName && (
+                            <div className="flex items-center gap-1.5">
+                              <User className="w-3 h-3 text-blue-500 shrink-0" />
+                              <span>{evt.assigneeName} {evt.assigneeCode ? `(${evt.assigneeCode})` : ''}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>

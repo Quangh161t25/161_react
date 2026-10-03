@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   CheckSquare,
   FolderKanban,
@@ -19,6 +19,7 @@ interface CalendarMonthViewProps {
   onSelectEvent: (event: CalendarEvent) => void;
   onAddEventForDate: (dateStr: string) => void;
   onSelectDate?: (date: Date) => void;
+  onMoveEvent?: (eventId: string, targetDateStr: string, targetTimeStr?: string) => void;
 }
 
 export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
@@ -28,7 +29,10 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
   onSelectEvent,
   onAddEventForDate,
   onSelectDate,
+  onMoveEvent,
 }) => {
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  const [draggedEventId, setDraggedEventId] = useState<string | null>(null);
   // Month calculations
   const firstDayOfMonth = new Date(year, month, 1);
   const lastDayOfMonth = new Date(year, month + 1, 0);
@@ -138,12 +142,35 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
           // Lunar date calculation (Âm lịch Việt Nam)
           const lunarInfo = getLunarFullInfoFromDateStr(dateStr);
 
+          const isCellHovered = dragOverDate === dateStr;
+
           return (
             <div
               key={index}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+              }}
+              onDragEnter={() => setDragOverDate(dateStr)}
+              onDragLeave={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                  setDragOverDate(null);
+                }
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverDate(null);
+                const id = e.dataTransfer.getData('text/plain') || draggedEventId;
+                if (id) {
+                  onMoveEvent?.(id, dateStr);
+                  setDraggedEventId(null);
+                }
+              }}
               onClick={() => onSelectDate?.(new Date(cell.year, realMonth - 1, cell.day))}
               className={`min-h-[105px] sm:min-h-[120px] p-1.5 sm:p-2 flex flex-col justify-between transition-all relative group cursor-pointer ${
-                !cell.isCurrentMonth
+                isCellHovered
+                  ? 'bg-primary/20 ring-2 ring-primary ring-inset shadow-md'
+                  : !cell.isCurrentMonth
                   ? 'bg-muted/10 opacity-40 hover:opacity-85'
                   : isToday
                   ? 'bg-primary/5 hover:bg-primary/10 ring-1 ring-primary/20'
@@ -204,31 +231,45 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
 
               {/* Event Chips List */}
               <div className="flex-1 flex flex-col gap-1 overflow-hidden">
-                {visibleEvents.map((evt) => (
-                  <div
-                    key={evt.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectEvent(evt);
-                    }}
-                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold border border-l-[3px] shadow-xs cursor-pointer truncate transition-all hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
-                    title={`${evt.title}${evt.time ? ` (${evt.time})` : ''} - ${evt.categoryName}`}
-                  >
-                    {getSourceIcon(evt.source)}
-                    <span className="truncate flex-1">{evt.title}</span>
-                    {evt.amount !== undefined && evt.amount !== null && (
-                      <span className="font-mono text-[9px] font-bold shrink-0 opacity-90">
-                        {evt.categoryName.includes('Chi') ? '-' : '+'}
-                        {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
-                      </span>
-                    )}
-                    {evt.time && !evt.amount && (
-                      <span className="text-[9px] opacity-70 font-mono hidden sm:inline">
-                        {evt.time}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                {visibleEvents.map((evt) => {
+                  const isDraggable = evt.source !== 'hr_birthday';
+                  const isBeingDragged = draggedEventId === evt.id;
+
+                  return (
+                    <div
+                      key={evt.id}
+                      draggable={isDraggable}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', evt.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                        setDraggedEventId(evt.id);
+                      }}
+                      onDragEnd={() => setDraggedEventId(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSelectEvent(evt);
+                      }}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] sm:text-[11px] font-semibold border border-l-[3px] shadow-xs truncate transition-all ${
+                        isDraggable ? 'cursor-grab active:cursor-grabbing hover:scale-[1.02]' : 'cursor-pointer'
+                      } ${isBeingDragged ? 'opacity-40 scale-95 ring-2 ring-primary' : ''} ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
+                      title={`${evt.title}${evt.time ? ` (${evt.time})` : ''}${evt.amount !== undefined ? ` [${evt.categoryName.includes('Chi') ? '-' : '+'}${evt.amount.toLocaleString('vi-VN')} đ]` : ''}${evt.description ? `\n${evt.description}` : ''} - ${evt.categoryName}`}
+                    >
+                      {getSourceIcon(evt.source)}
+                      <span className="truncate flex-1">{evt.title}</span>
+                      {evt.amount !== undefined && evt.amount !== null && (
+                        <span className="font-mono text-[9px] font-bold shrink-0 opacity-90">
+                          {evt.categoryName.includes('Chi') ? '-' : '+'}
+                          {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
+                        </span>
+                      )}
+                      {evt.time && !evt.amount && (
+                        <span className="text-[9px] opacity-70 font-mono hidden sm:inline">
+                          {evt.time}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* More events popover indicator */}
                 {hiddenCount > 0 && (

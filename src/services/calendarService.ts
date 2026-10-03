@@ -327,4 +327,141 @@ export const calendarService = {
 
     return events;
   },
+
+  // ------------------------------------------------------------------
+  // UPDATE EVENT SCHEDULE ON DRAG & DROP (SNAP TO ROUNDED HOUR)
+  // ------------------------------------------------------------------
+  updateEventSchedule(
+    eventId: string,
+    newDateStr: string,
+    newTimeStr?: string
+  ): { success: boolean; message: string; eventTitle: string } {
+    const all = this.aggregateAllEvents();
+    const event = all.find((e) => e.id === eventId);
+    if (!event) {
+      return { success: false, message: 'Không tìm thấy sự kiện cần dời', eventTitle: '' };
+    }
+
+    // Không cho phép dời ngày sinh nhật nhân sự
+    if (event.source === 'hr_birthday') {
+      return {
+        success: false,
+        message: 'Sinh nhật nhân viên là ngày cố định theo hồ sơ, không thể dời ngày.',
+        eventTitle: event.title,
+      };
+    }
+
+    // Làm tròn giờ theo đúng yêu cầu: không có phút, chỉ có 10:00, 09:00, 11:00...
+    let roundedTime: string | undefined = undefined;
+    if (newTimeStr) {
+      const match = newTimeStr.match(/^(\d{1,2})/);
+      if (match) {
+        const hh = match[1].padStart(2, '0');
+        roundedTime = `${hh}:00`;
+      }
+    }
+
+    let updated = false;
+
+    // 1. Ghi chú (Note)
+    if (event.source === 'note') {
+      const nId = eventId.replace(/^note_/, '');
+      const notes = noteService.getInitialNotes();
+      const idx = notes.findIndex((n) => n.id === nId || n.code === event.sourceId);
+      if (idx !== -1) {
+        notes[idx].noteDate = newDateStr;
+        if (roundedTime !== undefined) {
+          notes[idx].noteTime = roundedTime;
+        }
+        notes[idx].updatedAt = new Date().toISOString();
+        noteService.saveToCache(notes);
+        updated = true;
+      }
+    }
+
+    // 2. Sổ quỹ & Thu chi tiền mặt (Cash Transaction)
+    else if (event.source === 'finance_cash') {
+      const txId = eventId.replace(/^tx_/, '');
+      const txs = cashTransactionService.getInitialTransactions();
+      const idx = txs.findIndex((t) => t.id === txId || t.code === event.sourceId);
+      if (idx !== -1) {
+        txs[idx].transactionDate = newDateStr;
+        if (roundedTime !== undefined) {
+          txs[idx].transactionTime = roundedTime;
+        }
+        txs[idx].updatedAt = new Date().toISOString();
+        cashTransactionService.saveToCache(txs);
+        updated = true;
+      }
+    }
+
+    // 3. Công việc & Deadline (Task)
+    else if (event.source === 'work_task') {
+      const tId = eventId.replace(/^task_due_/, '');
+      const tasks = taskService.getInitialTasks();
+      const idx = tasks.findIndex((t) => t.id === tId || t.code === event.sourceId);
+      if (idx !== -1) {
+        tasks[idx].dueDate = newDateStr;
+        tasks[idx].updatedAt = new Date().toISOString();
+        taskService.saveToCache(tasks);
+        updated = true;
+      }
+    }
+
+    // 4. Dự án (Project)
+    else if (event.source === 'work_project') {
+      const pId = eventId.replace(/^proj_end_/, '');
+      const projects = projectService.getInitialProjects();
+      const idx = projects.findIndex((p) => p.id === pId || p.code === event.sourceId);
+      if (idx !== -1) {
+        projects[idx].endDate = newDateStr;
+        projects[idx].updatedAt = new Date().toISOString();
+        projectService.saveToCache(projects);
+        updated = true;
+      }
+    }
+
+    // 5. Lịch họp & Sự kiện riêng (Custom Event)
+    else if (event.source === 'custom') {
+      const customs = this.getCustomEvents();
+      const idx = customs.findIndex((c) => c.id === eventId);
+      if (idx !== -1) {
+        customs[idx].startDate = newDateStr;
+        if (roundedTime !== undefined) {
+          customs[idx].time = roundedTime;
+          customs[idx].allDay = false;
+        }
+        this.saveCustomEvents(customs);
+        updated = true;
+      }
+    }
+
+    // 6. Học hỏi & Kiến thức (Learning)
+    else if (event.source === 'learning') {
+      const lId = eventId.replace(/^learning_review_/, '').replace(/^learning_/, '');
+      const entries = learningService.getInitialEntries();
+      const idx = entries.findIndex((l) => l.id === lId || l.code === event.sourceId);
+      if (idx !== -1) {
+        if (eventId.startsWith('learning_review_')) {
+          entries[idx].nextReviewDate = newDateStr;
+        } else {
+          entries[idx].entryDate = newDateStr;
+        }
+        learningService.saveToCache(entries);
+        updated = true;
+      }
+    }
+
+    if (!updated) {
+      return { success: false, message: 'Không thể cập nhật sự kiện này', eventTitle: event.title };
+    }
+
+    const timeInfo = roundedTime ? ` lúc ${roundedTime}` : '';
+    const dateFormatted = newDateStr.split('-').reverse().join('/');
+    return {
+      success: true,
+      message: `Đã dời "${event.title}" sang ngày ${dateFormatted}${timeInfo}`,
+      eventTitle: event.title,
+    };
+  },
 };
