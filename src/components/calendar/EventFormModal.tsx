@@ -761,7 +761,8 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
           setIsSubmitting(false);
           return;
         }
-        const numAmount = Math.abs(Number(cashAmount)) || 0;
+        const cleanAmountStr = String(cashAmount).replace(/[.,\sđ₫]/g, '');
+        const numAmount = Math.abs(Number(cleanAmountStr)) || 0;
         if (numAmount <= 0) {
           setErrors({ cashAmount: 'Vui lòng nhập số tiền hợp lệ (> 0 đ)' });
           setIsSubmitting(false);
@@ -2507,21 +2508,22 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                       <div className="relative">
                         <DollarSign className="w-3.5 h-3.5 text-muted-foreground absolute left-2.5 top-1/2 -translate-y-1/2" />
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           value={cashAmount}
                           onChange={(e) => {
                             setCashAmount(e.target.value);
                             setErrors((prev) => ({ ...prev, cashAmount: '' }));
                           }}
-                          placeholder="VD: 5000000"
+                          placeholder="VD: 50.000 hoặc 50000"
                           className={`w-full h-9 pl-8 pr-3 rounded-lg border bg-card text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary ${
                             errors.cashAmount ? 'border-rose-500 ring-1 ring-rose-500' : 'border-border'
                           }`}
                         />
                       </div>
-                      {cashAmount && Number(cashAmount) > 0 && (
+                      {cashAmount && Number(String(cashAmount).replace(/[.,\sđ₫]/g, '')) > 0 && (
                         <p className="text-[11px] text-primary font-medium mt-1">
-                          Bằng chữ: {Number(cashAmount).toLocaleString('vi-VN')} đ
+                          Bằng số: {Number(String(cashAmount).replace(/[.,\sđ₫]/g, '')).toLocaleString('vi-VN')} ₫
                         </p>
                       )}
                       {errors.cashAmount && <p className="text-[11px] text-rose-500">{errors.cashAmount}</p>}

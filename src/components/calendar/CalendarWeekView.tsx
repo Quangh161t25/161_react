@@ -197,7 +197,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                     {evt.amount !== undefined && evt.amount !== null && (
                       <span className="font-mono text-[9px] font-bold shrink-0 opacity-90">
                         {evt.categoryName.includes('Chi') ? '-' : '+'}
-                        {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
+                        {evt.amount.toLocaleString('vi-VN')} ₫
                       </span>
                     )}
                   </div>
@@ -284,7 +284,7 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                             {evt.amount !== undefined && evt.amount !== null && (
                               <span className="font-mono text-[9px] font-bold shrink-0">
                                 {evt.categoryName.includes('Chi') ? '-' : '+'}
-                                {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
+                                {evt.amount.toLocaleString('vi-VN')} ₫
                               </span>
                             )}
                           </div>
