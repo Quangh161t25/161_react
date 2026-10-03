@@ -13,6 +13,7 @@ import {
   Settings,
   Key,
   LogOut,
+  Smartphone,
 } from 'lucide-react';
 import { NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../data/navigation';
 import { useAuth } from '../../context/AuthContext';
@@ -20,6 +21,7 @@ import { FINANCE_SECTIONS } from '../../data/finance';
 import { SYSTEM_SECTIONS } from '../../data/system';
 import { WORK_SECTIONS } from '../../data/tasks';
 import { ChangePasswordModal } from '../auth/ChangePasswordModal';
+import { PWAInstallAndNotificationModal } from '../pwa/PWAInstallAndNotificationModal';
 
 interface HeaderProps {
   isCollapsed: boolean;
@@ -40,6 +42,8 @@ export const Header: React.FC<HeaderProps> = ({
   const [time, setTime] = useState<Date>(new Date());
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isPwaModalOpen, setIsPwaModalOpen] = useState(false);
+  const [pwaModalTab, setPwaModalTab] = useState<'install' | 'notification'>('install');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -352,10 +356,28 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </div>
 
+        {/* Nút Cài đặt App cho Điện thoại */}
+        <button
+          type="button"
+          onClick={() => {
+            setPwaModalTab('install');
+            setIsPwaModalOpen(true);
+          }}
+          title="Cài đặt App lên điện thoại"
+          className="h-8 px-2 md:px-2.5 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 shadow-xs"
+        >
+          <Smartphone className="w-3.5 h-3.5 shrink-0" />
+          <span className="hidden sm:inline">Cài App</span>
+        </button>
+
         {/* Notifications */}
         <div className="relative">
           <button
             type="button"
+            onClick={() => {
+              setPwaModalTab('notification');
+              setIsPwaModalOpen(true);
+            }}
             aria-label="Thông báo"
             className="h-9 w-9 md:h-10 md:w-10 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-all relative active:scale-95"
           >
@@ -456,6 +478,20 @@ export const Header: React.FC<HeaderProps> = ({
                     Cài đặt
                   </a>
 
+                  {/* Cài đặt App & Thông báo */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      setPwaModalTab('install');
+                      setIsPwaModalOpen(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-xs font-medium text-muted-foreground hover:bg-primary/5 hover:text-primary rounded-lg transition-colors group text-left cursor-pointer"
+                  >
+                    <Smartphone className="w-[15px] h-[15px] text-muted-foreground group-hover:text-primary transition-colors" />
+                    Cài đặt App & Thông báo
+                  </button>
+
                   <div className="h-px bg-border my-0.5 mx-2" />
 
                   {/* Đổi mật khẩu */}
@@ -499,6 +535,13 @@ export const Header: React.FC<HeaderProps> = ({
       <ChangePasswordModal
         isOpen={isChangePasswordOpen}
         onClose={() => setIsChangePasswordOpen(false)}
+      />
+
+      {/* PWA Mobile App & Notification Modal */}
+      <PWAInstallAndNotificationModal
+        isOpen={isPwaModalOpen}
+        onClose={() => setIsPwaModalOpen(false)}
+        initialTab={pwaModalTab}
       />
     </header>
   );

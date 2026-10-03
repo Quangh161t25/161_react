@@ -27,6 +27,7 @@ import { CalendarPage } from './components/calendar/CalendarPage';
 import { DASHBOARD_MODULES, NAV_ITEMS, BOTTOM_NAV_ITEMS } from './data/navigation';
 import { FINANCE_SECTIONS } from './data/finance';
 import { SYSTEM_SECTIONS } from './data/system';
+import { notificationService } from './services/notificationService';
 
 const AppContent: React.FC = () => {
   // Initialize current path from browser URL bar
@@ -56,6 +57,24 @@ const AppContent: React.FC = () => {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Periodic background check for tasks due & calendar events
+  useEffect(() => {
+    // Delay first check slightly so the app finishes initial render smoothly
+    const initialTimer = setTimeout(() => {
+      notificationService.checkAndNotifyDueItems();
+    }, 2000);
+
+    // Periodically re-check every 15 minutes
+    const intervalTimer = setInterval(() => {
+      notificationService.checkAndNotifyDueItems();
+    }, 15 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
+    };
   }, []);
 
   // Update document title based on current path

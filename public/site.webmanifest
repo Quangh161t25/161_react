@@ -1,6 +1,14 @@
 {
-  "name": "ERP - Phần mềm quản lý doanh nghiệp",
+  "name": "ERP - Quản Lý Doanh Nghiệp",
   "short_name": "ERP",
+  "description": "Hệ thống quản lý doanh nghiệp, công việc, lịch biểu, ghi chú và tài chính toàn diện",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/favicon-32x32.png",
@@ -10,15 +18,19 @@
     {
       "src": "/android-chrome-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/android-chrome-512x512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
       "type": "image/png"
     }
-  ],
-  "theme_color": "#2563eb",
-  "background_color": "#ffffff",
-  "display": "standalone"
+  ]
 }
