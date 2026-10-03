@@ -194,10 +194,10 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                   >
                     {getSourceIcon(evt.source)}
                     <span className="truncate flex-1">{evt.title}</span>
-                    {evt.amount !== undefined && evt.amount !== null && (
+                    {(evt.source === 'finance_cash' || evt.source === 'finance_proposal' || evt.amount !== undefined) && (
                       <span className="font-mono text-[9px] font-bold shrink-0 opacity-90">
-                        {evt.categoryName.includes('Chi') ? '-' : '+'}
-                        {evt.amount.toLocaleString('vi-VN')} ₫
+                        {evt.categoryName.includes('Chi') || (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu')) ? '-' : '+'}
+                        {(evt.amount ?? 0).toLocaleString('vi-VN')} ₫
                       </span>
                     )}
                   </div>
@@ -281,10 +281,10 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                             <Clock className="w-2.5 h-2.5 shrink-0" />
                             <span className="font-mono text-[9px]">{evt.time}</span>
                             <span className="truncate flex-1 font-bold">{evt.title}</span>
-                            {evt.amount !== undefined && evt.amount !== null && (
+                            {(evt.source === 'finance_cash' || evt.source === 'finance_proposal' || evt.amount !== undefined) && (
                               <span className="font-mono text-[9px] font-bold shrink-0">
-                                {evt.categoryName.includes('Chi') ? '-' : '+'}
-                                {evt.amount.toLocaleString('vi-VN')} ₫
+                                {evt.categoryName.includes('Chi') || (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu')) ? '-' : '+'}
+                                {(evt.amount ?? 0).toLocaleString('vi-VN')} ₫
                               </span>
                             )}
                           </div>

@@ -345,10 +345,6 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
     }
   };
 
-  // Re-aggregate on mount
-  useEffect(() => {
-    setAllEvents(calendarService.aggregateAllEvents());
-  }, []);
 
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth(); // 0 - 11

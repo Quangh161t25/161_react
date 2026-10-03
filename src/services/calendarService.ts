@@ -163,6 +163,10 @@ export const calendarService = {
         if (tx.transactionDate) {
           const cleanDate = tx.transactionDate.slice(0, 10);
           const isThu = tx.type === 'income';
+          const rawAmount = typeof tx.amount === 'number'
+            ? tx.amount
+            : Number(String(tx.amount || '').replace(/[.,\sđ₫VNDVNĐ]/g, '')) || 0;
+
           events.push({
             id: `tx_${tx.id}`,
             title: `[${isThu ? 'Thu quỹ' : 'Chi quỹ'}] ${tx.title || tx.reason || tx.code}`,
@@ -176,11 +180,11 @@ export const calendarService = {
             badgeBg: isThu ? 'bg-emerald-100 dark:bg-emerald-950/60' : 'bg-rose-100 dark:bg-rose-950/60',
             badgeColor: isThu ? 'text-emerald-800 dark:text-emerald-300' : 'text-rose-800 dark:text-rose-300',
             badgeBorder: isThu ? 'border-emerald-400 dark:border-emerald-600' : 'border-rose-400 dark:border-rose-600',
-            description: `Đối tượng: ${tx.counterpartyName || '—'} | Số tiền: ${(tx.amount || 0).toLocaleString('vi-VN')} đ | Tài khoản: ${tx.account || '—'}`,
+            description: `Đối tượng: ${tx.counterpartyName || '—'} | Số tiền: ${rawAmount.toLocaleString('vi-VN')} đ | Tài khoản: ${tx.account || '—'}`,
             assigneeId: tx.counterpartyId,
             assigneeCode: tx.counterpartyCode,
             assigneeName: tx.counterpartyName,
-            amount: tx.amount,
+            amount: rawAmount,
             status: tx.status,
           });
         }

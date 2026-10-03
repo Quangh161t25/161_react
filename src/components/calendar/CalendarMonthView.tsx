@@ -256,17 +256,17 @@ export const CalendarMonthView: React.FC<CalendarMonthViewProps> = ({
                     >
                       {getSourceIcon(evt.source)}
                       <span className="truncate flex-1">{evt.title}</span>
-                      {evt.amount !== undefined && evt.amount !== null && (
+                      {/* Hiển thị số tiền cho thu chi / tài chính - không bao giờ hiện giờ cho thu chi */}
+                      {(evt.source === 'finance_cash' || evt.source === 'finance_proposal' || evt.amount !== undefined) ? (
                         <span className="font-mono text-[9px] font-bold shrink-0 opacity-90">
-                          {evt.categoryName.includes('Chi') ? '-' : '+'}
-                          {evt.amount.toLocaleString('vi-VN')} ₫
+                          {evt.categoryName.includes('Chi') || (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu')) ? '-' : '+'}
+                          {(evt.amount ?? 0).toLocaleString('vi-VN')} ₫
                         </span>
-                      )}
-                      {evt.time && !evt.amount && (
+                      ) : evt.time ? (
                         <span className="text-[9px] opacity-70 font-mono hidden sm:inline">
                           {evt.time}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   );
                 })}
