@@ -10,6 +10,50 @@ const CUSTOM_EVENTS_KEY = 'erp_custom_calendar_events';
 
 export const INITIAL_CUSTOM_EVENTS: CalendarEvent[] = [];
 
+/**
+ * Chuẩn hóa mọi định dạng ngày (DD/MM/YYYY, YYYY-MM-DD, ISO timestamp) về chuẩn YYYY-MM-DD
+ */
+export function normalizeDateToISO(raw: string | undefined | null): string {
+  if (!raw) return '';
+  const str = String(raw).trim();
+  if (!str) return '';
+
+  // 1. If starts with YYYY-MM-DD (e.g. 2026-10-03, 2026-10-03T11:14:00)
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+    return str.slice(0, 10);
+  }
+
+  // 2. If YYYY/MM/DD or YYYY.MM.DD
+  if (/^\d{4}[\/\.]\d{1,2}[\/\.]\d{1,2}/.test(str)) {
+    const sep = str.includes('/') ? '/' : '.';
+    const [y, m, d] = str.split(sep);
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  }
+
+  // 3. If DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  if (/^\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{4}/.test(str)) {
+    const sep = str.includes('/') ? '/' : str.includes('-') ? '-' : '.';
+    const parts = str.split(sep);
+    const day = parts[0].padStart(2, '0');
+    const month = parts[1].padStart(2, '0');
+    const year = parts[2].slice(0, 4);
+    return `${year}-${month}-${day}`;
+  }
+
+  // 4. Try new Date()
+  try {
+    const dt = new Date(str);
+    if (!isNaN(dt.getTime())) {
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, '0');
+      const d = String(dt.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+  } catch {}
+
+  return str.slice(0, 10);
+}
+
 export const calendarService = {
   // Get user-created custom calendar events
   getCustomEvents(): CalendarEvent[] {
@@ -18,8 +62,13 @@ export const calendarService = {
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
-          // Lọc bỏ các sự kiện họp giả định mẫu cũ
-          return parsed.filter((e: CalendarEvent) => e.id !== 'evt_001' && e.id !== 'evt_002');
+          // Lọc bỏ các sự kiện họp giả định mẫu cũ & chuẩn hóa ngày
+          return parsed
+            .filter((e: CalendarEvent) => e.id !== 'evt_001' && e.id !== 'evt_002')
+            .map((e: CalendarEvent) => ({
+              ...e,
+              startDate: normalizeDateToISO(e.startDate) || e.startDate,
+            }));
         }
       }
     } catch {}
@@ -58,11 +107,12 @@ export const calendarService = {
     try {
       const tasks = taskService.getInitialTasks();
       tasks.forEach((t) => {
-        if (t.dueDate) {
+        const isoDate = normalizeDateToISO(t.dueDate);
+        if (isoDate) {
           events.push({
             id: `task_due_${t.id}`,
             title: `[Hạn chót] ${t.title}`,
-            startDate: t.dueDate,
+            startDate: isoDate,
             allDay: true,
             source: 'work_task',
             sourceId: t.code,
@@ -90,11 +140,12 @@ export const calendarService = {
     try {
       const projects = projectService.getInitialProjects();
       projects.forEach((p) => {
-        if (p.endDate) {
+        const isoDate = normalizeDateToISO(p.endDate);
+        if (isoDate) {
           events.push({
             id: `proj_end_${p.id}`,
             title: `[Bàn giao Dự án] ${p.name}`,
-            startDate: p.endDate,
+            startDate: isoDate,
             allDay: true,
             source: 'work_project',
             sourceId: p.code,
@@ -123,17 +174,12 @@ export const calendarService = {
     try {
       const proposals = googleSheetsService.getInitialProposals();
       proposals.forEach((prop) => {
-        const d = prop.proposalDate;
-        if (d) {
-          // Normalize date format (YYYY-MM-DD)
-          const cleanDate = d.includes('/')
-            ? d.split('/').reverse().join('-')
-            : d.slice(0, 10);
-
+        const isoDate = normalizeDateToISO(prop.proposalDate);
+        if (isoDate) {
           events.push({
             id: `prop_${prop.id}`,
             title: `[Đề xuất CP] ${prop.title || prop.code}`,
-            startDate: cleanDate,
+            startDate: isoDate,
             allDay: true,
             source: 'finance_proposal',
             sourceId: prop.code,
@@ -160,8 +206,8 @@ export const calendarService = {
     try {
       const txs = cashTransactionService.getInitialTransactions();
       txs.forEach((tx) => {
-        if (tx.transactionDate) {
-          const cleanDate = tx.transactionDate.slice(0, 10);
+        const isoDate = normalizeDateToISO(tx.transactionDate);
+        if (isoDate) {
           const isThu = tx.type === 'income';
           const rawAmount = typeof tx.amount === 'number'
             ? tx.amount
@@ -170,7 +216,7 @@ export const calendarService = {
           events.push({
             id: `tx_${tx.id}`,
             title: `[${isThu ? 'Thu quỹ' : 'Chi quỹ'}] ${tx.title || tx.reason || tx.code}`,
-            startDate: cleanDate,
+            startDate: isoDate,
             time: tx.transactionTime || undefined,
             allDay: !tx.transactionTime,
             source: 'finance_cash',
@@ -245,9 +291,8 @@ export const calendarService = {
     try {
       const notes = noteService.getInitialNotes();
       notes.forEach((n) => {
-        const d = n.noteDate || n.updatedAt || n.createdAt;
-        if (d) {
-          const cleanDate = d.slice(0, 10);
+        const isoDate = normalizeDateToISO(n.noteDate || n.updatedAt || n.createdAt);
+        if (isoDate) {
           const rawText = (n.content || n.summary || '').trim();
           const cleanContent = rawText
             .replace(/!\[.*?\]\(.*?\)/g, '') // Bỏ ảnh markdown
@@ -261,7 +306,7 @@ export const calendarService = {
           events.push({
             id: `note_${n.id}`,
             title: `📝 [Ghi chú] ${n.title}`,
-            startDate: cleanDate,
+            startDate: isoDate,
             time: n.noteTime || undefined,
             allDay: !n.noteTime,
             source: 'note',
@@ -286,13 +331,12 @@ export const calendarService = {
     try {
       const learnings = learningService.getInitialEntries();
       learnings.forEach((l) => {
-        const d = l.entryDate || l.createdAt;
-        if (d) {
-          const cleanDate = d.slice(0, 10);
+        const isoDate = normalizeDateToISO(l.entryDate || l.createdAt);
+        if (isoDate) {
           events.push({
             id: `learning_${l.id}`,
             title: `🎓 [Học hỏi] ${l.title}`,
-            startDate: cleanDate,
+            startDate: isoDate,
             allDay: true,
             source: 'learning',
             sourceId: l.code,
@@ -304,11 +348,12 @@ export const calendarService = {
             description: l.summary || (l.content || '').substring(0, 100) + '...',
           });
         }
-        if (l.nextReviewDate) {
+        const isoReviewDate = normalizeDateToISO(l.nextReviewDate);
+        if (isoReviewDate) {
           events.push({
             id: `learning_review_${l.id}`,
             title: `🔄 [Ôn tập kiến thức] ${l.title}`,
-            startDate: l.nextReviewDate.slice(0, 10),
+            startDate: isoReviewDate,
             allDay: true,
             source: 'learning',
             sourceId: l.code,

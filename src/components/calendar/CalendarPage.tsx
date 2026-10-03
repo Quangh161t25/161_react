@@ -917,6 +917,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                       events={filteredEvents}
                       onSelectEvent={handleSelectEvent}
                       onNavigateToModule={onNavigate}
+                      currentDate={currentDate}
                     />
                   )}
                 </>
