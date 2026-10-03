@@ -464,4 +464,24 @@ export const calendarService = {
       eventTitle: event.title,
     };
   },
+
+  // ------------------------------------------------------------------
+  // TỰ ĐỘNG TẢI TRỰC TIẾP DỮ LIỆU TỪ TẤT CẢ CÁC PHÂN HỆ VÀ TỔNG HỢP LỊCH
+  // ------------------------------------------------------------------
+  async fetchAllAndAggregate(): Promise<CalendarEvent[]> {
+    try {
+      await Promise.allSettled([
+        noteService.fetchFromSheet().catch(() => noteService.getInitialNotes()),
+        cashTransactionService.fetchFromSheet().catch(() => cashTransactionService.getInitialTransactions()),
+        taskService.fetchFromSheet().catch(() => taskService.getInitialTasks()),
+        projectService.fetchFromSheet().catch(() => projectService.getInitialProjects()),
+        googleSheetsService.fetchFromSheet().catch(() => googleSheetsService.getInitialProposals()),
+        employeeService.fetchFromSheet().catch(() => employeeService.getInitialEmployees()),
+        learningService.fetchFromSheet().catch(() => learningService.getInitialEntries()),
+      ]);
+    } catch (e) {
+      console.warn('Error fetching all modules for calendar:', e);
+    }
+    return this.aggregateAllEvents();
+  },
 };

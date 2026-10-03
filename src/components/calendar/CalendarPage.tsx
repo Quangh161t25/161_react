@@ -110,7 +110,31 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
 
   // Modals & UI States
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Tự động tải trực tiếp dữ liệu từ các phân hệ khi vào trang Lịch biểu (khắc phục lỗi reload trang bị trống)
+  useEffect(() => {
+    let isMounted = true;
+    if (allEvents.length === 0) {
+      setIsLoadingEvents(true);
+    }
+    calendarService
+      .fetchAllAndAggregate()
+      .then((freshEvents) => {
+        if (isMounted) {
+          setAllEvents(freshEvents);
+          setIsLoadingEvents(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) setIsLoadingEvents(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Module-specific detail drawer states
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
@@ -362,14 +386,19 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
     setCurrentDate(new Date());
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
+    try {
+      const fresh = await calendarService.fetchAllAndAggregate();
+      setAllEvents(fresh);
+      showToast(`Đã đồng bộ và làm mới (${fresh.length} sự kiện từ toàn bộ hệ thống)`);
+    } catch {
       const fresh = calendarService.aggregateAllEvents();
       setAllEvents(fresh);
+      showToast(`Đã làm mới dữ liệu (${fresh.length} sự kiện)`);
+    } finally {
       setIsRefreshing(false);
-      showToast(`Đã làm mới dữ liệu (${fresh.length} sự kiện từ các phân hệ)`);
-    }, 400);
+    }
   };
 
   const handleSaveCustomEvent = (newEvent: CalendarEvent) => {
@@ -838,51 +867,63 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
           {/* Calendar Views Content */}
           {activeTopTab === 'list' && (
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              {viewMode === 'month' && (
-                <CalendarMonthView
-                  year={currentYear}
-                  month={currentMonth}
-                  events={filteredEvents}
-                  onSelectEvent={handleSelectEvent}
-                  onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
-                  onSelectDate={(date) => {
-                    setCurrentDate(date);
-                    setViewMode('day');
-                  }}
-                  onMoveEvent={handleMoveEvent}
-                />
-              )}
+              {isLoadingEvents && allEvents.length === 0 ? (
+                <div className="flex-1 min-h-[400px] flex flex-col items-center justify-center p-8 text-center bg-card">
+                  <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin mb-3.5" />
+                  <p className="text-sm font-bold text-foreground">Đang đồng bộ dữ liệu toàn hệ thống...</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                    Đang tự động tải dữ liệu Ghi chú, Sổ quỹ thu chi, Công việc và Dự án từ máy chủ
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {viewMode === 'month' && (
+                    <CalendarMonthView
+                      year={currentYear}
+                      month={currentMonth}
+                      events={filteredEvents}
+                      onSelectEvent={handleSelectEvent}
+                      onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
+                      onSelectDate={(date) => {
+                        setCurrentDate(date);
+                        setViewMode('day');
+                      }}
+                      onMoveEvent={handleMoveEvent}
+                    />
+                  )}
 
-              {viewMode === 'week' && (
-                <CalendarWeekView
-                  currentDate={currentDate}
-                  events={filteredEvents}
-                  onSelectEvent={handleSelectEvent}
-                  onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
-                  onSelectDate={(date) => {
-                    setCurrentDate(date);
-                    setViewMode('day');
-                  }}
-                  onMoveEvent={handleMoveEvent}
-                />
-              )}
+                  {viewMode === 'week' && (
+                    <CalendarWeekView
+                      currentDate={currentDate}
+                      events={filteredEvents}
+                      onSelectEvent={handleSelectEvent}
+                      onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
+                      onSelectDate={(date) => {
+                        setCurrentDate(date);
+                        setViewMode('day');
+                      }}
+                      onMoveEvent={handleMoveEvent}
+                    />
+                  )}
 
-              {viewMode === 'day' && (
-                <CalendarDayView
-                  currentDate={currentDate}
-                  events={filteredEvents}
-                  onSelectEvent={handleSelectEvent}
-                  onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
-                  onMoveEvent={handleMoveEvent}
-                />
-              )}
+                  {viewMode === 'day' && (
+                    <CalendarDayView
+                      currentDate={currentDate}
+                      events={filteredEvents}
+                      onSelectEvent={handleSelectEvent}
+                      onAddEventForDate={(dateStr) => openAddDrawer('note', dateStr)}
+                      onMoveEvent={handleMoveEvent}
+                    />
+                  )}
 
-              {viewMode === 'agenda' && (
-                <CalendarAgendaView
-                  events={filteredEvents}
-                  onSelectEvent={handleSelectEvent}
-                  onNavigateToModule={onNavigate}
-                />
+                  {viewMode === 'agenda' && (
+                    <CalendarAgendaView
+                      events={filteredEvents}
+                      onSelectEvent={handleSelectEvent}
+                      onNavigateToModule={onNavigate}
+                    />
+                  )}
+                </>
               )}
             </div>
           )}
