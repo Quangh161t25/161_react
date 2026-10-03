@@ -244,11 +244,22 @@ export const calendarService = {
         const d = n.noteDate || n.updatedAt || n.createdAt;
         if (d) {
           const cleanDate = d.slice(0, 10);
+          const rawText = (n.content || n.summary || '').trim();
+          const cleanContent = rawText
+            .replace(/!\[.*?\]\(.*?\)/g, '') // Bỏ ảnh markdown
+            .replace(/<[^>]*>/g, '') // Bỏ thẻ HTML
+            .trim();
+          const displayDesc =
+            n.summary && cleanContent && n.summary !== cleanContent
+              ? `${n.summary}\n${cleanContent}`
+              : cleanContent || n.summary || '';
+
           events.push({
             id: `note_${n.id}`,
             title: `📝 [Ghi chú] ${n.title}`,
             startDate: cleanDate,
-            allDay: true,
+            time: n.noteTime || undefined,
+            allDay: !n.noteTime,
             source: 'note',
             sourceId: n.code,
             sourceLink: '/ghi-chu',
@@ -256,7 +267,7 @@ export const calendarService = {
             badgeBg: 'bg-purple-100 dark:bg-purple-950/60',
             badgeColor: 'text-purple-800 dark:text-purple-300',
             badgeBorder: 'border-purple-400 dark:border-purple-600',
-            description: (n.content || '').substring(0, 100) + '...',
+            description: displayDesc,
             assigneeId: n.authorId,
             assigneeCode: n.authorCode,
             assigneeName: n.author,

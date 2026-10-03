@@ -149,10 +149,16 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                     onSelectEvent(evt);
                   }}
                   className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border border-l-[3px] shadow-xs truncate cursor-pointer transition-all hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
-                  title={evt.title}
+                  title={`${evt.title}${evt.amount !== undefined ? ` [${evt.categoryName.includes('Chi') ? '-' : '+'}${evt.amount.toLocaleString('vi-VN')} đ]` : ''}${evt.description ? `\n${evt.description}` : ''}`}
                 >
                   {getSourceIcon(evt.source)}
-                  <span className="truncate">{evt.title}</span>
+                  <span className="truncate flex-1">{evt.title}</span>
+                  {evt.amount !== undefined && evt.amount !== null && (
+                    <span className="font-mono text-[9px] font-bold shrink-0 opacity-90">
+                      {evt.categoryName.includes('Chi') ? '-' : '+'}
+                      {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -192,11 +198,17 @@ export const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({
                             onSelectEvent(evt);
                           }}
                           className={`flex items-center gap-1 px-1.5 py-1 rounded-md text-[10px] font-semibold border border-l-[3px] shadow-xs transition-all hover:scale-[1.02] ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
-                          title={`${evt.time} - ${evt.title}`}
+                          title={`${evt.time} - ${evt.title}${evt.amount !== undefined ? ` [${evt.categoryName.includes('Chi') ? '-' : '+'}${evt.amount.toLocaleString('vi-VN')} đ]` : ''}${evt.description ? `\n${evt.description}` : ''}`}
                         >
                           <Clock className="w-2.5 h-2.5 shrink-0" />
                           <span className="font-mono text-[9px]">{evt.time}</span>
                           <span className="truncate flex-1 font-bold">{evt.title}</span>
+                          {evt.amount !== undefined && evt.amount !== null && (
+                            <span className="font-mono text-[9px] font-bold shrink-0">
+                              {evt.categoryName.includes('Chi') ? '-' : '+'}
+                              {evt.amount >= 1000000 ? `${(evt.amount / 1000000).toFixed(1)}tr` : `${Math.round(evt.amount / 1000)}k`}
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>

@@ -134,12 +134,27 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
                             <span>{evt.categoryName}</span>
                           </span>
 
-                          {evt.time && (
-                            <span className="font-mono text-xs font-bold text-foreground flex items-center gap-1 bg-muted px-2 py-0.5 rounded">
-                              <Clock className="w-3 h-3 text-muted-foreground" />
-                              {evt.time}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {evt.amount !== undefined && evt.amount !== null && (
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold font-mono shadow-2xs whitespace-nowrap ${
+                                  evt.categoryName.includes('Chi') || (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu'))
+                                    ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                                    : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                                }`}
+                              >
+                                {evt.categoryName.includes('Chi') ? '-' : '+'}
+                                {evt.amount.toLocaleString('vi-VN')} ₫
+                              </span>
+                            )}
+
+                            {evt.time && (
+                              <span className="font-mono text-xs font-bold text-foreground flex items-center gap-1 bg-muted px-2 py-0.5 rounded">
+                                <Clock className="w-3 h-3 text-muted-foreground" />
+                                {evt.time}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <h3 className="font-bold text-xs text-foreground group-hover:text-primary transition-colors line-clamp-2">

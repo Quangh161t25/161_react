@@ -134,10 +134,29 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
               >
                 {getSourceIcon(evt.source)}
                 <div className="min-w-0 flex-1">
-                  <span className="text-[10px] font-semibold opacity-70 block">
-                    {evt.categoryName}
-                  </span>
-                  <div className="font-bold text-xs truncate">{evt.title}</div>
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-semibold opacity-70 block">
+                      {evt.categoryName}
+                    </span>
+                    {evt.amount !== undefined && evt.amount !== null && (
+                      <span
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold font-mono whitespace-nowrap shadow-2xs ${
+                          evt.categoryName.includes('Chi') || (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu'))
+                            ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                            : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                        }`}
+                      >
+                        {evt.categoryName.includes('Chi') ? '-' : '+'}
+                        {evt.amount.toLocaleString('vi-VN')} ₫
+                      </span>
+                    )}
+                  </div>
+                  <div className="font-bold text-xs truncate mt-0.5">{evt.title}</div>
+                  {evt.description && (
+                    <p className="text-[11px] text-foreground/85 font-normal line-clamp-2 mt-1 leading-snug break-words bg-background/30 p-1.5 rounded-lg border border-border/30">
+                      {evt.description}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}
@@ -169,32 +188,57 @@ export const CalendarDayView: React.FC<CalendarDayViewProps> = ({
                       onClick={() => onSelectEvent(evt)}
                       className={`p-3 rounded-xl border border-l-4 shadow-xs cursor-pointer hover:shadow-md transition-all space-y-1.5 ${evt.badgeBg} ${evt.badgeColor} ${evt.badgeBorder}`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           {getSourceIcon(evt.source)}
                           <span className="font-bold text-xs text-foreground truncate">
                             {evt.title}
                           </span>
+
+                          {/* Hiển thị số tiền chi tiêu / thu quỹ ngay cạnh tiêu đề */}
+                          {evt.amount !== undefined && evt.amount !== null && (
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold font-mono shadow-2xs whitespace-nowrap shrink-0 ${
+                                evt.categoryName.includes('Chi') ||
+                                (evt.source === 'finance_cash' && !evt.categoryName.includes('Thu'))
+                                  ? 'bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/30'
+                                  : 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                              }`}
+                            >
+                              {evt.categoryName.includes('Chi') ? '-' : '+'}
+                              {evt.amount.toLocaleString('vi-VN')} ₫
+                            </span>
+                          )}
                         </div>
+
                         <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-background/80 border border-border shrink-0">
                           <Clock className="w-3 h-3 inline mr-1" />
                           {evt.time}
                         </span>
                       </div>
 
-                      {evt.location && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
-                          <span>{evt.location}</span>
-                        </div>
+                      {/* Hiển thị nội dung ghi chú (hoặc mô tả chi tiết nếu có) */}
+                      {evt.description && (
+                        <p className="text-xs text-foreground/85 font-normal line-clamp-3 leading-relaxed break-words bg-background/40 p-2 rounded-lg border border-border/40 mt-1">
+                          {evt.description}
+                        </p>
                       )}
 
-                      {evt.assigneeName && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <User className="w-3 h-3 text-blue-500 shrink-0" />
-                          <span>{evt.assigneeName} {evt.assigneeCode ? `(${evt.assigneeCode})` : ''}</span>
-                        </div>
-                      )}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground pt-0.5">
+                        {evt.location && (
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                            <span>{evt.location}</span>
+                          </div>
+                        )}
+
+                        {evt.assigneeName && (
+                          <div className="flex items-center gap-1.5">
+                            <User className="w-3 h-3 text-blue-500 shrink-0" />
+                            <span>{evt.assigneeName} {evt.assigneeCode ? `(${evt.assigneeCode})` : ''}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
