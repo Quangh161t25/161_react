@@ -219,9 +219,21 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
   const [cashAssigneeId, setCashAssigneeId] = useState('');
   const [cashDescription, setCashDescription] = useState('');
 
+  const prevIsOpenRef = useRef(false);
+
   // Initialize dates and codes on open or date change
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      prevIsOpenRef.current = false;
+      return;
+    }
+
+    if (prevIsOpenRef.current) {
+      // Already open - do not re-initialize while user is typing
+      return;
+    }
+
+    prevIsOpenRef.current = true;
 
     if (defaultModule) {
       setActiveModule(defaultModule);

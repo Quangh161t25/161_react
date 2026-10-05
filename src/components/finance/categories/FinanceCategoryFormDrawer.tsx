@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Save,
@@ -44,9 +44,23 @@ export const FinanceCategoryFormDrawer: React.FC<FinanceCategoryFormDrawerProps>
 
   // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const isInitializedRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
 
   // Populate data when editing
   useEffect(() => {
+    const currentEditId = mode === 'edit' && category ? (category.id || category.code) : null;
+    const justMounted = !isInitializedRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is first mounted OR when switching editing category
+    if (!justMounted && !editTargetChanged) {
+      return;
+    }
+
+    isInitializedRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (mode === 'edit' && category) {
       setCode(category.code || '');
       setName(category.name || '');

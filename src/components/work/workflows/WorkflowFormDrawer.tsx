@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Save,
@@ -49,7 +49,22 @@ export const WorkflowFormDrawer: React.FC<WorkflowFormDrawerProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const isInitializedRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
+    const currentEditId = mode === 'edit' && workflow ? (workflow.id || workflow.code) : null;
+    const justMounted = !isInitializedRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is first mounted OR when switching editing workflow
+    if (!justMounted && !editTargetChanged) {
+      return;
+    }
+
+    isInitializedRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (mode === 'edit' && workflow) {
       setCode(workflow.code || '');
       setName(workflow.name || '');

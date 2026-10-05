@@ -75,8 +75,28 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
 
   const contentTextareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const prevIsOpenRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   // Initialize or reset form
   useEffect(() => {
+    if (!isOpen) {
+      prevIsOpenRef.current = false;
+      return;
+    }
+
+    const currentEditId = initialEntry ? (initialEntry.id || initialEntry.code) : null;
+    const justOpened = !prevIsOpenRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is freshly opened or editing entry changed
+    if (!justOpened && !editTargetChanged) {
+      return;
+    }
+
+    prevIsOpenRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (initialEntry) {
       setTitle(initialEntry.title || '');
       setSummary(initialEntry.summary || '');

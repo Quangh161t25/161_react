@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   Save,
@@ -262,7 +262,27 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
     });
   }, [masterAccounts, transactions]);
 
+  const prevIsOpenRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
+    if (!isOpen) {
+      prevIsOpenRef.current = false;
+      return;
+    }
+
+    const currentEditId = transactionToEdit ? (transactionToEdit.id || transactionToEdit.code) : null;
+    const justOpened = !prevIsOpenRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize or reset when drawer was just opened OR editing target changed
+    if (!justOpened && !editTargetChanged) {
+      return;
+    }
+
+    prevIsOpenRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (transactionToEdit) {
       setType(transactionToEdit.type);
       setCode(transactionToEdit.code);

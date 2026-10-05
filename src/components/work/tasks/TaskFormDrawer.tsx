@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   Save,
@@ -95,7 +95,22 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const isInitializedRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
+    const currentEditId = mode === 'edit' && task ? (task.id || task.code) : null;
+    const justMounted = !isInitializedRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is first mounted OR when switching editing task
+    if (!justMounted && !editTargetChanged) {
+      return;
+    }
+
+    isInitializedRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const nextWeekDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);

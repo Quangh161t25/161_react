@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Save,
@@ -75,7 +75,22 @@ export const ProjectFormDrawer: React.FC<ProjectFormDrawerProps> = ({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const isInitializedRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
+    const currentEditId = mode === 'edit' && project ? (project.id || project.code) : null;
+    const justMounted = !isInitializedRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is first mounted OR when switching editing project
+    if (!justMounted && !editTargetChanged) {
+      return;
+    }
+
+    isInitializedRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const nextThreeMonths = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);

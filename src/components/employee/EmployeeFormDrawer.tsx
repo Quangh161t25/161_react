@@ -182,7 +182,27 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
     message: string;
   } | null>(null);
 
+  const prevIsOpenRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
+    if (!isOpen) {
+      prevIsOpenRef.current = false;
+      return;
+    }
+
+    const currentEditId = initialData ? (initialData.id || initialData.code) : null;
+    const justOpened = !prevIsOpenRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is freshly opened or switching employee
+    if (!justOpened && !editTargetChanged) {
+      return;
+    }
+
+    prevIsOpenRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (initialData) {
       setAvatarUrl(initialData.avatarUrl || '');
       setName(initialData.name || '');

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Save,
@@ -47,11 +47,24 @@ export const FinanceAccountFormDrawer: React.FC<FinanceAccountFormDrawerProps> =
   const [status, setStatus] = useState<MasterStatus>('active');
   const [isDefault, setIsDefault] = useState(false);
   const [note, setNote] = useState('');
-
-  // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const isInitializedRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
+    const currentEditId = mode === 'edit' && account ? (account.id || account.code) : null;
+    const justMounted = !isInitializedRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is first mounted OR when switching editing account
+    if (!justMounted && !editTargetChanged) {
+      return;
+    }
+
+    isInitializedRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (mode === 'edit' && account) {
       setCode(account.code || '');
       setAccountName(account.accountName || '');

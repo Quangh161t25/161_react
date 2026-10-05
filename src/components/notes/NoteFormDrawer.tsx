@@ -150,7 +150,27 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     return Array.from(set);
   }, [existingTags]);
 
+  const prevIsOpenRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
+    if (!isOpen) {
+      prevIsOpenRef.current = false;
+      return;
+    }
+
+    const currentEditId = initialData ? (initialData.id || initialData.code) : null;
+    const justOpened = !prevIsOpenRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is freshly opened or editing note changed
+    if (!justOpened && !editTargetChanged) {
+      return;
+    }
+
+    prevIsOpenRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (initialData) {
       setTitle(initialData.title || '');
       setSummary(initialData.summary || '');

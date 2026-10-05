@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X,
   Save,
@@ -60,7 +60,22 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
   // Form errors
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const isInitializedRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   useEffect(() => {
+    const currentEditId = mode === 'edit' && passwordItem ? (passwordItem.id || passwordItem.code) : null;
+    const justMounted = !isInitializedRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is first mounted OR when switching editing password item
+    if (!justMounted && !editTargetChanged) {
+      return;
+    }
+
+    isInitializedRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (mode === 'edit' && passwordItem) {
       setCode(passwordItem.code || '');
       setTitle(passwordItem.title || '');

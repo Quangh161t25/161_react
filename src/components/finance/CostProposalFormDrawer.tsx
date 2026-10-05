@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FileText,
   PanelRightClose,
@@ -120,8 +120,28 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
     }
   }, [isOpen]);
 
+  const prevIsOpenRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
+
   // Populate data when editing or opening
   useEffect(() => {
+    if (!isOpen) {
+      prevIsOpenRef.current = false;
+      return;
+    }
+
+    const currentEditId = initialData ? (initialData.id || initialData.code) : null;
+    const justOpened = !prevIsOpenRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is freshly opened or editing target changed
+    if (!justOpened && !editTargetChanged) {
+      return;
+    }
+
+    prevIsOpenRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (initialData) {
       // Date formatting for input[type="date"]
       const formatDateForInput = (dStr: string) => {

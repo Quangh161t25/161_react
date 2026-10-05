@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Save,
@@ -76,10 +76,23 @@ export const ApprovalThresholdFormDrawer: React.FC<ApprovalThresholdFormDrawerPr
   const [status, setStatus] = useState<MasterStatus>('active');
   const [note, setNote] = useState('');
 
-  // Errors
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const isInitializedRef = useRef(false);
+  const prevEditIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
+    const currentEditId = mode === 'edit' && threshold ? (threshold.id || threshold.code) : null;
+    const justMounted = !isInitializedRef.current;
+    const editTargetChanged = currentEditId !== prevEditIdRef.current;
+
+    // Only initialize when drawer is first mounted OR when switching editing threshold
+    if (!justMounted && !editTargetChanged) {
+      return;
+    }
+
+    isInitializedRef.current = true;
+    prevEditIdRef.current = currentEditId;
+
     if (mode === 'edit' && threshold) {
       setCode(threshold.code || '');
       setName(threshold.name || '');
