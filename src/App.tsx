@@ -19,6 +19,7 @@ import { LoginPage } from './components/auth/LoginPage';
 import { GenericPage } from './components/pages/GenericPage';
 import { WorkPage } from './components/work/WorkPage';
 import { TaskListPage } from './components/work/tasks/TaskListPage';
+import { SubtaskListPage } from './components/work/subtasks/SubtaskListPage';
 import { ProjectListPage } from './components/work/projects/ProjectListPage';
 import { WorkflowListPage } from './components/work/workflows/WorkflowListPage';
 import { WorkReportPage } from './components/work/reports/WorkReportPage';
@@ -83,6 +84,8 @@ const AppContent: React.FC = () => {
       document.title = 'Trang chủ | ERP Doanh Nghiệp';
     } else if (currentPath === '/cong-viec') {
       document.title = 'Công việc & Dự án | ERP Doanh Nghiệp';
+    } else if (currentPath.startsWith('/cong-viec/cong-viec-con')) {
+      document.title = 'Công việc con | ERP Doanh Nghiệp';
     } else if (currentPath.startsWith('/cong-viec/danh-sach')) {
       document.title = 'Danh sách công việc | ERP Doanh Nghiệp';
     } else if (currentPath.startsWith('/cong-viec/du-an')) {
@@ -158,7 +161,12 @@ const AppContent: React.FC = () => {
       return <WorkPage onNavigate={(path) => handleNavigate(path)} />;
     }
 
-    // 1c. Công việc: Danh sách công việc
+    // 1c. Công việc: Quản lý Công việc con
+    if (currentPath.startsWith('/cong-viec/cong-viec-con')) {
+      return <SubtaskListPage onBack={() => handleNavigate('/cong-viec')} />;
+    }
+
+    // 1c2. Công việc: Danh sách công việc
     if (currentPath.startsWith('/cong-viec/danh-sach')) {
       const isMyTasks = currentPath.includes('view=my_tasks');
       const isCalendar = currentPath.includes('view=calendar');

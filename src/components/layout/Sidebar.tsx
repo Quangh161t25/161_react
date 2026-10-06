@@ -19,7 +19,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const renderNavItem = (item: NavItem) => {
-    const isActive = activePath === item.href;
+    const isActive =
+      item.href === '/'
+        ? activePath === '/'
+        : activePath === item.href || activePath.startsWith(item.href + '/');
     const Icon = item.icon;
 
     return (
