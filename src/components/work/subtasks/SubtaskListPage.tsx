@@ -26,6 +26,7 @@ import { taskService, projectService } from '../../../services/taskService';
 import { employeeService } from '../../../services/employeeService';
 import { SubtaskFormModal } from './SubtaskFormModal';
 import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer';
+import { TaskFormDrawer } from '../tasks/TaskFormDrawer';
 import { useAutoSync } from '../../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../../common/RealtimeSyncBadge';
 
@@ -68,6 +69,8 @@ export const SubtaskListPage: React.FC<SubtaskListPageProps> = ({ onBack }) => {
   const [defaultParentTaskId, setDefaultParentTaskId] = useState<string | undefined>(undefined);
   const [subtaskToEdit, setSubtaskToEdit] = useState<{ taskId: string; subtask: TaskSubtask } | null>(null);
   const [selectedParentTask, setSelectedParentTask] = useState<Task | null>(null);
+  const [parentTaskToEdit, setParentTaskToEdit] = useState<Task | null>(null);
+  const [isParentTaskFormOpen, setIsParentTaskFormOpen] = useState(false);
 
   // Quick inline add state per parent task: { [taskId]: text }
   const [quickAddTitles, setQuickAddTitles] = useState<Record<string, string>>({});
@@ -213,6 +216,66 @@ export const SubtaskListPage: React.FC<SubtaskListPageProps> = ({ onBack }) => {
 
     handleSaveSubtask(taskId, newSubtask, false);
     setQuickAddTitles((prev) => ({ ...prev, [taskId]: '' }));
+  };
+
+  // Parent Task Actions (Edit, Delete, Comment)
+  const handleEditParentTask = (task: Task) => {
+    setParentTaskToEdit(task);
+    setIsParentTaskFormOpen(true);
+  };
+
+  const handleSaveParentTask = (taskPayload: Task) => {
+    const updated = tasks.map((t) =>
+      (taskPayload.code && t.code === taskPayload.code) || t.id === taskPayload.id
+        ? { ...t, ...taskPayload }
+        : t
+    );
+    updateAndSaveTasks(updated);
+    setIsParentTaskFormOpen(false);
+    setParentTaskToEdit(null);
+    if (
+      selectedParentTask &&
+      (selectedParentTask.id === taskPayload.id || (taskPayload.code && selectedParentTask.code === taskPayload.code))
+    ) {
+      setSelectedParentTask(taskPayload);
+    }
+    showToast(`Đã cập nhật công việc "${taskPayload.title}"!`);
+  };
+
+  const handleDeleteParentTask = (taskId: string) => {
+    const taskToDelete = tasks.find((t) => t.id === taskId);
+    const updated = tasks.filter((t) => t.id !== taskId);
+    updateAndSaveTasks(updated);
+    if (taskToDelete?.code) {
+      taskService.deleteFromSheet(taskToDelete.code);
+    }
+    setSelectedParentTask(null);
+    showToast(`Đã xóa công việc "${taskToDelete?.title || taskId}".`);
+  };
+
+  const handleAddComment = (taskId: string, content: string) => {
+    const now = new Date();
+    const timeStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const updated = tasks.map((t) => {
+      if (t.id === taskId) {
+        const nextComments = [
+          ...(t.comments || []),
+          {
+            id: 'cm_' + Date.now(),
+            author: 'Quản trị viên',
+            content,
+            createdAt: timeStr,
+          },
+        ];
+        return { ...t, comments: nextComments };
+      }
+      return t;
+    });
+    updateAndSaveTasks(updated);
+    if (selectedParentTask?.id === taskId) {
+      const found = updated.find((x) => x.id === taskId);
+      if (found) setSelectedParentTask(found);
+    }
   };
 
   // Flatten all subtasks for table and statistics
@@ -1307,13 +1370,28 @@ export const SubtaskListPage: React.FC<SubtaskListPageProps> = ({ onBack }) => {
             const idx = tasks.findIndex((t) => t.id === selectedParentTask.id);
             if (idx < tasks.length - 1) setSelectedParentTask(tasks[idx + 1]);
           }}
-          onEdit={() => {}}
-          onDelete={() => {}}
+          onEdit={handleEditParentTask}
+          onDelete={handleDeleteParentTask}
+          onAddComment={handleAddComment}
           onToggleSubtask={handleToggleSubtask}
           onStatusChange={(taskId, newStatus) => {
             const updated = tasks.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t));
             updateAndSaveTasks(updated);
           }}
+        />
+      )}
+
+      {/* Parent Task Form Drawer (Edit) */}
+      {isParentTaskFormOpen && (
+        <TaskFormDrawer
+          mode="edit"
+          task={parentTaskToEdit}
+          allTasks={tasks}
+          onClose={() => {
+            setIsParentTaskFormOpen(false);
+            setParentTaskToEdit(null);
+          }}
+          onSave={handleSaveParentTask}
         />
       )}
     </div>
