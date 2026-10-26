@@ -18,7 +18,7 @@ import {
 import { Task, TaskPriority, TaskStatus, TaskSubtask, Project } from '../../../types/task';
 import { Employee } from '../../../types/employee';
 import { employeeService } from '../../../services/employeeService';
-import { projectService } from '../../../services/taskService';
+import { projectService, taskService } from '../../../services/taskService';
 
 interface TaskFormDrawerProps {
   mode: 'create' | 'edit';
@@ -135,7 +135,18 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
       setTags(task.tags || []);
       setNote(task.note || '');
     } else {
-      const nextNum = allTasks.length + 1;
+      const tasksToScan = allTasks.length > 0 ? allTasks : taskService.getInitialTasks();
+      let maxNum = 0;
+      tasksToScan.forEach((t) => {
+        const match = t.code?.match(/CV-(\d+)/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNum) {
+            maxNum = num;
+          }
+        }
+      });
+      const nextNum = Math.max(maxNum + 1, tasksToScan.length + 1);
       setCode(`CV-${String(nextNum).padStart(3, '0')}`);
       setTitle('');
       setDescription('');
@@ -244,9 +255,23 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
     const now = new Date();
     const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+    const tasksToScan = allTasks.length > 0 ? allTasks : taskService.getInitialTasks();
+    let maxNum = 0;
+    tasksToScan.forEach((t) => {
+      const match = t.code?.match(/CV-(\d+)/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+    const autoCode = `CV-${String(Math.max(maxNum + 1, tasksToScan.length + 1)).padStart(3, '0')}`;
+    const finalCode = (mode === 'edit' && task?.code) ? task.code : (code.trim() || autoCode);
+
     const payload: Task = {
       id: task?.id || 'task_' + Date.now(),
-      code: code.trim(),
+      code: finalCode,
       title: title.trim(),
       description: description.trim(),
       projectId: matchedProject ? matchedProject.id : undefined,
@@ -372,21 +397,39 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 custom-scrollbar">
             {/* 1. Basic Info */}
             <div className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">
-                    Mã công việc <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="w-full h-9 px-3 rounded-lg border border-border bg-card font-mono text-xs focus:outline-none focus:ring-1 focus:ring-primary font-bold text-primary"
-                    required
-                  />
-                </div>
+              {mode === 'edit' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-foreground">
+                      Mã công việc
+                    </label>
+                    <input
+                      type="text"
+                      value={code}
+                      readOnly
+                      title="Mã công việc được quản lý tự động"
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-muted/60 font-mono text-xs text-muted-foreground font-bold cursor-not-allowed"
+                    />
+                  </div>
 
-                <div className="sm:col-span-2 space-y-1">
+                  <div className="sm:col-span-3 space-y-1">
+                    <label className="text-xs font-semibold text-foreground">
+                      Tên / Tiêu đề công việc <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="VD: Thiết kế giao diện báo cáo doanh thu..."
+                      className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
+                        errors.title ? 'border-rose-500' : 'border-border'
+                      }`}
+                    />
+                    {errors.title && <p className="text-[11px] text-rose-500">{errors.title}</p>}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
                   <label className="text-xs font-semibold text-foreground">
                     Tên / Tiêu đề công việc <span className="text-rose-500">*</span>
                   </label>
@@ -401,7 +444,7 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
                   />
                   {errors.title && <p className="text-[11px] text-rose-500">{errors.title}</p>}
                 </div>
-              </div>
+              )}
 
               {/* Description */}
               <div className="space-y-1">
