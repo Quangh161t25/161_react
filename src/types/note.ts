@@ -59,6 +59,7 @@ export interface Note {
   updatedAt: string;
   isPinned: boolean;
   color?: string; // blue, emerald, amber, purple, rose, slate, etc.
+  icons?: string[]; // Danh sách biểu tượng emoji (cảm xúc: vui, buồn, giận... và thời tiết: nắng, mưa...)
   attachments?: NoteAttachment[];
   status: NoteStatus;
   participants?: NoteParticipant[];

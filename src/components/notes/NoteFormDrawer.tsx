@@ -40,10 +40,16 @@ import {
   Loader2,
   Globe,
   ExternalLink,
+  Smile,
 } from 'lucide-react';
 import { catboxService } from '../../services/catboxService';
 import { Note, NoteCategory, NoteStatus, NoteAttachment, NoteParticipant } from '../../types/note';
-import { NOTE_CATEGORIES, NOTE_COLOR_THEMES, PRESET_TAGS } from '../../data/notes';
+import {
+  NOTE_CATEGORIES,
+  PRESET_TAGS,
+  ALL_NOTE_ICONS,
+  getNoteIconLabel,
+} from '../../data/notes';
 import { TimePickerInput } from '../common/TimePickerInput';
 import { useAuth } from '../../context/AuthContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -87,6 +93,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   const [status, setStatus] = useState<NoteStatus>('published');
   const [isPinned, setIsPinned] = useState(false);
   const [color, setColor] = useState('blue');
+  const [icons, setIcons] = useState<string[]>([]);
+  const [iconFilterGroup, setIconFilterGroup] = useState<'all' | 'mood' | 'weather' | 'activity'>('all');
   const [coverUrl, setCoverUrl] = useState('');
 
   // Author
@@ -153,6 +161,17 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     return Array.from(set);
   }, [existingTags]);
 
+  const displayedIcons = useMemo(() => {
+    if (iconFilterGroup === 'all') return ALL_NOTE_ICONS;
+    return ALL_NOTE_ICONS.filter((item) => item.group === iconFilterGroup);
+  }, [iconFilterGroup]);
+
+  const handleToggleIcon = (emoji: string) => {
+    setIcons((prev) =>
+      prev.includes(emoji) ? prev.filter((e) => e !== emoji) : [...prev, emoji]
+    );
+  };
+
   const prevIsOpenRef = useRef(false);
   const prevEditIdRef = useRef<string | null | undefined>(undefined);
 
@@ -183,6 +202,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setStatus(initialData.status || 'published');
       setIsPinned(!!initialData.isPinned);
       setColor(initialData.color || 'blue');
+      setIcons(initialData.icons || []);
       setCoverUrl(initialData.coverUrl || '');
       setAuthor(initialData.author || currentUser?.name || currentUser?.username || 'admin');
       setAuthorAvatar(initialData.authorAvatar || currentUser?.avatarUrl || '');
@@ -212,6 +232,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setStatus('published');
       setIsPinned(false);
       setColor('blue');
+      setIcons([]);
       setCoverUrl('');
       setAuthor(currentUser?.name || currentUser?.username || 'admin');
       setAuthorAvatar(currentUser?.avatarUrl || '');
@@ -612,6 +633,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       status,
       isPinned,
       color,
+      icons: icons.length > 0 ? icons : undefined,
       coverUrl: coverUrl.trim() || undefined,
       noteDate: noteDate || undefined,
       noteTime: noteTime || undefined,
@@ -1355,20 +1377,21 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   </h4>
                 </div>
 
-                {/* Theme Color Picker */}
+                {/* Biểu tượng đã chọn tóm tắt */}
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Màu sắc:</span>
-                  {NOTE_COLOR_THEMES.map((theme) => (
-                    <button
-                      key={theme.id}
-                      type="button"
-                      title={theme.name}
-                      onClick={() => setColor(theme.id)}
-                      className={`w-5 h-5 rounded-full ${theme.badge} border transition-all ${
-                        color === theme.id ? 'ring-2 ring-primary ring-offset-2 scale-110' : 'opacity-70 hover:opacity-100'
-                      }`}
-                    />
-                  ))}
+                  <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Biểu tượng:</span>
+                  {icons.length > 0 ? (
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/30 text-xs font-semibold text-primary">
+                      <span className="flex items-center gap-0.5">
+                        {icons.slice(0, 4).map((ic, i) => (
+                          <span key={i} className="text-sm leading-none">{ic}</span>
+                        ))}
+                      </span>
+                      {icons.length > 4 && <span className="text-[10px]">+{icons.length - 4}</span>}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">(chưa chọn)</span>
+                  )}
                 </div>
               </div>
 
@@ -1424,6 +1447,125 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                     <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-current' : ''}`} />
                     {isPinned ? 'Đang ghim lên đầu' : 'Không ghim'}
                   </button>
+                </div>
+              </div>
+
+              {/* Biểu tượng / Cảm xúc & Thời tiết (Multi-select) */}
+              <div className="space-y-2.5 pt-2 border-t border-border/50">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Smile className="w-4 h-4 text-primary shrink-0" />
+                    <label className="text-xs font-semibold text-foreground">
+                      Biểu tượng / Cảm xúc & Thời tiết
+                    </label>
+                    <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                      (Bấm chọn nhiều icon)
+                    </span>
+                  </div>
+
+                  {/* Filter tabs */}
+                  <div className="flex items-center gap-0.5 p-0.5 bg-muted/60 rounded-lg border border-border/50 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setIconFilterGroup('all')}
+                      className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer ${
+                        iconFilterGroup === 'all'
+                          ? 'bg-background text-foreground shadow-2xs font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Tất cả
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIconFilterGroup('mood')}
+                      className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer ${
+                        iconFilterGroup === 'mood'
+                          ? 'bg-background text-foreground shadow-2xs font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      😊 Cảm xúc
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIconFilterGroup('weather')}
+                      className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer ${
+                        iconFilterGroup === 'weather'
+                          ? 'bg-background text-foreground shadow-2xs font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      ☀️ Thời tiết
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIconFilterGroup('activity')}
+                      className={`px-2 py-0.5 rounded-md font-medium transition-all cursor-pointer ${
+                        iconFilterGroup === 'activity'
+                          ? 'bg-background text-foreground shadow-2xs font-semibold'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      ☕ Bối cảnh
+                    </button>
+                  </div>
+                </div>
+
+                {/* Selected icons row */}
+                {icons.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-primary/5 border border-primary/20 animate-in fade-in duration-200">
+                    <span className="text-[11px] font-semibold text-primary mr-1">Đã chọn ({icons.length}):</span>
+                    {icons.map((ic) => (
+                      <span
+                        key={ic}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-background border border-primary/30 text-xs shadow-2xs font-medium text-foreground"
+                      >
+                        <span className="text-sm">{ic}</span>
+                        <span className="text-[11px] text-muted-foreground">{getNoteIconLabel(ic)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleIcon(ic)}
+                          className="text-muted-foreground hover:text-rose-500 transition-colors ml-0.5 p-0.5 rounded hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                          title="Bỏ chọn icon này"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setIcons([])}
+                      className="text-[11px] text-muted-foreground hover:text-rose-600 transition-colors ml-auto underline cursor-pointer"
+                    >
+                      Xóa tất cả
+                    </button>
+                  </div>
+                )}
+
+                {/* Available icons to pick */}
+                <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-muted/20 border border-border/60 max-h-[140px] overflow-y-auto">
+                  {displayedIcons.map((item) => {
+                    const isSelected = icons.includes(item.emoji);
+                    return (
+                      <button
+                        key={item.emoji}
+                        type="button"
+                        onClick={() => handleToggleIcon(item.emoji)}
+                        className={`group flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-primary text-primary-foreground font-semibold shadow-xs scale-105 ring-1 ring-primary'
+                            : 'bg-background hover:bg-muted text-foreground border border-border/80 hover:border-primary/40'
+                        }`}
+                        title={`${item.name} (${item.emoji})`}
+                      >
+                        <span className="text-base group-hover:scale-120 transition-transform">{item.emoji}</span>
+                        <span className={`text-[11px] ${isSelected ? 'text-primary-foreground font-semibold' : 'text-muted-foreground'}`}>
+                          {item.name}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

@@ -34,6 +34,7 @@ import { Note, NoteComment } from '../../types/note';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { getGoogleMapsUrl } from '../../utils/mapUtils';
+import { getNoteIconLabel } from '../../data/notes';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface NoteDetailDrawerProps {
@@ -431,6 +432,20 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                     <FolderOpen className="w-3.5 h-3.5" />
                     {note.category}
                   </span>
+                  {note.icons && note.icons.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {note.icons.map((ic, idx) => (
+                        <span
+                          key={idx}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-lg bg-secondary text-secondary-foreground border border-border/80 shadow-2xs"
+                          title={getNoteIconLabel(ic)}
+                        >
+                          <span className="text-sm">{ic}</span>
+                          <span className="text-[11px] font-medium">{getNoteIconLabel(ic)}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {onTogglePin ? (
                     <button
                       type="button"

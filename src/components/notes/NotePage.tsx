@@ -33,7 +33,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { Note, NoteCategory, NoteStatus, NoteComment } from '../../types/note';
-import { NOTE_CATEGORIES } from '../../data/notes';
+import { NOTE_CATEGORIES, getNoteIconLabel } from '../../data/notes';
 import { noteService } from '../../services/noteService';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { NoteDetailDrawer } from './NoteDetailDrawer';
@@ -846,6 +846,13 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                 <span className={`font-semibold hover:text-primary transition-colors cursor-pointer ${textWrapClass}`}>
                   {note.title}
                 </span>
+                {note.icons && note.icons.length > 0 && (
+                  <span className="inline-flex items-center gap-0.5 ml-1.5 align-middle">
+                    {note.icons.map((ic, i) => (
+                      <span key={i} className="text-sm leading-none" title={getNoteIconLabel(ic)}>{ic}</span>
+                    ))}
+                  </span>
+                )}
                 {note.summary && (
                   <p className="text-[11px] text-muted-foreground truncate leading-tight">
                     {note.summary}
@@ -1805,8 +1812,15 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                               alt=""
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
-                            <div className="absolute top-2.5 left-2.5">
+                            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
                               {renderCategoryBadge(note.category)}
+                              {note.icons && note.icons.length > 0 && (
+                                <span className="px-1.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-xs flex items-center gap-0.5 text-white">
+                                  {note.icons.map((ic, i) => (
+                                    <span key={i} className="text-xs leading-none" title={getNoteIconLabel(ic)}>{ic}</span>
+                                  ))}
+                                </span>
+                              )}
                             </div>
                             <button
                               type="button"
@@ -1828,7 +1842,16 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                           <div>
                             {!note.coverUrl && (
                               <div className="flex items-center justify-between gap-2 mb-2">
-                                {renderCategoryBadge(note.category)}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {renderCategoryBadge(note.category)}
+                                  {note.icons && note.icons.length > 0 && (
+                                    <span className="flex items-center gap-0.5">
+                                      {note.icons.map((ic, i) => (
+                                        <span key={i} className="text-sm leading-none" title={getNoteIconLabel(ic)}>{ic}</span>
+                                      ))}
+                                    </span>
+                                  )}
+                                </div>
                                 <button
                                   type="button"
                                   onClick={(e) => handleTogglePin(note.id, e)}

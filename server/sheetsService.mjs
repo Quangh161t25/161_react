@@ -1025,7 +1025,7 @@ export function noteToRow(n) {
     tagsText,
     n.status || 'published',
     isPinnedText,
-    n.color || 'blue',
+    Array.isArray(n.icons) && n.icons.length > 0 ? JSON.stringify(n.icons) : (n.color || 'blue'),
     n.noteDate || '',
     n.noteTime || '',
     n.location || '',
@@ -1087,6 +1087,19 @@ export function rowToNote(r, idx) {
     }
   }
 
+  let icons = [];
+  if (r[8]) {
+    try {
+      if (r[8].startsWith('[')) {
+        icons = JSON.parse(r[8]);
+      } else if (r[8] !== 'blue' && r[8] !== 'emerald' && r[8] !== 'amber' && r[8] !== 'purple' && r[8] !== 'rose' && r[8] !== 'indigo' && r[8] !== 'slate') {
+        icons = r[8].split(/[\s,]+/).filter(Boolean);
+      }
+    } catch {
+      icons = [];
+    }
+  }
+
   const activity = r[21] || undefined;
   const link = r[22] || undefined;
   const isPinned = r[7] === 'Có' || r[7] === 'true' || r[7] === true || r[7] === '1';
@@ -1102,6 +1115,7 @@ export function rowToNote(r, idx) {
     status: r[6] === 'draft' ? 'draft' : r[6] === 'archived' ? 'archived' : 'published',
     isPinned,
     color: r[8] || 'blue',
+    icons: Array.isArray(icons) ? icons : [],
     noteDate: r[9] || '',
     noteTime: r[10] || '',
     location: r[11] || '',
