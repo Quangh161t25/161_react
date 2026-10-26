@@ -1,3 +1,11 @@
+export interface NoteComment {
+  id: string;
+  author: string;
+  authorAvatar?: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface NoteAttachment {
   id: string;
   name: string;
@@ -54,5 +62,6 @@ export interface Note {
   attachments?: NoteAttachment[];
   status: NoteStatus;
   participants?: NoteParticipant[];
+  comments?: NoteComment[];
   activity?: string;
 }

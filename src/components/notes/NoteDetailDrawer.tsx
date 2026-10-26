@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getSafeAvatarUrl } from '../../utils/avatarUtils';
 import {
   X,
@@ -30,9 +30,11 @@ import {
   AlertCircle,
   ExternalLink,
   Globe,
+  Send,
 } from 'lucide-react';
-import { Note } from '../../types/note';
+import { Note, NoteComment } from '../../types/note';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface NoteDetailDrawerProps {
@@ -48,6 +50,8 @@ interface NoteDetailDrawerProps {
   onEdit: (note: Note) => void;
   onDelete: (id: string) => void;
   onTogglePin?: (id: string) => void;
+  onAddComment?: (noteId: string, comment: NoteComment) => void;
+  onDeleteComment?: (noteId: string, commentId: string) => void;
 }
 
 type DrawerWidthMode = 'narrow' | 'normal' | 'wide' | 'fullscreen';
@@ -66,7 +70,10 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
   onEdit,
   onDelete,
   onTogglePin,
+  onAddComment,
+  onDeleteComment,
 }) => {
+  const { currentUser } = useAuth();
   const { formatDate, formatTime } = useSettings();
   const [widthMode, setWidthMode] = useState<DrawerWidthMode>('normal');
   const [prevWidthMode, setPrevWidthMode] = useState<DrawerWidthMode>('normal');
@@ -74,6 +81,30 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
   const [selectedLightboxImage, setSelectedLightboxImage] = useState<string | null>(null);
+  const [comments, setComments] = useState<NoteComment[]>([]);
+  const [commentInput, setCommentInput] = useState('');
+
+  // Sync comments from localStorage or note.comments whenever note changes
+  useEffect(() => {
+    if (!note?.id) {
+      setComments([]);
+      setCommentInput('');
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(`erp_note_comments_${note.id}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setComments(parsed);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to load comments from storage', e);
+    }
+    setComments(note.comments || []);
+  }, [note?.id, note?.comments]);
 
   if (!note || (isOpen !== undefined && !isOpen)) return null;
 
@@ -149,6 +180,51 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
     navigator.clipboard.writeText(lines.join('\n'));
     setCopiedAll(true);
     setTimeout(() => setCopiedAll(false), 2000);
+  };
+
+  const handleSendComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentInput.trim() || !note) return;
+
+    const now = new Date();
+    const dateStr = formatDate(now.toISOString().split('T')[0]);
+    const timeStr = formatTime(now.toTimeString().slice(0, 5));
+
+    const newComment: NoteComment = {
+      id: `cm-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      author: currentUser?.name || currentUser?.username || 'Người dùng',
+      authorAvatar: currentUser?.avatarUrl,
+      content: commentInput.trim(),
+      createdAt: `${dateStr} ${timeStr}`,
+    };
+
+    const updated = [...comments, newComment];
+    setComments(updated);
+    setCommentInput('');
+
+    try {
+      localStorage.setItem(`erp_note_comments_${note.id}`, JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Failed to save comment to localStorage', err);
+    }
+
+    if (onAddComment) {
+      onAddComment(note.id, newComment);
+    }
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    if (!note) return;
+    const updated = comments.filter((c) => c.id !== commentId);
+    setComments(updated);
+    try {
+      localStorage.setItem(`erp_note_comments_${note.id}`, JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Failed to update comments in localStorage', err);
+    }
+    if (onDeleteComment) {
+      onDeleteComment(note.id, commentId);
+    }
   };
 
   return (
@@ -637,7 +713,16 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                       }`}
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
-                      Trao đổi
+                      <span>Trao đổi</span>
+                      {comments.length > 0 && (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold leading-tight ${
+                            activityTab === 'comments' ? 'bg-white/20 text-white' : 'bg-primary/15 text-primary'
+                          }`}
+                        >
+                          {comments.length}
+                        </span>
+                      )}
                     </button>
                     <button
                       type="button"
@@ -663,10 +748,78 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                 )}
 
                 {activityTab === 'comments' && (
-                  <div className="flex flex-col items-center justify-center text-center text-muted-foreground px-6 py-8 bg-card rounded-xl border border-dashed border-border">
-                    <MessageSquare className="w-9 h-9 mb-2 opacity-20" />
-                    <p className="text-xs text-foreground font-semibold">Chưa có bình luận nào</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Trao đổi và ghi chú bổ sung sẽ hiển thị tại đây.</p>
+                  <div className="space-y-3">
+                    {/* Danh sách bình luận */}
+                    <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+                      {comments.length > 0 ? (
+                        comments.map((cm) => (
+                          <div
+                            key={cm.id}
+                            className="group relative p-2.5 sm:p-3 rounded-xl bg-card border border-border hover:border-primary/30 transition-all text-xs space-y-1.5 shadow-2xs"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {cm.authorAvatar ? (
+                                  <img
+                                    src={getSafeAvatarUrl(cm.authorAvatar)}
+                                    alt={cm.author}
+                                    className="w-5 h-5 rounded-full object-cover shrink-0 border border-border"
+                                  />
+                                ) : (
+                                  <div className="w-5 h-5 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-[10px] shrink-0">
+                                    {cm.author ? cm.author.charAt(0).toUpperCase() : 'U'}
+                                  </div>
+                                )}
+                                <span className="font-semibold text-foreground truncate">{cm.author}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="text-[10px] text-muted-foreground tabular-nums">{cm.createdAt}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteComment(cm.id)}
+                                  className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-rose-600 rounded transition-all cursor-pointer"
+                                  title="Xóa trao đổi này"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            <p className="text-foreground text-xs leading-relaxed whitespace-pre-wrap pl-7">
+                              {cm.content}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-center text-muted-foreground px-6 py-7 bg-card rounded-xl border border-dashed border-border">
+                          <MessageSquare className="w-8 h-8 mb-1.5 opacity-20" />
+                          <p className="text-xs text-foreground font-semibold">Chưa có trao đổi nào</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Nhập nội dung trao đổi, thảo luận hoặc ý kiến bổ sung bên dưới.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ô nhập trao đổi / bình luận */}
+                    <form onSubmit={handleSendComment} className="flex items-center gap-2 pt-1 border-t border-border/50">
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={commentInput}
+                          onChange={(e) => setCommentInput(e.target.value)}
+                          placeholder="Nhập nội dung trao đổi / phản hồi tại đây..."
+                          className="w-full h-9 pl-3 pr-3 rounded-lg border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all shadow-2xs"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={!commentInput.trim()}
+                        className="h-9 px-3.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:pointer-events-none text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all shrink-0 cursor-pointer"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>Gửi</span>
+                      </button>
+                    </form>
                   </div>
                 )}
 

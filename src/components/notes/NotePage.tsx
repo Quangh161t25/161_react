@@ -32,7 +32,7 @@ import {
   ArrowUpDown,
   ExternalLink,
 } from 'lucide-react';
-import { Note, NoteCategory, NoteStatus } from '../../types/note';
+import { Note, NoteCategory, NoteStatus, NoteComment } from '../../types/note';
 import { NOTE_CATEGORIES } from '../../data/notes';
 import { noteService } from '../../services/noteService';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -585,6 +585,40 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     }
     if (target) {
       noteService.updateInSheet(target).catch((err) => console.warn('Sync pin failed', err));
+    }
+  };
+
+  // Add Comment to Note
+  const handleAddComment = (noteId: string, comment: NoteComment) => {
+    const updatedList = notes.map((n) => {
+      if (n.id === noteId) {
+        const comments = [...(n.comments || []), comment];
+        return { ...n, comments };
+      }
+      return n;
+    });
+    setNotes(updatedList);
+    noteService.saveToLocalCache(updatedList);
+    const target = updatedList.find((n) => n.id === noteId);
+    if (selectedNoteForDetail?.id === noteId && target) {
+      setSelectedNoteForDetail(target);
+    }
+  };
+
+  // Delete Comment from Note
+  const handleDeleteComment = (noteId: string, commentId: string) => {
+    const updatedList = notes.map((n) => {
+      if (n.id === noteId) {
+        const comments = (n.comments || []).filter((c) => c.id !== commentId);
+        return { ...n, comments };
+      }
+      return n;
+    });
+    setNotes(updatedList);
+    noteService.saveToLocalCache(updatedList);
+    const target = updatedList.find((n) => n.id === noteId);
+    if (selectedNoteForDetail?.id === noteId && target) {
+      setSelectedNoteForDetail(target);
     }
   };
 
@@ -2001,6 +2035,8 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         }}
         onDelete={(noteId) => handleDeleteNote(noteId)}
         onTogglePin={(noteId) => handleTogglePin(noteId)}
+        onAddComment={handleAddComment}
+        onDeleteComment={handleDeleteComment}
       />
 
       {/* Form Drawer (Create / Edit) */}
