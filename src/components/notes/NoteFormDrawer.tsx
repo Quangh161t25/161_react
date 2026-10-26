@@ -1043,10 +1043,10 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 )}
               </div>
 
-              {/* Đường dẫn liên kết (Link) bên dưới nội dung, Thời gian (tg) bên cạnh link luôn, Ngày & Trạng thái */}
+              {/* Đường dẫn liên kết (Link) bên dưới nội dung, Thời gian (tg) bên cạnh link luôn, Ngày thực hiện */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 pt-3 border-t border-border/50">
-                {/* Đường dẫn liên kết (Link / URL): 5 cols on lg */}
-                <div className="lg:col-span-5">
+                {/* Đường dẫn liên kết (Link / URL): 6 cols on lg */}
+                <div className="lg:col-span-6">
                   <label className="block text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5 text-primary" />
                     <span>Đường dẫn liên kết (Link / URL)</span>
@@ -1086,8 +1086,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   />
                 </div>
 
-                {/* Ngày thực hiện: 3 cols on lg */}
-                <div className="lg:col-span-3">
+                {/* Ngày thực hiện: 4 cols on lg */}
+                <div className="lg:col-span-4">
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-semibold text-muted-foreground flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-primary" />
@@ -1127,22 +1127,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                       className="w-full rounded-xl border border-border bg-background px-2.5 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
                     />
                   </div>
-                </div>
-
-                {/* Trạng thái: 2 cols on lg */}
-                <div className="lg:col-span-2">
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                    Trạng thái
-                  </label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as NoteStatus)}
-                    className="w-full rounded-xl border border-border bg-background px-2.5 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
-                  >
-                    <option value="published">Xuất bản</option>
-                    <option value="draft">Bản nháp</option>
-                    <option value="archived">Lưu trữ</option>
-                  </select>
                 </div>
               </div>
             </div>
@@ -1444,8 +1428,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Category, Author & Pin */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Category, Status, Author & Pin */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Chuyên mục
@@ -1461,6 +1445,21 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                         {cat}
                       </option>
                     ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    Trạng thái
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as NoteStatus)}
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
+                  >
+                    <option value="published">Xuất bản</option>
+                    <option value="draft">Bản nháp</option>
+                    <option value="archived">Lưu trữ</option>
                   </select>
                 </div>
 
