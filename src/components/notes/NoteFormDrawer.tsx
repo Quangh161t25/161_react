@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
   MapPin,
   Calendar,
+  Clock,
   Tag,
   FolderOpen,
   Pin,
@@ -36,7 +37,6 @@ import {
   Table,
   Users,
   UserPlus,
-  Search,
   Loader2,
   Globe,
   ExternalLink,
@@ -111,6 +111,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   const [activity, setActivity] = useState('');
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [customParticipantName, setCustomParticipantName] = useState('');
+  const [isEmployeeDropdownOpen, setIsEmployeeDropdownOpen] = useState(false);
+  const participantInputRef = useRef<HTMLInputElement>(null);
   const [allEmployees] = useState<Employee[]>(() =>
     employeeService.getInitialEmployees()
   );
@@ -128,14 +130,14 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   // Filtered employees for picker
   const filteredEmployees = useMemo(() => {
     const q = employeeSearch.toLowerCase().trim();
-    if (!q) return allEmployees;
+    if (!q) return allEmployees.slice(0, 8);
     return allEmployees.filter(
       (emp) =>
         emp.name.toLowerCase().includes(q) ||
         (emp.code && emp.code.toLowerCase().includes(q)) ||
         (emp.department && emp.department.toLowerCase().includes(q)) ||
         (emp.role && emp.role.toLowerCase().includes(q))
-    );
+    ).slice(0, 15);
   }, [allEmployees, employeeSearch]);
 
   // Dynamic tags from existing notes + database
@@ -567,8 +569,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     }
   };
 
-  const handleAddCustomParticipant = () => {
-    const trimmed = customParticipantName.trim();
+  const handleAddCustomParticipant = (customName?: string) => {
+    const trimmed = (customName !== undefined ? customName : customParticipantName).trim();
     if (!trimmed) return;
     if (!participants.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())) {
       setParticipants((prev) => [
@@ -576,11 +578,12 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
         {
           id: 'custom_' + Date.now(),
           name: trimmed,
-          role: 'Khách / Bạn bè',
+          role: 'Khách / Đối tượng ngoài',
         },
       ]);
     }
     setCustomParticipantName('');
+    setEmployeeSearch('');
   };
 
   const handleRemoveParticipant = (idOrName: string) => {
@@ -771,13 +774,13 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               )}
             </div>
 
-            {/* 1. ĐƯỜNG DẪN LIÊN KẾT (LINK) & NỘI DUNG CHI TIẾT */}
+            {/* 1. NỘI DUNG & THỜI GIAN, ĐƯỜNG DẪN LIÊN KẾT */}
             <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
                   <Edit3 className="w-4 h-4 text-primary" />
                   <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    Nội dung & Đường dẫn liên kết
+                    Nội dung ghi chú & Thời gian
                   </h4>
                 </div>
 
@@ -806,38 +809,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                     <Eye className="w-3.5 h-3.5" /> Xem trước
                   </button>
                 </div>
-              </div>
-
-              {/* Ô điền Link (Đường dẫn liên kết / URL) */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
-                  <Globe className="w-3.5 h-3.5 text-primary" />
-                  <span>Đường dẫn liên kết (Link / URL)</span>
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="url"
-                    placeholder="Dán đường dẫn trang web, shopee, video, tài liệu, thiệp cưới (VD: https://...)"
-                    value={link}
-                    onChange={(e) => setLink(e.target.value)}
-                    className="flex-1 rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm font-medium text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all font-mono"
-                  />
-                  {link.trim() && (
-                    <a
-                      href={link.startsWith('http') ? link : `https://${link}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-[38px] px-3.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold inline-flex items-center gap-1.5 border border-primary/30 shrink-0 transition-colors"
-                      title="Mở liên kết thử"
-                    >
-                      <span>Mở link</span>
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  )}
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  💡 Bạn có thể dán link vào ô này hoặc viết trực tiếp trong nội dung bên dưới, khi xem chi tiết có thể bấm mở trực tiếp!
-                </p>
               </div>
 
               {/* Main Content Area */}
@@ -992,25 +963,58 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* 2. THỜI GIAN & TRẠNG THÁI (Ngày, Giờ, Trạng thái cạnh nhau) */}
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
-              <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-                <Calendar className="w-4 h-4 text-primary" />
-                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  Thời gian & Trạng thái
-                </h4>
-              </div>
+              {/* Đường dẫn liên kết (Link) bên dưới nội dung, Thời gian (tg) bên cạnh link luôn, Ngày & Trạng thái */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 pt-3 border-t border-border/50">
+                {/* Đường dẫn liên kết (Link / URL): 5 cols on lg */}
+                <div className="lg:col-span-5">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-primary" />
+                    <span>Đường dẫn liên kết (Link / URL)</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      placeholder="Dán link web, shopee, video, tài liệu..."
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
+                    />
+                    {link.trim() && (
+                      <a
+                        href={link.startsWith('http') ? link : `https://${link}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="h-[38px] px-2.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold inline-flex items-center gap-1 border border-primary/30 shrink-0 transition-colors"
+                        title="Mở liên kết"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    )}
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-end">
-                {/* Ngày thực hiện */}
-                <div>
+                {/* Giờ thực hiện (tg bên cạnh link luôn): 2 cols on lg */}
+                <div className="lg:col-span-2">
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-primary" />
+                    <span>Giờ (tg)</span>
+                  </label>
+                  <TimePickerInput
+                    value={noteTime}
+                    onChange={(val) => setNoteTime(val)}
+                    placeholder="00:00"
+                  />
+                </div>
+
+                {/* Ngày thực hiện: 3 cols on lg */}
+                <div className="lg:col-span-3">
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-muted-foreground">
-                      Ngày thực hiện
+                    <label className="block text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-primary" />
+                      <span>Ngày thực hiện</span>
                     </label>
-                    <div className="flex items-center gap-1 text-[11px]">
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => {
@@ -1037,39 +1041,26 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                     </div>
                   </div>
                   <div className="relative">
-                    <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <input
                       type="date"
                       value={noteDate}
                       onChange={(e) => setNoteDate(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
+                      className="w-full rounded-xl border border-border bg-background px-2.5 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
                     />
                   </div>
                 </div>
 
-                {/* Giờ thực hiện */}
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                    Giờ thực hiện
-                  </label>
-                  <TimePickerInput
-                    value={noteTime}
-                    onChange={(val) => setNoteTime(val)}
-                    placeholder="Chọn hoặc nhập giờ..."
-                  />
-                </div>
-
-                {/* Trạng thái */}
-                <div>
+                {/* Trạng thái: 2 cols on lg */}
+                <div className="lg:col-span-2">
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Trạng thái
                   </label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as NoteStatus)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
+                    className="w-full rounded-xl border border-border bg-background px-2.5 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
                   >
-                    <option value="published">Đã công bố / Xuất bản</option>
+                    <option value="published">Xuất bản</option>
                     <option value="draft">Bản nháp</option>
                     <option value="archived">Lưu trữ</option>
                   </select>
@@ -1077,9 +1068,9 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               </div>
             </div>
 
-            {/* 3. ĐỐI TƯỢNG LIÊN QUAN */}
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
-              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            {/* 2. ĐỐI TƯỢNG LIÊN QUAN (1 dòng duy nhất có gợi ý từ nhân viên) */}
+            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-2.5">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-primary" />
                   <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
@@ -1097,130 +1088,168 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 )}
               </div>
 
-              {/* Selected Participants Chips */}
-              {participants.length > 0 ? (
-                <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-border bg-background/60">
+              {/* 1 Dòng duy nhất: Chips + Input + Dropdown gợi ý */}
+              <div className="relative">
+                <div
+                  onClick={() => participantInputRef.current?.focus()}
+                  className="w-full min-h-[42px] rounded-xl border border-border bg-background px-2.5 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all cursor-text"
+                >
+                  {/* Chips đối tượng đã chọn */}
                   {participants.map((p, idx) => {
                     const avatar = getSafeAvatarUrl(p.avatarUrl, p.name);
                     return (
-                      <div
+                      <span
                         key={p.id || p.code || idx}
-                        className="inline-flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-primary/10 border border-primary/25 text-foreground text-xs shadow-2xs group hover:border-primary/50 transition-all"
+                        className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-primary/10 border border-primary/25 text-xs text-foreground shrink-0 group hover:border-primary/50 transition-all"
                       >
                         <img
                           src={avatar}
                           alt={p.name}
-                          className="w-6 h-6 rounded-full object-cover border border-background shrink-0"
+                          className="w-5 h-5 rounded-full object-cover border border-background shrink-0"
                         />
-                        <div className="flex flex-col min-w-0">
-                          <span className="font-semibold text-xs text-foreground truncate max-w-[140px] sm:max-w-[200px]">
-                            {p.name}
-                          </span>
-                          {(p.role || p.department) && (
-                            <span className="text-[10px] text-muted-foreground truncate max-w-[140px] sm:max-w-[200px]">
-                              {p.role || p.department}
-                            </span>
-                          )}
-                        </div>
+                        <span className="font-semibold text-xs truncate max-w-[140px]">
+                          {p.name}
+                        </span>
                         <button
                           type="button"
-                          onClick={() => handleRemoveParticipant(p.id || p.name)}
-                          className="p-1 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-1"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveParticipant(p.id || p.name);
+                          }}
+                          className="p-0.5 rounded-full text-muted-foreground hover:text-destructive transition-colors ml-0.5"
                           title="Bỏ chọn"
                         >
                           <X className="w-3 h-3" />
                         </button>
-                      </div>
+                      </span>
                     );
                   })}
-                </div>
-              ) : (
-                <div className="p-3 text-center rounded-xl border border-dashed border-border bg-muted/20 text-xs text-muted-foreground">
-                  Chưa chọn đối tượng nào. Bạn có thể gõ nhanh tên đối tượng bên dưới hoặc chọn nhân viên công ty.
-                </div>
-              )}
 
-              {/* Quick Add Custom Participant & Search Employee */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Gõ tên đối tượng / khách / bạn bè rồi nhấn Enter (Ví dụ: Anh Nam - Đối tác, Nguyễn Linh)..."
-                    value={customParticipantName}
-                    onChange={(e) => setCustomParticipantName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddCustomParticipant();
+                  {/* Input nhập tên hoặc tìm nhân viên */}
+                  <div className="flex-1 min-w-[180px] flex items-center">
+                    <input
+                      ref={participantInputRef}
+                      type="text"
+                      placeholder={
+                        participants.length === 0
+                          ? 'Gõ tên đối tượng / khách hoặc chọn nhân viên công ty...'
+                          : 'Thêm tiếp...'
                       }
-                    }}
-                    className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCustomParticipant}
-                    disabled={!customParticipantName.trim()}
-                    className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1 shrink-0"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" /> Thêm nhanh
-                  </button>
+                      value={employeeSearch}
+                      onChange={(e) => {
+                        setEmployeeSearch(e.target.value);
+                        setIsEmployeeDropdownOpen(true);
+                      }}
+                      onFocus={() => setIsEmployeeDropdownOpen(true)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          if (employeeSearch.trim()) {
+                            const topMatch = filteredEmployees[0];
+                            if (
+                              topMatch &&
+                              topMatch.name.toLowerCase() === employeeSearch.trim().toLowerCase()
+                            ) {
+                              handleToggleEmployeeParticipant(topMatch);
+                              setEmployeeSearch('');
+                            } else {
+                              handleAddCustomParticipant(employeeSearch.trim());
+                            }
+                            setIsEmployeeDropdownOpen(false);
+                          }
+                        } else if (e.key === 'Backspace' && !employeeSearch && participants.length > 0) {
+                          const last = participants[participants.length - 1];
+                          handleRemoveParticipant(last.id || last.name);
+                        } else if (e.key === 'Escape') {
+                          setIsEmployeeDropdownOpen(false);
+                        }
+                      }}
+                      className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground/60 outline-none py-1"
+                    />
+                  </div>
                 </div>
 
-                {/* Search and toggle employees */}
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Tìm kiếm nhân viên trong công ty để thêm..."
-                    value={employeeSearch}
-                    onChange={(e) => setEmployeeSearch(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-
-                {employeeSearch && (
-                  <div className="rounded-xl border border-border bg-background overflow-hidden max-h-40 overflow-y-auto p-1.5 divide-y divide-border/40">
-                    {filteredEmployees.map((emp) => {
-                      const isSelected = participants.some(
-                        (p) =>
-                          (p.id && p.id === emp.id) ||
-                          (p.code && p.code === emp.code) ||
-                          p.name === emp.name
-                      );
-                      const avatar = getSafeAvatarUrl(emp.avatarUrl, emp.name);
-                      return (
+                {/* Dropdown Gợi ý tự động từ danh sách nhân viên */}
+                {isEmployeeDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsEmployeeDropdownOpen(false)}
+                    />
+                    <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border border-border bg-card shadow-xl max-h-56 overflow-y-auto p-1 divide-y divide-border/40 backdrop-blur-sm">
+                      {/* Thêm nhanh đối tượng ngoài nếu đang gõ */}
+                      {employeeSearch.trim() && (
                         <button
-                          key={emp.id || emp.code}
                           type="button"
-                          onClick={() => handleToggleEmployeeParticipant(emp)}
-                          className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
-                            isSelected
-                              ? 'bg-primary/10 border border-primary/30 text-primary'
-                              : 'hover:bg-muted/60 text-foreground'
-                          }`}
+                          onClick={() => {
+                            handleAddCustomParticipant(employeeSearch.trim());
+                            setIsEmployeeDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2 p-2 rounded-lg text-left hover:bg-primary/10 text-primary transition-all text-xs font-semibold"
                         >
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <img
-                              src={avatar}
-                              alt={emp.name}
-                              className="w-6 h-6 rounded-full object-cover border border-border shrink-0"
-                            />
-                            <div className="min-w-0">
-                              <span className="text-xs font-semibold truncate block">
-                                {emp.name} {emp.code ? `(${emp.code})` : ''}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground truncate block">
-                                {emp.role || emp.department || ''}
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-[11px] font-semibold shrink-0">
-                            {isSelected ? '✓ Đã chọn' : '+ Chọn'}
+                          <UserPlus className="w-4 h-4 shrink-0 text-primary" />
+                          <span className="truncate">
+                            + Thêm đối tượng ngoài: <strong>"{employeeSearch.trim()}"</strong>
                           </span>
                         </button>
-                      );
-                    })}
-                  </div>
+                      )}
+
+                      {/* Danh sách gợi ý nhân viên */}
+                      <div className="p-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        Gợi ý từ danh sách nhân viên ({filteredEmployees.length})
+                      </div>
+                      {filteredEmployees.length > 0 ? (
+                        filteredEmployees.map((emp) => {
+                          const isSelected = participants.some(
+                            (p) =>
+                              (p.id && p.id === emp.id) ||
+                              (p.code && p.code === emp.code) ||
+                              p.name === emp.name
+                          );
+                          const avatar = getSafeAvatarUrl(emp.avatarUrl, emp.name);
+                          return (
+                            <button
+                              key={emp.id || emp.code}
+                              type="button"
+                              onClick={() => {
+                                handleToggleEmployeeParticipant(emp);
+                                setEmployeeSearch('');
+                                setIsEmployeeDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                                isSelected
+                                  ? 'bg-primary/10 border border-primary/20 text-primary'
+                                  : 'hover:bg-muted/60 text-foreground'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <img
+                                  src={avatar}
+                                  alt={emp.name}
+                                  className="w-6 h-6 rounded-full object-cover border border-border shrink-0"
+                                />
+                                <div className="min-w-0">
+                                  <span className="text-xs font-semibold truncate block">
+                                    {emp.name} {emp.code ? `(${emp.code})` : ''}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground truncate block">
+                                    {emp.role || emp.department || 'Nhân viên'}
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="text-[11px] font-semibold shrink-0">
+                                {isSelected ? '✓ Đã chọn' : '+ Chọn'}
+                              </span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="p-3 text-center text-xs text-muted-foreground">
+                          Không tìm thấy nhân viên. Nhấn Enter để thêm <strong>"{employeeSearch}"</strong> như đối tượng ngoài.
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -1283,7 +1312,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                       value={author}
                       onChange={(e) => setAuthor(e.target.value)}
                       placeholder="Người tạo..."
-                      className="w-full rounded-xl border border-border bg-background pl-8.5 pr-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
+                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
                     />
                   </div>
                 </div>
