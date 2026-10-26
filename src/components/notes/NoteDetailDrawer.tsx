@@ -16,10 +16,8 @@ import {
   FileText,
   Pin,
   Calendar,
-  Clock,
   MapPin,
   Tag,
-  User,
   Image as ImageIcon,
   History,
   MessageSquare,
@@ -637,50 +635,6 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                   </div>
                 </div>
               )}
-
-              {/* Card 4: Thông tin hệ thống & Thời gian */}
-              <div className="w-full bg-card p-3 sm:p-3.5 rounded-xl border border-border shadow-xs space-y-2.5">
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 border-b border-primary/20">
-                  <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-2 text-primary font-bold">
-                    <Clock className="w-4 h-4" />
-                    <span>Thông tin hệ thống</span>
-                  </h4>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
-                  <div className="space-y-0.5">
-                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
-                      <User className="w-3 h-3" />
-                      Tác giả
-                    </span>
-                    <p className="font-semibold text-foreground">{note.author}</p>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
-                      <Calendar className="w-3 h-3" />
-                      Ngày tạo
-                    </span>
-                    <p className="text-foreground font-mono">{note.createdAt}</p>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
-                      <Clock className="w-3 h-3" />
-                      Cập nhật lần cuối
-                    </span>
-                    <p className="text-foreground font-mono">{note.updatedAt || note.createdAt}</p>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
-                      <MapPin className="w-3 h-3" />
-                      Tọa độ GPS
-                    </span>
-                    <p className="text-foreground font-mono">{note.coordinates || 'Chưa định vị'}</p>
-                  </div>
-                </div>
-              </div>
 
               {/* Card 5: Nhật ký hoạt động */}
               <div className="w-full bg-card p-3 sm:p-3.5 rounded-xl border border-border shadow-xs space-y-2.5">
