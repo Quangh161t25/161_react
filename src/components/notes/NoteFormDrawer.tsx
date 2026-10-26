@@ -1068,199 +1068,282 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               </div>
             </div>
 
-            {/* 2. ĐỐI TƯỢNG LIÊN QUAN (1 dòng duy nhất có gợi ý từ nhân viên) */}
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    Đối tượng liên quan ({participants.length})
-                  </h4>
+            {/* 2. ĐỐI TƯỢNG LIÊN QUAN & THẺ PHÂN LOẠI (TAGS) CẠNH NHAU */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* CỘT 1: ĐỐI TƯỢNG LIÊN QUAN */}
+              <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-2.5 flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" />
+                      <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                        Đối tượng liên quan ({participants.length})
+                      </h4>
+                    </div>
+                    {participants.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setParticipants([])}
+                        className="text-[11px] text-rose-500 hover:underline font-medium"
+                      >
+                        Xóa tất cả
+                      </button>
+                    )}
+                  </div>
+
+                  {/* 1 Dòng duy nhất: Chips + Input + Dropdown gợi ý */}
+                  <div className="relative">
+                    <div
+                      onClick={() => participantInputRef.current?.focus()}
+                      className="w-full min-h-[42px] rounded-xl border border-border bg-background px-2.5 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all cursor-text"
+                    >
+                      {/* Chips đối tượng đã chọn */}
+                      {participants.map((p, idx) => {
+                        const avatar = getSafeAvatarUrl(p.avatarUrl, p.name);
+                        return (
+                          <span
+                            key={p.id || p.code || idx}
+                            className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-primary/10 border border-primary/25 text-xs text-foreground shrink-0 group hover:border-primary/50 transition-all"
+                          >
+                            <img
+                              src={avatar}
+                              alt={p.name}
+                              className="w-5 h-5 rounded-full object-cover border border-background shrink-0"
+                            />
+                            <span className="font-semibold text-xs truncate max-w-[120px]">
+                              {p.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveParticipant(p.id || p.name);
+                              }}
+                              className="p-0.5 rounded-full text-muted-foreground hover:text-destructive transition-colors ml-0.5"
+                              title="Bỏ chọn"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        );
+                      })}
+
+                      {/* Input nhập tên hoặc tìm nhân viên */}
+                      <div className="flex-1 min-w-[140px] flex items-center">
+                        <input
+                          ref={participantInputRef}
+                          type="text"
+                          placeholder={
+                            participants.length === 0
+                              ? 'Gõ tên đối tượng hoặc chọn nhân viên...'
+                              : 'Thêm tiếp...'
+                          }
+                          value={employeeSearch}
+                          onChange={(e) => {
+                            setEmployeeSearch(e.target.value);
+                            setIsEmployeeDropdownOpen(true);
+                          }}
+                          onFocus={() => setIsEmployeeDropdownOpen(true)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              if (employeeSearch.trim()) {
+                                const topMatch = filteredEmployees[0];
+                                if (
+                                  topMatch &&
+                                  topMatch.name.toLowerCase() === employeeSearch.trim().toLowerCase()
+                                ) {
+                                  handleToggleEmployeeParticipant(topMatch);
+                                  setEmployeeSearch('');
+                                } else {
+                                  handleAddCustomParticipant(employeeSearch.trim());
+                                }
+                                setIsEmployeeDropdownOpen(false);
+                              }
+                            } else if (e.key === 'Backspace' && !employeeSearch && participants.length > 0) {
+                              const last = participants[participants.length - 1];
+                              handleRemoveParticipant(last.id || last.name);
+                            } else if (e.key === 'Escape') {
+                              setIsEmployeeDropdownOpen(false);
+                            }
+                          }}
+                          className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground/60 outline-none py-1"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Dropdown Gợi ý tự động từ danh sách nhân viên */}
+                    {isEmployeeDropdownOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setIsEmployeeDropdownOpen(false)}
+                        />
+                        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border border-border bg-card shadow-xl max-h-56 overflow-y-auto p-1 divide-y divide-border/40 backdrop-blur-sm">
+                          {/* Thêm nhanh đối tượng ngoài nếu đang gõ */}
+                          {employeeSearch.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleAddCustomParticipant(employeeSearch.trim());
+                                setIsEmployeeDropdownOpen(false);
+                              }}
+                              className="w-full flex items-center gap-2 p-2 rounded-lg text-left hover:bg-primary/10 text-primary transition-all text-xs font-semibold"
+                            >
+                              <UserPlus className="w-4 h-4 shrink-0 text-primary" />
+                              <span className="truncate">
+                                + Thêm đối tượng ngoài: <strong>"{employeeSearch.trim()}"</strong>
+                              </span>
+                            </button>
+                          )}
+
+                          {/* Danh sách gợi ý nhân viên */}
+                          <div className="p-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            Gợi ý từ danh sách nhân viên ({filteredEmployees.length})
+                          </div>
+                          {filteredEmployees.length > 0 ? (
+                            filteredEmployees.map((emp) => {
+                              const isSelected = participants.some(
+                                (p) =>
+                                  (p.id && p.id === emp.id) ||
+                                  (p.code && p.code === emp.code) ||
+                                  p.name === emp.name
+                              );
+                              const avatar = getSafeAvatarUrl(emp.avatarUrl, emp.name);
+                              return (
+                                <button
+                                  key={emp.id || emp.code}
+                                  type="button"
+                                  onClick={() => {
+                                    handleToggleEmployeeParticipant(emp);
+                                    setEmployeeSearch('');
+                                    setIsEmployeeDropdownOpen(false);
+                                  }}
+                                  className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                                    isSelected
+                                      ? 'bg-primary/10 border border-primary/20 text-primary'
+                                      : 'hover:bg-muted/60 text-foreground'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <img
+                                      src={avatar}
+                                      alt={emp.name}
+                                      className="w-6 h-6 rounded-full object-cover border border-border shrink-0"
+                                    />
+                                    <div className="min-w-0">
+                                      <span className="text-xs font-semibold truncate block">
+                                        {emp.name} {emp.code ? `(${emp.code})` : ''}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground truncate block">
+                                        {emp.role || emp.department || 'Nhân viên'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <span className="text-[11px] font-semibold shrink-0">
+                                    {isSelected ? '✓ Đã chọn' : '+ Chọn'}
+                                  </span>
+                                </button>
+                              );
+                            })
+                          ) : (
+                            <div className="p-3 text-center text-xs text-muted-foreground">
+                              Không tìm thấy nhân viên. Nhấn Enter để thêm <strong>"{employeeSearch}"</strong> như đối tượng ngoài.
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                {participants.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setParticipants([])}
-                    className="text-[11px] text-rose-500 hover:underline font-medium"
-                  >
-                    Xóa tất cả
-                  </button>
-                )}
               </div>
 
-              {/* 1 Dòng duy nhất: Chips + Input + Dropdown gợi ý */}
-              <div className="relative">
-                <div
-                  onClick={() => participantInputRef.current?.focus()}
-                  className="w-full min-h-[42px] rounded-xl border border-border bg-background px-2.5 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all cursor-text"
-                >
-                  {/* Chips đối tượng đã chọn */}
-                  {participants.map((p, idx) => {
-                    const avatar = getSafeAvatarUrl(p.avatarUrl, p.name);
-                    return (
-                      <span
-                        key={p.id || p.code || idx}
-                        className="inline-flex items-center gap-1.5 pl-1 pr-2 py-0.5 rounded-full bg-primary/10 border border-primary/25 text-xs text-foreground shrink-0 group hover:border-primary/50 transition-all"
+              {/* CỘT 2: THẺ PHÂN LOẠI (TAGS CẠNH ĐỐI TƯỢNG) */}
+              <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-2.5 flex flex-col justify-between">
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-primary" />
+                      <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                        Thẻ phân loại ({tags.length})
+                      </h4>
+                    </div>
+                    {tags.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setTags([])}
+                        className="text-[11px] text-rose-500 hover:underline font-medium"
                       >
-                        <img
-                          src={avatar}
-                          alt={p.name}
-                          className="w-5 h-5 rounded-full object-cover border border-background shrink-0"
-                        />
-                        <span className="font-semibold text-xs truncate max-w-[140px]">
-                          {p.name}
-                        </span>
+                        Xóa tất cả
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tags Input Container */}
+                  <div className="w-full min-h-[42px] rounded-xl border border-border bg-background px-2.5 py-1.5 flex flex-wrap items-center gap-1.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+                    {tags.map((t, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-xs font-medium border border-primary/20 shrink-0"
+                      >
+                        <Tag className="w-3 h-3" />
+                        #{t}
                         <button
                           type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveParticipant(p.id || p.name);
-                          }}
-                          className="p-0.5 rounded-full text-muted-foreground hover:text-destructive transition-colors ml-0.5"
-                          title="Bỏ chọn"
+                          onClick={() => handleRemoveTag(idx)}
+                          className="hover:text-destructive transition-colors ml-0.5"
                         >
                           <X className="w-3 h-3" />
                         </button>
                       </span>
-                    );
-                  })}
-
-                  {/* Input nhập tên hoặc tìm nhân viên */}
-                  <div className="flex-1 min-w-[180px] flex items-center">
+                    ))}
                     <input
-                      ref={participantInputRef}
                       type="text"
-                      placeholder={
-                        participants.length === 0
-                          ? 'Gõ tên đối tượng / khách hoặc chọn nhân viên công ty...'
-                          : 'Thêm tiếp...'
-                      }
-                      value={employeeSearch}
-                      onChange={(e) => {
-                        setEmployeeSearch(e.target.value);
-                        setIsEmployeeDropdownOpen(true);
+                      placeholder={tags.length === 0 ? 'Thêm thẻ (nhập rồi Enter)...' : 'Thêm tiếp...'}
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyDown={handleTagKeyDown}
+                      onBlur={() => {
+                        if (tagInput.trim()) handleAddTag(tagInput);
                       }}
-                      onFocus={() => setIsEmployeeDropdownOpen(true)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          if (employeeSearch.trim()) {
-                            const topMatch = filteredEmployees[0];
-                            if (
-                              topMatch &&
-                              topMatch.name.toLowerCase() === employeeSearch.trim().toLowerCase()
-                            ) {
-                              handleToggleEmployeeParticipant(topMatch);
-                              setEmployeeSearch('');
-                            } else {
-                              handleAddCustomParticipant(employeeSearch.trim());
-                            }
-                            setIsEmployeeDropdownOpen(false);
-                          }
-                        } else if (e.key === 'Backspace' && !employeeSearch && participants.length > 0) {
-                          const last = participants[participants.length - 1];
-                          handleRemoveParticipant(last.id || last.name);
-                        } else if (e.key === 'Escape') {
-                          setIsEmployeeDropdownOpen(false);
-                        }
-                      }}
-                      className="w-full bg-transparent text-xs text-foreground placeholder:text-muted-foreground/60 outline-none py-1"
+                      className="flex-1 min-w-[120px] bg-transparent text-xs text-foreground placeholder:text-muted-foreground/60 outline-none py-1"
                     />
                   </div>
                 </div>
 
-                {/* Dropdown Gợi ý tự động từ danh sách nhân viên */}
-                {isEmployeeDropdownOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setIsEmployeeDropdownOpen(false)}
-                    />
-                    <div className="absolute left-0 right-0 top-full mt-1.5 z-50 rounded-xl border border-border bg-card shadow-xl max-h-56 overflow-y-auto p-1 divide-y divide-border/40 backdrop-blur-sm">
-                      {/* Thêm nhanh đối tượng ngoài nếu đang gõ */}
-                      {employeeSearch.trim() && (
+                {/* Preset Tag Badges */}
+                {availableTags.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[11px] text-muted-foreground mr-1">Gợi ý:</span>
+                    {availableTags.slice(0, 8).map((pt: string) => {
+                      const isSelected = tags.includes(pt);
+                      return (
                         <button
+                          key={pt}
                           type="button"
-                          onClick={() => {
-                            handleAddCustomParticipant(employeeSearch.trim());
-                            setIsEmployeeDropdownOpen(false);
-                          }}
-                          className="w-full flex items-center gap-2 p-2 rounded-lg text-left hover:bg-primary/10 text-primary transition-all text-xs font-semibold"
+                          onClick={() => (isSelected ? handleRemoveTag(tags.indexOf(pt)) : handleAddTag(pt))}
+                          className={`text-[11px] px-2 py-0.5 rounded-md border transition-all ${
+                            isSelected
+                              ? 'bg-primary/15 border-primary/30 text-primary font-medium'
+                              : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
+                          }`}
                         >
-                          <UserPlus className="w-4 h-4 shrink-0 text-primary" />
-                          <span className="truncate">
-                            + Thêm đối tượng ngoài: <strong>"{employeeSearch.trim()}"</strong>
-                          </span>
+                          +{pt}
                         </button>
-                      )}
-
-                      {/* Danh sách gợi ý nhân viên */}
-                      <div className="p-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                        Gợi ý từ danh sách nhân viên ({filteredEmployees.length})
-                      </div>
-                      {filteredEmployees.length > 0 ? (
-                        filteredEmployees.map((emp) => {
-                          const isSelected = participants.some(
-                            (p) =>
-                              (p.id && p.id === emp.id) ||
-                              (p.code && p.code === emp.code) ||
-                              p.name === emp.name
-                          );
-                          const avatar = getSafeAvatarUrl(emp.avatarUrl, emp.name);
-                          return (
-                            <button
-                              key={emp.id || emp.code}
-                              type="button"
-                              onClick={() => {
-                                handleToggleEmployeeParticipant(emp);
-                                setEmployeeSearch('');
-                                setIsEmployeeDropdownOpen(false);
-                              }}
-                              className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
-                                isSelected
-                                  ? 'bg-primary/10 border border-primary/20 text-primary'
-                                  : 'hover:bg-muted/60 text-foreground'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <img
-                                  src={avatar}
-                                  alt={emp.name}
-                                  className="w-6 h-6 rounded-full object-cover border border-border shrink-0"
-                                />
-                                <div className="min-w-0">
-                                  <span className="text-xs font-semibold truncate block">
-                                    {emp.name} {emp.code ? `(${emp.code})` : ''}
-                                  </span>
-                                  <span className="text-[10px] text-muted-foreground truncate block">
-                                    {emp.role || emp.department || 'Nhân viên'}
-                                  </span>
-                                </div>
-                              </div>
-                              <span className="text-[11px] font-semibold shrink-0">
-                                {isSelected ? '✓ Đã chọn' : '+ Chọn'}
-                              </span>
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="p-3 text-center text-xs text-muted-foreground">
-                          Không tìm thấy nhân viên. Nhấn Enter để thêm <strong>"{employeeSearch}"</strong> như đối tượng ngoài.
-                        </div>
-                      )}
-                    </div>
-                  </>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* 4. PHÂN LOẠI, THẺ & VỊ TRÍ */}
+            {/* 3. PHÂN LOẠI & VỊ TRÍ */}
             <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
                   <FolderOpen className="w-4 h-4 text-primary" />
                   <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    Phân loại, Thẻ & Vị trí
+                    Phân loại & Vị trí
                   </h4>
                 </div>
 
@@ -1333,64 +1416,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                     <Pin className={`w-3.5 h-3.5 ${isPinned ? 'fill-current' : ''}`} />
                     {isPinned ? 'Đang ghim lên đầu' : 'Không ghim'}
                   </button>
-                </div>
-              </div>
-
-              {/* Tags Input */}
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                  Thẻ phân loại (Tags) - Nhấn Enter hoặc dấu phẩy để thêm
-                </label>
-                <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl border border-border bg-background min-h-[42px]">
-                  {tags.map((t, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary text-xs font-medium border border-primary/20"
-                    >
-                      <Tag className="w-3 h-3" />
-                      #{t}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTag(idx)}
-                        className="hover:text-destructive transition-colors ml-0.5"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                  <input
-                    type="text"
-                    placeholder={tags.length === 0 ? 'Thêm thẻ (nhập rồi Enter)...' : 'Thêm tiếp...'}
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={handleTagKeyDown}
-                    onBlur={() => {
-                      if (tagInput.trim()) handleAddTag(tagInput);
-                    }}
-                    className="flex-1 min-w-[120px] bg-transparent text-xs text-foreground placeholder:text-muted-foreground/60 outline-none px-1 py-0.5"
-                  />
-                </div>
-
-                {/* Preset Tag Badges */}
-                <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                  <span className="text-[11px] text-muted-foreground mr-1">Gợi ý nhanh từ ghi chú:</span>
-                  {availableTags.map((pt: string) => {
-                    const isSelected = tags.includes(pt);
-                    return (
-                      <button
-                        key={pt}
-                        type="button"
-                        onClick={() => (isSelected ? handleRemoveTag(tags.indexOf(pt)) : handleAddTag(pt))}
-                        className={`text-[11px] px-2 py-0.5 rounded-md border transition-all ${
-                          isSelected
-                            ? 'bg-primary/15 border-primary/30 text-primary font-medium'
-                            : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        +{pt}
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
 
