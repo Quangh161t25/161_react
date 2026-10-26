@@ -944,13 +944,21 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                       >
                         <AlertTriangle className="w-3.5 h-3.5" /> Cảnh báo
                       </button>
+                      <button
+                        type="button"
+                        title="Chèn liên kết dạng >link : (click mở trực tiếp khi xem)"
+                        onClick={() => insertContentMarkup('>link : https://', '', 'duong-dan-trang-web.com')}
+                        className="p-1.5 rounded-lg hover:bg-muted text-sky-600 dark:text-sky-400 transition-colors text-xs flex items-center gap-1 font-semibold"
+                      >
+                        <Globe className="w-3.5 h-3.5" /> &gt;link :
+                      </button>
                     </div>
 
                     {/* Textarea */}
                     <textarea
                       ref={contentTextareaRef}
                       rows={12}
-                      placeholder="Soạn thảo nội dung chi tiết bài viết, biên bản hoặc ghi nhớ..."
+                      placeholder="Soạn thảo nội dung chi tiết bài viết, biên bản hoặc ghi nhớ... Gõ >link : https://... để tạo liên kết có thể bấm mở trực tiếp!"
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
                       className="w-full rounded-xl border border-border bg-background p-4 text-xs sm:text-sm font-mono leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all resize-y"

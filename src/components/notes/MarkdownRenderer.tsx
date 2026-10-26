@@ -10,6 +10,7 @@ import {
   Copy,
   Check,
   ExternalLink,
+  Globe,
 } from 'lucide-react';
 
 // Helper to strip markdown to clean plain text for table cells/snippets
@@ -24,6 +25,8 @@ export function stripMarkdown(content: string): string {
     .replace(/>?\s*\[!WARNING\]/gi, 'Cảnh báo: ')
     .replace(/>?\s*\[!IMPORTANT\]/gi, 'Quan trọng: ')
     .replace(/>?\s*\[!CAUTION\]/gi, 'Cẩn trọng: ')
+    .replace(/>?\s*\[!LINK\]/gi, 'Liên kết: ')
+    .replace(/>?\s*link\s*:\s*/gi, 'Link: ')
     // Remove headers
     .replace(/^#{1,6}\s+/gm, '')
     // Remove blockquotes and list bullets
@@ -158,6 +161,38 @@ function parseMarkdownBlocks(text: string): ParsedBlock[] {
         type: 'callout',
         content: calloutLines.join('\n'),
         extra: { calloutType },
+      });
+      continue;
+    }
+
+    // 2b. Link Callout: >link : <url> or > link : <url> or > [!LINK] <url>
+    const linkMatch =
+      trimmed.match(/^>?\s*\[!LINK\]\s*(.*)$/i) || trimmed.match(/^>?\s*link\s*:\s*(.*)$/i);
+    if (linkMatch) {
+      const initialText = linkMatch[1].replace(/^>\s*/, '').trim();
+      const linkLines: string[] = initialText ? [initialText] : [];
+      i++;
+
+      while (
+        i < lines.length &&
+        lines[i].trim() &&
+        (lines[i].trim().startsWith('>') || !lines[i].trim().startsWith('#'))
+      ) {
+        const nextTrim = lines[i].trim();
+        if (
+          nextTrim.match(/^>?\s*\[!(NOTE|TIP|WARNING|IMPORTANT|CAUTION|INFO)\]/i) ||
+          nextTrim.match(/^>?\s*link\s*:\s*/i)
+        ) {
+          break;
+        }
+        linkLines.push(nextTrim.replace(/^>\s*/, ''));
+        i++;
+      }
+
+      blocks.push({
+        type: 'callout',
+        content: linkLines.join('\n'),
+        extra: { calloutType: 'LINK' },
       });
       continue;
     }
@@ -472,6 +507,98 @@ function renderBlock(
 
     case 'callout': {
       const type = (block.extra?.calloutType || 'NOTE').toUpperCase();
+
+      if (type === 'LINK') {
+        const lines = block.content.split('\n');
+        const firstLine = lines[0] || '';
+        const descLines = lines.slice(1);
+
+        // Match markdown link [text](url) or raw URL
+        const mdLinkMatch = firstLine.match(/\[(.*?)\]\((.*?)\)/);
+        const rawUrlMatch = firstLine.match(/(https?:\/\/[^\s<]+)/i);
+
+        let targetUrl = '';
+        let displayText = firstLine;
+
+        if (mdLinkMatch) {
+          displayText = mdLinkMatch[1];
+          targetUrl = mdLinkMatch[2];
+        } else if (rawUrlMatch) {
+          targetUrl = rawUrlMatch[1];
+          const leftover = firstLine.replace(targetUrl, '').trim();
+          displayText = leftover ? `${leftover}: ${targetUrl}` : targetUrl;
+        } else if (firstLine.trim().startsWith('http://') || firstLine.trim().startsWith('https://')) {
+          targetUrl = firstLine.trim();
+          displayText = targetUrl;
+        } else if (/^[a-zA-Z0-9-]+\.[a-zA-Z]{2,}/.test(firstLine.trim())) {
+          targetUrl = `https://${firstLine.trim()}`;
+          displayText = targetUrl;
+        }
+
+        const validHref = targetUrl
+          ? targetUrl.startsWith('http')
+            ? targetUrl
+            : `https://${targetUrl}`
+          : '';
+
+        return (
+          <div
+            key={idx}
+            className="my-3 p-3.5 sm:p-4 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all shadow-xs group"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[10px] font-bold text-primary uppercase tracking-wider block">
+                    Đường dẫn liên kết
+                  </span>
+                  {validHref ? (
+                    <a
+                      href={validHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs sm:text-sm font-semibold text-foreground hover:text-primary transition-colors hover:underline inline-flex items-center gap-1.5 break-all"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span>{displayText || validHref}</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0 text-primary" />
+                    </a>
+                  ) : (
+                    <span className="text-xs sm:text-sm text-foreground font-medium">
+                      {renderInlineContent(firstLine)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {validHref && (
+                <a
+                  href={validHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto shadow-xs cursor-pointer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span>Mở link</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
+
+            {descLines.length > 0 && (
+              <div className="mt-2.5 pt-2 border-t border-primary/15 text-xs text-muted-foreground leading-relaxed space-y-1">
+                {descLines.map((line, lIdx) => (
+                  <p key={lIdx}>{renderInlineContent(line)}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      }
+
       let borderBg = 'border-blue-500/30 bg-blue-500/10 text-blue-900 dark:text-blue-200';
       let titleColor = 'text-blue-600 dark:text-blue-400';
       let titleText = 'Lưu ý quan trọng';
