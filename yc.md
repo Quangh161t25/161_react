@@ -73,6 +73,7 @@
 | 67 | 2026-10-27 00:29:59 (GMT+7) | trạng thái xuống cạnh  chuyên mục |
 | 68 | 2026-10-27 00:43:18 (GMT+7) | check lại bảo mật hiện tại bảo mất hơn hay là . check lại api hay id để vào 1  file .env bảo mất hơn . phân tích k code . để tôi tải lên vercel bảo mật |
 | 69 | 2026-10-27 00:43:50 (GMT+7) | đưa toàn bộ yêu cẩu của tôi vào 1 file yc.md nhé. có giờ cụ thể nữa |
+| 70 | 2026-10-27 00:44:46 (GMT+7) | bảng kanban thì  cho tôi kéo thả để chuyển trạng thái nữa |
 
 
 ---
@@ -782,6 +783,16 @@ check lại bảo mật hiện tại bảo mất hơn hay là . check lại api 
 **Nội dung yêu cầu:**
 `
 đưa toàn bộ yêu cẩu của tôi vào 1 file yc.md nhé. có giờ cụ thể nữa
+`
+
+---
+
+### 70. [2026-10-27 00:44:46 (GMT+7)]
+**Thời gian UTC:** 2026-10-26T17:44:46Z
+
+**Nội dung yêu cầu:**
+`
+bảng kanban thì  cho tôi kéo thả để chuyển trạng thái nữa
 `
 
 ---

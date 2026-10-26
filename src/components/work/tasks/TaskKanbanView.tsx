@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   FolderKanban,
   User,
   Calendar,
   Plus,
   CheckSquare,
+  GripVertical,
 } from 'lucide-react';
 import { Task, TaskStatus, TaskPriority } from '../../../types/task';
 
@@ -58,6 +59,56 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
   onStatusChange,
   onAddNewTask,
 }) => {
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverColId, setDragOverColId] = useState<TaskStatus | null>(null);
+  const isDraggingRef = useRef<boolean>(false);
+
+  const draggedTask = tasks.find((t) => t.id === draggedTaskId);
+
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    isDraggingRef.current = true;
+    setDraggedTaskId(taskId);
+    e.dataTransfer.setData('text/plain', taskId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTaskId(null);
+    setDragOverColId(null);
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 80);
+  };
+
+  const handleDragOver = (e: React.DragEvent, colId: TaskStatus) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverColId !== colId) {
+      setDragOverColId(colId);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent, colId: TaskStatus) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      if (dragOverColId === colId) {
+        setDragOverColId(null);
+      }
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, colId: TaskStatus) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData('text/plain') || draggedTaskId;
+    if (taskId) {
+      const task = tasks.find((t) => t.id === taskId || t.code === taskId);
+      if (task && task.status !== colId) {
+        onStatusChange(task.id, colId);
+      }
+    }
+    setDraggedTaskId(null);
+    setDragOverColId(null);
+  };
+
   const getPriorityBadge = (priority: TaskPriority) => {
     switch (priority) {
       case 'urgent':
@@ -100,11 +151,19 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start pb-6">
       {KANBAN_COLUMNS.map((col) => {
         const colTasks = tasks.filter((t) => t.status === col.id);
+        const isDragOver = dragOverColId === col.id;
 
         return (
           <div
             key={col.id}
-            className="flex flex-col bg-muted/40 rounded-2xl border border-border/70 p-3 min-h-[500px]"
+            onDragOver={(e) => handleDragOver(e, col.id)}
+            onDragLeave={(e) => handleDragLeave(e, col.id)}
+            onDrop={(e) => handleDrop(e, col.id)}
+            className={`flex flex-col rounded-2xl border p-3 min-h-[500px] transition-all duration-200 ${
+              isDragOver
+                ? 'bg-primary/5 border-primary ring-2 ring-primary/40 shadow-lg scale-[1.008]'
+                : 'bg-muted/40 border-border/70'
+            }`}
           >
             {/* Column Header */}
             <div className="flex items-center justify-between px-1 pb-3 mb-2 border-b border-border/60">
@@ -131,146 +190,177 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
             </div>
 
             {/* Column Task Cards */}
-            <div className="space-y-3 flex-1 overflow-y-auto">
+            <div className="space-y-3 flex-1 overflow-y-auto min-h-[120px]">
               {colTasks.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground/60 border border-dashed border-border/60 rounded-xl">
-                  <CheckSquare className="w-6 h-6 mb-1 opacity-30" />
-                  <p className="text-xs">Chưa có công việc</p>
+                <div
+                  className={`flex flex-col items-center justify-center py-12 text-center border border-dashed rounded-xl transition-all duration-200 ${
+                    isDragOver
+                      ? 'border-primary bg-primary/10 text-primary scale-[1.01]'
+                      : 'border-border/60 text-muted-foreground/60'
+                  }`}
+                >
+                  <CheckSquare className="w-6 h-6 mb-1 opacity-40" />
+                  <p className="text-xs font-medium">
+                    {isDragOver ? `Thả vào để chuyển sang ${col.label}` : 'Chưa có công việc'}
+                  </p>
                 </div>
               ) : (
-                colTasks.map((task) => {
-                  const overdue = isOverdue(task.dueDate, task.status);
-                  const completedSubtasks = (task.subtasks || []).filter((s) => s.completed).length;
-                  const totalSubtasks = (task.subtasks || []).length;
+                <>
+                  {colTasks.map((task) => {
+                    const overdue = isOverdue(task.dueDate, task.status);
+                    const completedSubtasks = (task.subtasks || []).filter((s) => s.completed).length;
+                    const totalSubtasks = (task.subtasks || []).length;
+                    const isCardDragging = draggedTaskId === task.id;
 
-                  return (
-                    <div
-                      key={task.id}
-                      onClick={() => onSelectTask(task)}
-                      className="group bg-card rounded-xl p-3.5 border border-border hover:border-primary/50 shadow-xs hover:shadow-md transition-all cursor-pointer space-y-3"
-                    >
-                      {/* Top: Code & Priority */}
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                          {task.code}
-                        </span>
-                        <div>{getPriorityBadge(task.priority)}</div>
-                      </div>
-
-                      {/* Title */}
-                      <h4 className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
-                        {task.title}
-                      </h4>
-
-                      {/* Project badge if any */}
-                      {task.projectName && (
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md truncate">
-                          <FolderKanban className="w-3 h-3 text-purple-500 shrink-0" />
-                          <span className="truncate">{task.projectName}</span>
-                        </div>
-                      )}
-
-                      {/* Progress Bar */}
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                          <span>Tiến độ</span>
-                          <span className="font-semibold tabular-nums text-foreground">{task.progress}%</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-300 ${
-                              task.progress === 100
-                                ? 'bg-emerald-500'
-                                : task.progress > 50
-                                ? 'bg-primary'
-                                : 'bg-amber-500'
-                            }`}
-                            style={{ width: `${task.progress}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Bottom Meta */}
-                      <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[11px] text-muted-foreground">
-                        {/* Assignee */}
-                        <div className="flex items-center gap-1.5 truncate max-w-[145px]" title={task.assigneeName ? `${task.assigneeName} (${task.assigneeCode || ''})` : 'Chưa giao'}>
-                          <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] shrink-0">
-                            {task.assigneeName ? task.assigneeName.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
-                          </div>
-                          <span className="truncate text-foreground font-medium text-[11px]">{task.assigneeName || 'Chưa giao'}</span>
-                          {task.assigneeCode && (
-                            <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground shrink-0">
-                              {task.assigneeCode}
+                    return (
+                      <div
+                        key={task.id}
+                        draggable={true}
+                        onDragStart={(e) => handleDragStart(e, task.id)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => {
+                          if (isDraggingRef.current) return;
+                          onSelectTask(task);
+                        }}
+                        className={`group bg-card rounded-xl p-3.5 border hover:border-primary/50 shadow-xs hover:shadow-md transition-all cursor-grab active:cursor-grabbing select-none space-y-3 ${
+                          isCardDragging
+                            ? 'opacity-40 scale-[0.98] border-dashed border-primary shadow-inner rotate-1'
+                            : 'border-border'
+                        }`}
+                      >
+                        {/* Top: Code & Priority */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5">
+                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0 -ml-0.5 cursor-grab" />
+                            <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                              {task.code}
                             </span>
+                          </div>
+                          <div>{getPriorityBadge(task.priority)}</div>
+                        </div>
+
+                        {/* Title */}
+                        <h4 className="text-xs sm:text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                          {task.title}
+                        </h4>
+
+                        {/* Project badge if any */}
+                        {task.projectName && (
+                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md truncate">
+                            <FolderKanban className="w-3 h-3 text-purple-500 shrink-0" />
+                            <span className="truncate">{task.projectName}</span>
+                          </div>
+                        )}
+
+                        {/* Progress Bar */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <span>Tiến độ</span>
+                            <span className="font-semibold tabular-nums text-foreground">{task.progress}%</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                task.progress === 100
+                                  ? 'bg-emerald-500'
+                                  : task.progress > 50
+                                  ? 'bg-primary'
+                                  : 'bg-amber-500'
+                              }`}
+                              style={{ width: `${task.progress}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Bottom Meta */}
+                        <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[11px] text-muted-foreground">
+                          {/* Assignee */}
+                          <div className="flex items-center gap-1.5 truncate max-w-[145px]" title={task.assigneeName ? `${task.assigneeName} (${task.assigneeCode || ''})` : 'Chưa giao'}>
+                            <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] shrink-0">
+                              {task.assigneeName ? task.assigneeName.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
+                            </div>
+                            <span className="truncate text-foreground font-medium text-[11px]">{task.assigneeName || 'Chưa giao'}</span>
+                            {task.assigneeCode && (
+                              <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-muted text-muted-foreground shrink-0">
+                                {task.assigneeCode}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Due Date */}
+                          <div
+                            className={`flex items-center gap-1 shrink-0 ${
+                              overdue ? 'text-rose-600 font-bold' : 'text-muted-foreground'
+                            }`}
+                          >
+                            <Calendar className="w-3 h-3" />
+                            <span className="tabular-nums">{task.dueDate}</span>
+                          </div>
+                        </div>
+
+                        {/* Subtask Counter if any */}
+                        {totalSubtasks > 0 && (
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground bg-muted/30 px-2 py-1 rounded">
+                            <span>Nhiệm vụ con:</span>
+                            <span className="font-semibold text-foreground tabular-nums">
+                              {completedSubtasks}/{totalSubtasks}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Quick Move Status Buttons (Hover Actions) */}
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="pt-1 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity border-t border-border/40"
+                        >
+                          {col.id !== 'todo' && (
+                            <button
+                              type="button"
+                              onClick={() => onStatusChange(task.id, 'todo')}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                            >
+                              ← Chưa làm
+                            </button>
+                          )}
+                          {col.id !== 'in_progress' && (
+                            <button
+                              type="button"
+                              onClick={() => onStatusChange(task.id, 'in_progress')}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
+                            >
+                              Đang làm
+                            </button>
+                          )}
+                          {col.id !== 'review' && (
+                            <button
+                              type="button"
+                              onClick={() => onStatusChange(task.id, 'review')}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 hover:bg-blue-500/20"
+                            >
+                              Duyệt
+                            </button>
+                          )}
+                          {col.id !== 'completed' && (
+                            <button
+                              type="button"
+                              onClick={() => onStatusChange(task.id, 'completed')}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 font-semibold"
+                            >
+                              Xong ✓
+                            </button>
                           )}
                         </div>
-
-                        {/* Due Date */}
-                        <div
-                          className={`flex items-center gap-1 shrink-0 ${
-                            overdue ? 'text-rose-600 font-bold' : 'text-muted-foreground'
-                          }`}
-                        >
-                          <Calendar className="w-3 h-3" />
-                          <span className="tabular-nums">{task.dueDate}</span>
-                        </div>
                       </div>
+                    );
+                  })}
 
-                      {/* Subtask Counter if any */}
-                      {totalSubtasks > 0 && (
-                        <div className="flex items-center justify-between text-[10px] text-muted-foreground bg-muted/30 px-2 py-1 rounded">
-                          <span>Nhiệm vụ con:</span>
-                          <span className="font-semibold text-foreground tabular-nums">
-                            {completedSubtasks}/{totalSubtasks}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* Quick Move Status Buttons (Hover Actions) */}
-                      <div
-                        onClick={(e) => e.stopPropagation()}
-                        className="pt-1 flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity border-t border-border/40"
-                      >
-                        {col.id !== 'todo' && (
-                          <button
-                            type="button"
-                            onClick={() => onStatusChange(task.id, 'todo')}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
-                          >
-                            ← Chưa làm
-                          </button>
-                        )}
-                        {col.id !== 'in_progress' && (
-                          <button
-                            type="button"
-                            onClick={() => onStatusChange(task.id, 'in_progress')}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
-                          >
-                            Đang làm
-                          </button>
-                        )}
-                        {col.id !== 'review' && (
-                          <button
-                            type="button"
-                            onClick={() => onStatusChange(task.id, 'review')}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 hover:bg-blue-500/20"
-                          >
-                            Duyệt
-                          </button>
-                        )}
-                        {col.id !== 'completed' && (
-                          <button
-                            type="button"
-                            onClick={() => onStatusChange(task.id, 'completed')}
-                            className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 font-semibold"
-                          >
-                            Xong ✓
-                          </button>
-                        )}
-                      </div>
+                  {/* Drop Indicator placeholder when dragging over this column */}
+                  {isDragOver && draggedTask && draggedTask.status !== col.id && (
+                    <div className="py-2.5 px-3 border-2 border-dashed border-primary/50 bg-primary/10 text-primary rounded-xl text-center text-xs font-semibold animate-pulse flex items-center justify-center gap-1.5">
+                      <span>Thả vào đây để chuyển sang {col.label}</span>
                     </div>
-                  );
-                })
+                  )}
+                </>
               )}
             </div>
           </div>
