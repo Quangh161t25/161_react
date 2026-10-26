@@ -1004,6 +1004,7 @@ export const NOTES_HEADERS = [
   'Cập nhật',
   'Đối tượng / Nhân viên tham gia (JSON)',
   'Hoạt động (Nhật ký)',
+  'Đường dẫn liên kết (Link)',
 ];
 
 export function noteToRow(n) {
@@ -1013,6 +1014,7 @@ export function noteToRow(n) {
   const attachmentsJson = Array.isArray(n.attachments) ? JSON.stringify(n.attachments) : n.attachments || '';
   const participantsJson = Array.isArray(n.participants) ? JSON.stringify(n.participants) : n.participants || '';
   const activity = n.activity || '';
+  const link = n.link || '';
 
   return [
     n.code || n.id || '',
@@ -1037,6 +1039,7 @@ export function noteToRow(n) {
     n.updatedAt || '',
     participantsJson,
     activity,
+    link,
   ];
 }
 
@@ -1085,6 +1088,7 @@ export function rowToNote(r, idx) {
   }
 
   const activity = r[21] || undefined;
+  const link = r[22] || undefined;
   const isPinned = r[7] === 'Có' || r[7] === 'true' || r[7] === true || r[7] === '1';
 
   return {
@@ -1111,6 +1115,7 @@ export function rowToNote(r, idx) {
     updatedAt: r[19] || '',
     participants: Array.isArray(participants) ? participants : [],
     activity,
+    link,
   };
 }
 
@@ -1140,7 +1145,7 @@ export async function ensureGhiChuTabExists() {
 
     // Write header
     await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:V1?valueInputOption=USER_ENTERED`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:W1?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {
@@ -1193,7 +1198,7 @@ export async function fetchNotesFromSheet() {
   await ensureGhiChuTabExists();
   const token = await getAccessToken();
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A2:V`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A2:W`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
 
@@ -1223,7 +1228,7 @@ export async function saveAllNotesToSheet(notes) {
   const values = [NOTES_HEADERS, ...rows];
 
   await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:V${values.length + 50}:clear`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:W${values.length + 50}:clear`,
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -1231,7 +1236,7 @@ export async function saveAllNotesToSheet(notes) {
   );
 
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:V${values.length}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:W${values.length}?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: {
@@ -1257,7 +1262,7 @@ export async function appendNoteToSheet(note) {
   const row = noteToRow(note);
 
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A:V:append?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A:W:append?valueInputOption=USER_ENTERED`,
     {
       method: 'POST',
       headers: {
@@ -1281,7 +1286,7 @@ export async function updateNoteInSheet(note) {
   await ensureGhiChuTabExists();
   const token = await getAccessToken();
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:V`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:W`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const data = await res.json();
@@ -1324,7 +1329,7 @@ export async function updateNoteInSheet(note) {
 
   const row = noteToRow(note);
   const updateRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A${rowIndex}:V${rowIndex}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A${rowIndex}:W${rowIndex}?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: {

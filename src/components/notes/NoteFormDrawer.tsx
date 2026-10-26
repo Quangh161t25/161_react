@@ -36,10 +36,10 @@ import {
   Table,
   Users,
   UserPlus,
-  Sparkles,
   Search,
-  Check,
   Loader2,
+  Globe,
+  ExternalLink,
 } from 'lucide-react';
 import { catboxService } from '../../services/catboxService';
 import { Note, NoteCategory, NoteStatus, NoteAttachment, NoteParticipant } from '../../types/note';
@@ -79,6 +79,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   // Form State
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
+  const [link, setLink] = useState('');
   const [content, setContent] = useState('');
   const [contentTab, setContentTab] = useState<'edit' | 'preview'>('edit');
 
@@ -174,6 +175,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     if (initialData) {
       setTitle(initialData.title || '');
       setSummary(initialData.summary || '');
+      setLink(initialData.link || '');
       setContent(initialData.content || '');
       setCategory(initialData.category || '');
       setStatus(initialData.status || 'published');
@@ -202,6 +204,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
 
       setTitle('');
       setSummary('');
+      setLink('');
       setContent('');
       setCategory('');
       setStatus('published');
@@ -599,6 +602,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
 
     const payload: Partial<Note> = {
       title: title.trim(),
+      link: link.trim() || undefined,
       summary: summary.trim() || undefined,
       content: content.trim() || '',
       category: (category || 'Ghi chú chung') as NoteCategory,
@@ -747,13 +751,408 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
         {/* Scrollable Form Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
           <form id="note-form" onSubmit={handleSubmit} className="space-y-6">
-            {/* 1. TIÊU ĐỀ & NỘI DUNG BÀI VIẾT (Được đưa lên đầu theo yêu cầu) */}
+            {/* TIÊU ĐỀ BÀI VIẾT / GHI CHÚ */}
+            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-3">
+              <label className="block text-xs font-semibold text-foreground">
+                Tiêu đề bài viết / Ghi chú <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Ví dụ: Biên bản Cuộc họp Chiến lược Q4/2026, Đi ăn cưới, Mua sắm..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className={`w-full rounded-xl border ${
+                  formErrors.title ? 'border-destructive' : 'border-border'
+                } bg-background px-3.5 py-2.5 text-sm font-medium text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all`}
+                autoFocus
+              />
+              {formErrors.title && (
+                <p className="text-xs text-destructive mt-1">{formErrors.title}</p>
+              )}
+            </div>
+
+            {/* 1. NGÀY & ĐỐI TƯỢNG (Đưa ngày lên trên, tiếp theo là đối tượng) */}
+            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
+              <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                <Calendar className="w-4 h-4 text-primary" />
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                  1. Ngày & Đối tượng thực hiện
+                </h4>
+              </div>
+
+              {/* Ngày thực hiện */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-muted-foreground">
+                    Ngày sự kiện / thực hiện
+                  </label>
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const now = new Date();
+                        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+                        setNoteDate(todayStr);
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors font-medium"
+                    >
+                      Hôm nay
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const yest = new Date();
+                        yest.setDate(yest.getDate() - 1);
+                        const yestStr = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
+                        setNoteDate(yestStr);
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground hover:text-foreground transition-colors font-medium"
+                    >
+                      Hôm qua
+                    </button>
+                  </div>
+                </div>
+                <div className="relative">
+                  <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="date"
+                    value={noteDate}
+                    onChange={(e) => setNoteDate(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Đối tượng nhân viên & Người tham gia / Đi cùng ai */}
+              <div className="space-y-3 pt-1 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-primary" />
+                    <span>Đối tượng liên quan / Người đi cùng ({participants.length})</span>
+                  </label>
+                  {participants.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setParticipants([])}
+                      className="text-[11px] text-rose-500 hover:underline"
+                    >
+                      Xóa tất cả
+                    </button>
+                  )}
+                </div>
+
+                {/* Selected Participants Chips */}
+                {participants.length > 0 ? (
+                  <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-border bg-background/60">
+                    {participants.map((p, idx) => {
+                      const avatar = getSafeAvatarUrl(p.avatarUrl, p.name);
+                      return (
+                        <div
+                          key={p.id || p.code || idx}
+                          className="inline-flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-primary/10 border border-primary/25 text-foreground text-xs shadow-2xs group hover:border-primary/50 transition-all"
+                        >
+                          <img
+                            src={avatar}
+                            alt={p.name}
+                            className="w-6 h-6 rounded-full object-cover border border-background shrink-0"
+                          />
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-semibold text-xs text-foreground truncate max-w-[140px] sm:max-w-[200px]">
+                              {p.name}
+                            </span>
+                            {(p.role || p.department) && (
+                              <span className="text-[10px] text-muted-foreground truncate max-w-[140px] sm:max-w-[200px]">
+                                {p.role || p.department}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveParticipant(p.id || p.name)}
+                            className="p-1 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-1"
+                            title="Bỏ chọn"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-3 text-center rounded-xl border border-dashed border-border bg-muted/20 text-xs text-muted-foreground">
+                    Chưa chọn đối tượng nào. Bạn có thể gõ nhanh tên đối tượng bên dưới hoặc chọn nhân viên công ty.
+                  </div>
+                )}
+
+                {/* Quick Add Custom Participant & Search Employee */}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Gõ tên đối tượng / khách / bạn bè rồi nhấn Enter (Ví dụ: Anh Nam - Đối tác, Nguyễn Linh)..."
+                      value={customParticipantName}
+                      onChange={(e) => setCustomParticipantName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCustomParticipant();
+                        }
+                      }}
+                      className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddCustomParticipant}
+                      disabled={!customParticipantName.trim()}
+                      className="px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-1 shrink-0"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" /> Thêm nhanh
+                    </button>
+                  </div>
+
+                  {/* Search and toggle employees */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Tìm kiếm nhân viên trong công ty để thêm..."
+                      value={employeeSearch}
+                      onChange={(e) => setEmployeeSearch(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+
+                  {employeeSearch && (
+                    <div className="rounded-xl border border-border bg-background overflow-hidden max-h-40 overflow-y-auto p-1.5 divide-y divide-border/40">
+                      {filteredEmployees.map((emp) => {
+                        const isSelected = participants.some(
+                          (p) =>
+                            (p.id && p.id === emp.id) ||
+                            (p.code && p.code === emp.code) ||
+                            p.name === emp.name
+                        );
+                        const avatar = getSafeAvatarUrl(emp.avatarUrl, emp.name);
+                        return (
+                          <button
+                            key={emp.id || emp.code}
+                            type="button"
+                            onClick={() => handleToggleEmployeeParticipant(emp)}
+                            className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
+                              isSelected
+                                ? 'bg-primary/10 border border-primary/30 text-primary'
+                                : 'hover:bg-muted/60 text-foreground'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <img
+                                src={avatar}
+                                alt={emp.name}
+                                className="w-6 h-6 rounded-full object-cover border border-border shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <span className="text-xs font-semibold truncate block">
+                                  {emp.name} {emp.code ? `(${emp.code})` : ''}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground truncate block">
+                                  {emp.role || emp.department || ''}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[11px] font-semibold shrink-0">
+                              {isSelected ? '✓ Đã chọn' : '+ Chọn'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* 2. THỜI GIAN & TRẠNG THÁI (Tiếp là tg và trạng thái) */}
+            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
+              <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+                <Calendar className="w-4 h-4 text-primary" />
+                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                  2. Thời gian & Trạng thái
+                </h4>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Giờ thực hiện */}
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    Thời gian (Giờ thực hiện)
+                  </label>
+                  <TimePickerInput
+                    value={noteTime}
+                    onChange={(val) => setNoteTime(val)}
+                    placeholder="Chọn hoặc nhập giờ (VD: 09:30)..."
+                  />
+                </div>
+
+                {/* Trạng thái */}
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                    Trạng thái
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as NoteStatus)}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
+                  >
+                    <option value="published">Đã công bố / Xuất bản</option>
+                    <option value="draft">Bản nháp</option>
+                    <option value="archived">Lưu trữ</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. HÌNH ẢNH ĐÍNH KÈM (Tiếp là tới ảnh) */}
+            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-primary" />
+                  <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                    3. Hình ảnh đính kèm ({images.length})
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  disabled={isUploadingGallery}
+                  className="px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 transition-all flex items-center gap-1 disabled:opacity-60"
+                >
+                  {isUploadingGallery ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                  <span>Tải ảnh lên</span>
+                </button>
+              </div>
+
+              {/* Ctrl+V Paste Helper Notice */}
+              <div className="flex items-center gap-2 p-2.5 rounded-xl border border-primary/25 bg-primary/5 text-primary text-xs">
+                <ImageIcon className="w-4 h-4 shrink-0 text-primary" />
+                <span className="leading-snug">
+                  <strong>Dán ảnh nhanh:</strong> Bạn có thể chụp ảnh màn hình rồi bấm <strong>Ctrl + V</strong> bất kỳ lúc nào để đính kèm ảnh ngay lập tức!
+                </span>
+              </div>
+
+              <input
+                ref={galleryInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleGalleryUpload}
+                className="hidden"
+              />
+
+              {images.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {images.map((imgUrl, idx) => (
+                    <div
+                      key={idx}
+                      className="relative rounded-xl overflow-hidden border border-border group bg-muted/40 aspect-video flex items-center justify-center"
+                    >
+                      <img src={imgUrl} alt={`Attachment ${idx + 1}`} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-between p-2">
+                        <div className="w-full flex items-center justify-between">
+                          <span className="text-[10px] text-white truncate max-w-[70%] font-medium">
+                            Ảnh #{idx + 1}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCoverUrl(imgUrl)}
+                            className="px-1.5 py-0.5 rounded bg-white/90 text-[10px] text-foreground font-semibold hover:bg-white transition-all shadow-xs"
+                            title="Đặt làm ảnh bìa"
+                          >
+                            Làm bìa
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAttachment(`img_${idx}`, imgUrl)}
+                          className="p-1 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all self-end"
+                          title="Xóa ảnh"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 border border-dashed border-border rounded-xl bg-muted/20">
+                  <p className="text-xs text-muted-foreground">
+                    Chưa có ảnh đính kèm. Bấm nút <strong>"Tải ảnh lên"</strong> hoặc nhấn <strong>Ctrl + V</strong> để dán ảnh.
+                  </p>
+                </div>
+              )}
+
+              {/* Cover Banner Preview & Input */}
+              <div className="pt-2 border-t border-border/50">
+                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
+                  Ảnh bìa bài viết (Cover Banner)
+                </label>
+                {coverUrl ? (
+                  <div className="relative rounded-xl overflow-hidden border border-border h-32 sm:h-40 group">
+                    <img src={coverUrl} alt="Cover Preview" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => coverInputRef.current?.click()}
+                        disabled={isUploadingCover}
+                        className="px-3 py-1.5 rounded-lg bg-white/90 text-foreground text-xs font-medium hover:bg-white flex items-center gap-1.5 shadow-md disabled:opacity-60"
+                      >
+                        {isUploadingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                        {isUploadingCover ? 'Đang tải lên...' : 'Thay ảnh'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCoverUrl('')}
+                        className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-medium hover:bg-destructive/90 flex items-center gap-1.5 shadow-md"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Xóa bìa
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => coverInputRef.current?.click()}
+                      disabled={isUploadingCover}
+                      className="w-full sm:w-auto px-3.5 py-2 rounded-xl border border-dashed border-border hover:border-primary/50 bg-muted/30 hover:bg-primary/5 text-xs text-muted-foreground hover:text-primary transition-all flex items-center justify-center gap-1.5 disabled:opacity-60 shrink-0"
+                    >
+                      {isUploadingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" /> : <ImageIcon className="w-3.5 h-3.5" />}
+                      <span>Tải ảnh bìa</span>
+                    </button>
+                    <input
+                      type="url"
+                      placeholder="Hoặc dán URL hình ảnh làm bìa..."
+                      value={coverUrl}
+                      onChange={(e) => setCoverUrl(e.target.value)}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                )}
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverFileUpload}
+                  className="hidden"
+                />
+              </div>
+            </div>
+
+            {/* 4. ĐƯỜNG DẪN LIÊN KẾT (LINK) & NỘI DUNG CHI TIẾT (Bỏ tóm tắt nhanh) */}
             <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
                   <Edit3 className="w-4 h-4 text-primary" />
                   <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    1. Tiêu đề & Nội dung bài viết
+                    4. Đường dẫn liên kết & Nội dung chi tiết
                   </h4>
                 </div>
 
@@ -784,37 +1183,36 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Title */}
+              {/* Ô điền Link (Đường dẫn liên kết / URL) */}
               <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">
-                  Tiêu đề bài viết / Ghi chú <span className="text-destructive">*</span>
+                <label className="block text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5">
+                  <Globe className="w-3.5 h-3.5 text-primary" />
+                  <span>Đường dẫn liên kết (Link / URL)</span>
                 </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Biên bản Cuộc họp Chiến lược Q4/2026..."
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className={`w-full rounded-xl border ${
-                    formErrors.title ? 'border-destructive' : 'border-border'
-                  } bg-background px-3.5 py-2.5 text-sm font-medium text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all`}
-                />
-                {formErrors.title && (
-                  <p className="text-xs text-destructive mt-1">{formErrors.title}</p>
-                )}
-              </div>
-
-              {/* Summary */}
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                  Tóm tắt nhanh (Lead / Summary)
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Mô tả tóm tắt nội dung chính giúp người xem nắm bắt nhanh..."
-                  value={summary}
-                  onChange={(e) => setSummary(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all resize-none"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    placeholder="Dán đường dẫn trang web, shopee, video, tài liệu, thiệp cưới (VD: https://...)"
+                    value={link}
+                    onChange={(e) => setLink(e.target.value)}
+                    className="flex-1 rounded-xl border border-border bg-background px-3.5 py-2.5 text-xs sm:text-sm font-medium text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all font-mono"
+                  />
+                  {link.trim() && (
+                    <a
+                      href={link.startsWith('http') ? link : `https://${link}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-[38px] px-3.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold inline-flex items-center gap-1.5 border border-primary/30 shrink-0 transition-colors"
+                      title="Mở liên kết thử"
+                    >
+                      <span>Mở link</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  💡 Bạn có thể dán link vào ô này hoặc viết trực tiếp trong nội dung bên dưới, khi xem chi tiết có thể bấm mở trực tiếp!
+                </p>
               </div>
 
               {/* Main Content Area */}
@@ -971,13 +1369,13 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               </div>
             </div>
 
-            {/* 2. CHUYÊN MỤC, THẺ & TRẠNG THÁI */}
+            {/* 5. PHÂN LOẠI, THẺ & VỊ TRÍ */}
             <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
                   <FolderOpen className="w-4 h-4 text-primary" />
                   <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    2. Chuyên mục, Thẻ & Trạng thái
+                    5. Phân loại, Thẻ & Vị trí
                   </h4>
                 </div>
 
@@ -998,8 +1396,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Category, Status, Author & Pin */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Category, Author & Pin */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-muted-foreground mb-1">
                     Chuyên mục
@@ -1007,7 +1405,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as NoteCategory)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
                   >
                     <option value="">-- Chưa phân loại / Chọn chuyên mục --</option>
                     {NOTE_CATEGORIES.map((cat) => (
@@ -1015,21 +1413,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                         {cat}
                       </option>
                     ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                    Trạng thái
-                  </label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as NoteStatus)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="published">Đã công bố / Xuất bản</option>
-                    <option value="draft">Bản nháp</option>
-                    <option value="archived">Lưu trữ</option>
                   </select>
                 </div>
 
@@ -1044,7 +1427,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                       value={author}
                       onChange={(e) => setAuthor(e.target.value)}
                       placeholder="Người tạo..."
-                      className="w-full rounded-xl border border-border bg-background pl-8.5 pr-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="w-full rounded-xl border border-border bg-background pl-8.5 pr-3 py-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary h-[38px]"
                     />
                   </div>
                 </div>
@@ -1103,7 +1486,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   />
                 </div>
 
-                {/* Preset Tag Badges (dynamic from existing notes) */}
+                {/* Preset Tag Badges */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-2">
                   <span className="text-[11px] text-muted-foreground mr-1">Gợi ý nhanh từ ghi chú:</span>
                   {availableTags.map((pt: string) => {
@@ -1125,290 +1508,9 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   })}
                 </div>
               </div>
-            </div>
-
-            {/* 3. ĐỐI TƯỢNG NHÂN VIÊN & ĐI CÙNG AI (NHẬT KÝ) */}
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-primary" />
-                  <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                    3. Đối tượng nhân viên & Đi cùng ai (Nhật ký)
-                  </h4>
-                  {participants.length > 0 && (
-                    <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
-                      {participants.length} người
-                    </span>
-                  )}
-                </div>
-
-                {/* Diary template button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!category) setCategory('Nhật ký & Hoạt động');
-                    if (!activity) setActivity('Đi cà phê & Trò chuyện');
-                    if (!title) setTitle(`Nhật ký ngày ${noteDate || new Date().toLocaleDateString('vi-VN')}`);
-                    if (!content) {
-                      const names = participants.map((p) => p.name).join(', ') || 'Bạn bè / Đồng nghiệp';
-                      setContent(`## 📖 Nhật ký Hoạt động\n- **Thời gian:** ${noteTime || '09:00'}, ngày ${noteDate || new Date().toLocaleDateString('vi-VN')}\n- **Địa điểm:** ${location || 'Tại quán cà phê / Ngoài trời'}\n- **Đi cùng:** ${names}\n\n### 🌟 Hôm nay làm gì & Có gì vui:\n1. Gặp mặt trò chuyện và chia sẻ câu chuyện cùng mọi người.\n2. Cùng nhau thưởng thức đồ uống và thư giãn.\n3. Những kỷ niệm và khoảnh khắc đáng nhớ trong ngày.\n\n> [!NOTE]\n> Hãy ghi lại cảm xúc và trải nghiệm tuyệt vời cùng bạn bè!`);
-                    }
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 text-xs font-medium border border-emerald-500/30 transition-colors"
-                >
-                  <Sparkles className="w-3.5 h-3.5" /> Dùng mẫu Nhật ký đi chơi
-                </button>
-              </div>
-
-              {/* Activity input & suggestions */}
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                  Hoạt động / Đi đâu làm gì
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Đi uống cà phê cuối tuần, Ăn tối liên hoan, Khảo sát mặt bằng..."
-                  value={activity}
-                  onChange={(e) => setActivity(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-
-                {/* Activity suggestion chips */}
-                <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                  <span className="text-[11px] text-muted-foreground mr-1">Gợi ý nhanh:</span>
-                  {[
-                    '☕ Đi uống cà phê',
-                    '🍜 Ăn uống liên hoan',
-                    '⚽ Thể thao & Dã ngoại',
-                    '💼 Họp nhóm & Trao đổi',
-                    '🏢 Khảo sát / Gặp đối tác',
-                    '🏖️ Du lịch / Nghỉ dưỡng',
-                    '🎬 Đi xem phim / Giải trí',
-                  ].map((act) => (
-                    <button
-                      key={act}
-                      type="button"
-                      onClick={() => setActivity(act)}
-                      className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all ${
-                        activity === act
-                          ? 'bg-primary text-primary-foreground font-semibold border-primary'
-                          : 'bg-muted/40 border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-                      }`}
-                    >
-                      {act}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Selected Participants Chips */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    Danh sách nhân viên / người đi cùng ({participants.length})
-                  </label>
-                  {participants.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setParticipants([])}
-                      className="text-[11px] text-rose-500 hover:underline"
-                    >
-                      Xóa tất cả
-                    </button>
-                  )}
-                </div>
-
-                {participants.length > 0 ? (
-                  <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl border border-border bg-background/60 mb-3">
-                    {participants.map((p, idx) => {
-                      const avatar = getSafeAvatarUrl(p.avatarUrl, p.name);
-                      return (
-                        <div
-                          key={p.id || p.code || idx}
-                          className="inline-flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full bg-primary/10 border border-primary/25 text-foreground text-xs shadow-2xs group hover:border-primary/50 transition-all"
-                        >
-                          <img
-                            src={avatar}
-                            alt={p.name}
-                            className="w-6 h-6 rounded-full object-cover border border-background shrink-0"
-                          />
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-semibold text-xs text-foreground truncate max-w-[140px] sm:max-w-[200px]">
-                              {p.name}
-                            </span>
-                            {(p.role || p.department) && (
-                              <span className="text-[10px] text-muted-foreground truncate max-w-[140px] sm:max-w-[200px]">
-                                {p.role || p.department}
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveParticipant(p.id || p.name)}
-                            className="p-1 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors ml-1"
-                            title="Bỏ chọn"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="p-3 text-center rounded-xl border border-dashed border-border bg-muted/20 text-xs text-muted-foreground mb-3">
-                    Chưa chọn nhân sự nào đi cùng. Hãy chọn từ danh sách bên dưới hoặc nhập thêm người ngoài.
-                  </div>
-                )}
-
-                {/* Add participant controls */}
-                <div className="space-y-3">
-                  {/* Search employee */}
-                  <div className="relative">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="Tìm kiếm nhân viên trong công ty để thêm..."
-                      value={employeeSearch}
-                      onChange={(e) => setEmployeeSearch(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-
-                  {/* Employee Picker List */}
-                  <div className="rounded-xl border border-border bg-background overflow-hidden">
-                    <div className="max-h-48 overflow-y-auto p-2 divide-y divide-border/40 space-y-1">
-                      {filteredEmployees.length > 0 ? (
-                        filteredEmployees.map((emp) => {
-                          const isSelected = participants.some(
-                            (p) =>
-                              (p.id && p.id === emp.id) ||
-                              (p.code && p.code === emp.code) ||
-                              p.name === emp.name
-                          );
-                          const avatar = getSafeAvatarUrl(emp.avatarUrl, emp.name);
-
-                          return (
-                            <button
-                              key={emp.id || emp.code}
-                              type="button"
-                              onClick={() => handleToggleEmployeeParticipant(emp)}
-                              className={`w-full flex items-center justify-between p-2 rounded-lg text-left transition-all ${
-                                isSelected
-                                  ? 'bg-primary/10 border border-primary/30 text-primary'
-                                  : 'hover:bg-muted/60 text-foreground'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <img
-                                  src={avatar}
-                                  alt={emp.name}
-                                  className="w-7 h-7 rounded-full object-cover border border-border shrink-0"
-                                />
-                                <div className="min-w-0">
-                                  <div className="text-xs font-semibold truncate flex items-center gap-1.5">
-                                    <span>{emp.name}</span>
-                                    {emp.code && (
-                                      <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.2 rounded">
-                                        {emp.code}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-[11px] text-muted-foreground truncate">
-                                    {emp.role} {emp.department ? `• ${emp.department}` : ''}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="shrink-0 ml-2">
-                                {isSelected ? (
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary bg-primary/20 px-2 py-0.5 rounded-full">
-                                    <Check className="w-3 h-3" /> Đã chọn
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full group-hover:text-foreground">
-                                    <Plus className="w-3 h-3" /> Chọn
-                                  </span>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })
-                      ) : (
-                        <div className="p-3 text-center text-xs text-muted-foreground">
-                          Không tìm thấy nhân viên phù hợp với từ khóa "{employeeSearch}".
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Add External Friend / Guest */}
-                  <div className="flex items-center gap-2 pt-1">
-                    <input
-                      type="text"
-                      placeholder="Hoặc nhập tên người ngoài / bạn bè (Ví dụ: Anh Nam - Đối tác)..."
-                      value={customParticipantName}
-                      onChange={(e) => setCustomParticipantName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddCustomParticipant();
-                        }
-                      }}
-                      className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAddCustomParticipant}
-                      disabled={!customParticipantName.trim()}
-                      className="px-3 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1 shrink-0"
-                    >
-                      <UserPlus className="w-3.5 h-3.5" /> Thêm người ngoài
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* 4. THỜI GIAN, VỊ TRÍ & ẢNH ĐÍNH KÈM */}
-            <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
-              <div className="flex items-center gap-2 border-b border-border/60 pb-3">
-                <Calendar className="w-4 h-4 text-primary" />
-                <h4 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                  4. Thời gian, Vị trí & Ảnh đính kèm
-                </h4>
-              </div>
-
-              {/* Event Date & Time */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                    Ngày sự kiện / thực hiện
-                  </label>
-                  <div className="relative">
-                    <Calendar className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="date"
-                      value={noteDate}
-                      onChange={(e) => setNoteDate(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                    Giờ sự kiện / thực hiện
-                  </label>
-                  <TimePickerInput
-                    value={noteTime}
-                    onChange={(val) => setNoteTime(val)}
-                    placeholder="Chọn hoặc nhập giờ..."
-                  />
-                </div>
-              </div>
 
               {/* Location with GPS */}
-              <div className="space-y-2">
+              <div className="space-y-2 pt-1 border-t border-border/50">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-semibold text-muted-foreground">
                     Vị trí / Địa điểm (GPS)
@@ -1443,141 +1545,6 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                     className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-mono"
                   />
                 </div>
-              </div>
-
-              {/* Cover Banner */}
-              <div>
-                <label className="block text-xs font-semibold text-muted-foreground mb-1.5">
-                  Ảnh bìa bài viết (Cover Banner)
-                </label>
-                {coverUrl ? (
-                  <div className="relative rounded-xl overflow-hidden border border-border h-36 sm:h-44 group">
-                    <img src={coverUrl} alt="Cover Preview" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => coverInputRef.current?.click()}
-                        disabled={isUploadingCover}
-                        className="px-3 py-1.5 rounded-lg bg-white/90 text-foreground text-xs font-medium hover:bg-white flex items-center gap-1.5 shadow-md disabled:opacity-60"
-                      >
-                        {isUploadingCover ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                        {isUploadingCover ? 'Đang tải lên...' : 'Thay ảnh'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCoverUrl('')}
-                        className="px-3 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-medium hover:bg-destructive/90 flex items-center gap-1.5 shadow-md"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Xóa bìa
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => coverInputRef.current?.click()}
-                      disabled={isUploadingCover}
-                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-dashed border-border hover:border-primary/50 bg-muted/30 hover:bg-primary/5 text-xs text-muted-foreground hover:text-primary transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-                    >
-                      {isUploadingCover ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <ImageIcon className="w-4 h-4" />}
-                      {isUploadingCover ? 'Đang tải lên Catbox...' : 'Tải ảnh bìa từ máy'}
-                    </button>
-                    <div className="flex-1 w-full relative">
-                      <input
-                        type="url"
-                        placeholder="Hoặc dán URL hình ảnh..."
-                        value={coverUrl}
-                        onChange={(e) => setCoverUrl(e.target.value)}
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                    </div>
-                  </div>
-                )}
-                <input
-                  ref={coverInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverFileUpload}
-                  className="hidden"
-                />
-              </div>
-
-              {/* Photo Gallery Attachments */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-xs font-semibold text-muted-foreground">
-                    Thư viện hình ảnh đính kèm ({images.length})
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => galleryInputRef.current?.click()}
-                    disabled={isUploadingGallery}
-                    className="px-2.5 py-1 rounded-lg border border-primary/30 bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-all flex items-center gap-1 disabled:opacity-60"
-                  >
-                    {isUploadingGallery ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                    {isUploadingGallery ? 'Đang tải lên Catbox...' : 'Tải thêm ảnh'}
-                  </button>
-                </div>
-
-                {/* Ctrl+V Paste Helper Notice */}
-                <div className="flex items-center gap-2 p-2.5 rounded-xl border border-primary/25 bg-primary/5 text-primary text-xs mb-3">
-                  <ImageIcon className="w-4 h-4 shrink-0 text-primary" />
-                  <span className="leading-snug">
-                    <strong>Hỗ trợ dán ảnh nhanh:</strong> Bạn có thể chụp màn hình hoặc sao chép ảnh từ máy tính rồi nhấn <strong>Ctrl + V</strong> ở bất kỳ đâu trong form để đính kèm ảnh ngay!
-                  </span>
-                </div>
-
-                <input
-                  ref={galleryInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleGalleryUpload}
-                  className="hidden"
-                />
-
-                {images.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                    {images.map((imgUrl, idx) => (
-                      <div
-                        key={idx}
-                        className="relative rounded-xl overflow-hidden border border-border group bg-muted/40 aspect-video flex items-center justify-center"
-                      >
-                        <img src={imgUrl} alt={`Attachment ${idx + 1}`} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-between p-2">
-                          <div className="w-full flex items-center justify-between">
-                            <span className="text-[10px] text-white truncate max-w-[70%] font-medium">
-                              Ảnh #{idx + 1}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setCoverUrl(imgUrl)}
-                              className="px-1.5 py-0.5 rounded bg-white/90 text-[10px] text-foreground font-semibold hover:bg-white transition-all shadow-xs"
-                              title="Đặt làm ảnh bìa"
-                            >
-                              Làm bìa
-                            </button>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveAttachment(`img_${idx}`, imgUrl)}
-                            className="p-1 rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all self-end"
-                            title="Xóa ảnh"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-4 border border-dashed border-border rounded-xl bg-muted/20">
-                    <p className="text-xs text-muted-foreground">
-                      Chưa có ảnh đính kèm. Bấm nút <strong>"Tải thêm ảnh"</strong> hoặc nhấn <strong>Ctrl + V</strong> để dán ảnh.
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
           </form>

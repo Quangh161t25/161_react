@@ -30,6 +30,8 @@ import {
   Users,
   Sparkles,
   AlertCircle,
+  ExternalLink,
+  Globe,
 } from 'lucide-react';
 import { Note } from '../../types/note';
 import { useSettings } from '../../context/SettingsContext';
@@ -522,18 +524,58 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                 </div>
               )}
 
-              {/* Card 1: Tóm tắt & Nội dung bài viết */}
+              {/* Card 1: Nội dung bài viết & Tài liệu */}
               <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-2 text-primary font-bold">
                     <FileText className="w-4 h-4" />
                     <span>Nội dung bài viết & Tài liệu</span>
                   </h4>
+                  {note.link && (
+                    <a
+                      href={note.link.startsWith('http') ? note.link : `https://${note.link}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>Truy cập liên kết</span>
+                      <ExternalLink className="w-3 h-3 ml-0.5" />
+                    </a>
+                  )}
                 </div>
 
-                {note.summary && (
-                  <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/20 text-xs text-foreground font-medium leading-relaxed italic">
-                    💡 <strong>Tóm tắt:</strong> {note.summary}
+                {/* Dedicated Link Banner if present */}
+                {note.link && (
+                  <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+                        <Globe className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <span className="text-[11px] font-semibold text-muted-foreground block">
+                          Đường dẫn liên kết đính kèm
+                        </span>
+                        <a
+                          href={note.link.startsWith('http') ? note.link : `https://${note.link}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-bold text-primary hover:underline truncate block"
+                          title={note.link}
+                        >
+                          {note.link}
+                        </a>
+                      </div>
+                    </div>
+                    <a
+                      href={note.link.startsWith('http') ? note.link : `https://${note.link}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold inline-flex items-center gap-1.5 shadow-xs transition-transform active:scale-95 shrink-0 self-start sm:self-auto cursor-pointer"
+                    >
+                      <span>Mở link</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
                   </div>
                 )}
 

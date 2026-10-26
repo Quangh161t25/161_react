@@ -30,6 +30,7 @@ import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
   ArrowUpDown,
+  ExternalLink,
 } from 'lucide-react';
 import { Note, NoteCategory, NoteStatus } from '../../types/note';
 import { NOTE_CATEGORIES } from '../../data/notes';
@@ -67,6 +68,7 @@ export const DEFAULT_NOTE_COLUMNS: ColumnItem[] = [
   { id: 'noteTime', label: 'Giờ', visible: true, width: 90, align: 'center', wrap: 'truncate' },
   { id: 'location', label: 'Vị trí / Địa điểm', visible: true, width: 200, align: 'left', wrap: 'truncate' },
   { id: 'attachments', label: 'Hình ảnh / Đính kèm', visible: true, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'link', label: 'Đường dẫn (Link)', visible: false, width: 220, align: 'left', wrap: 'truncate' },
   { id: 'author', label: 'Tác giả', visible: true, width: 150, align: 'left', wrap: 'truncate' },
   { id: 'summary', label: 'Tóm tắt ngắn', visible: false, width: 260, align: 'left', wrap: 'truncate' },
   { id: 'createdAt', label: 'Ngày tạo', visible: false, width: 130, align: 'center', wrap: 'truncate' },
@@ -819,13 +821,50 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
           </td>
         );
 
-      case 'content':
+      case 'content': {
         const cleanContent = stripMarkdown(note.content || '');
+        const urlMatch = cleanContent.match(/https?:\/\/[^\s<]+/);
+        const directUrl = note.link || urlMatch?.[0];
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} text-foreground/80`}>
-            <div className={`w-full min-w-0 ${textWrapClass}`} title={cleanContent}>
-              {cleanContent || '—'}
+            <div className={`w-full min-w-0 ${textWrapClass} flex items-center justify-between gap-2`} title={cleanContent}>
+              <span className="truncate">{cleanContent || '—'}</span>
+              {directUrl && (
+                <a
+                  href={directUrl.startsWith('http') ? directUrl : `https://${directUrl}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="px-2 py-0.5 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-semibold inline-flex items-center gap-1 shrink-0 transition-colors"
+                  title={`Mở link: ${directUrl}`}
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span className="hidden sm:inline">Mở link</span>
+                </a>
+              )}
             </div>
+          </td>
+        );
+      }
+
+      case 'link':
+        return (
+          <td key={colId} style={tdStyle} className={tdBaseClass}>
+            {note.link ? (
+              <a
+                href={note.link.startsWith('http') ? note.link : `https://${note.link}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-primary hover:underline text-xs inline-flex items-center gap-1 font-medium truncate max-w-full"
+                title={note.link}
+              >
+                <ExternalLink className="w-3 h-3 shrink-0" />
+                <span className="truncate">{note.link}</span>
+              </a>
+            ) : (
+              <span className="text-muted-foreground text-xs">—</span>
+            )}
           </td>
         );
 

@@ -355,12 +355,36 @@ export function renderInlineContent(text: string): React.ReactNode {
             href={linkMatch[2]}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center gap-0.5 text-primary hover:underline font-medium"
+            className="inline-flex items-center gap-0.5 text-primary hover:underline font-medium break-all"
+            onClick={(e) => e.stopPropagation()}
           >
             <span>{linkMatch[1]}</span>
-            <ExternalLink className="w-3 h-3 inline-block" />
+            <ExternalLink className="w-3 h-3 inline-block shrink-0" />
           </a>
         );
+      }
+
+      // Raw URLs: https://... or http://...
+      const rawUrlParts = lPart.split(/(https?:\/\/[^\s<]+)/g);
+      if (rawUrlParts.length > 1) {
+        return rawUrlParts.map((uPart, uIdx) => {
+          if (/^https?:\/\/[^\s<]+$/.test(uPart)) {
+            return (
+              <a
+                key={`${pIdx}-${lIdx}-${uIdx}`}
+                href={uPart}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-0.5 text-primary hover:underline font-medium break-all"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span>{uPart}</span>
+                <ExternalLink className="w-3 h-3 inline-block shrink-0" />
+              </a>
+            );
+          }
+          return renderBoldItalic(uPart, `${pIdx}-${lIdx}-${uIdx}`);
+        });
       }
 
       // Process bold **text** and italic *text*

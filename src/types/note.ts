@@ -34,6 +34,7 @@ export interface Note {
   title: string;
   content: string; // Rich article content / markdown / text
   summary?: string;
+  link?: string; // Web URL / link đính kèm
   coverUrl?: string;
   images?: string[];
   category: NoteCategory;
