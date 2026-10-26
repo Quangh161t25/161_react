@@ -6,8 +6,6 @@ import {
   ChevronRight,
   SquarePen,
   Trash2,
-  Printer,
-  Mail,
   Copy,
   Check,
   PanelRightClose,
@@ -310,23 +308,23 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
         </div>
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto bg-muted/40 p-4 sm:p-5 custom-scrollbar">
-          <div className="max-w-4xl mx-auto space-y-5">
+        <div className="flex-1 overflow-y-auto bg-muted/40 p-3 sm:p-4 custom-scrollbar">
+          <div className="max-w-4xl mx-auto space-y-2.5">
             {/* Cover Image Banner (if available) */}
             {note.coverUrl && (
-              <div className="relative w-full h-44 sm:h-56 rounded-2xl overflow-hidden shadow-xs border border-border group">
+              <div className="relative w-full h-40 sm:h-52 rounded-xl overflow-hidden shadow-xs border border-border group">
                 <img
                   src={note.coverUrl}
                   alt={note.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end p-4 sm:p-5">
-                  <div className="space-y-1.5 text-white">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end p-3.5 sm:p-4">
+                  <div className="space-y-1 text-white">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-full bg-primary/90 text-white backdrop-blur-md">
                       <FolderOpen className="w-3 h-3" />
                       {note.category}
                     </span>
-                    <h2 className="text-lg sm:text-xl font-bold leading-tight drop-shadow-md">
+                    <h2 className="text-base sm:text-lg font-bold leading-tight drop-shadow-md">
                       {note.title}
                     </h2>
                   </div>
@@ -335,12 +333,12 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
             )}
 
             {/* Profile Highlight Card */}
-            <div className="bg-card p-4 rounded-xl border border-border/70 shadow-xs space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="bg-card p-3 sm:p-3.5 rounded-xl border border-border/70 shadow-xs space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div className="flex items-center gap-3">
                   <img
                     alt={note.author}
-                    className="w-11 h-11 rounded-full border border-border shadow-xs object-cover"
+                    className="w-10 h-10 rounded-full border border-border shadow-xs object-cover"
                     src={getSafeAvatarUrl(note.authorAvatar, note.author)}
                   />
                   <div>
@@ -358,12 +356,26 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
                     <FolderOpen className="w-3.5 h-3.5" />
                     {note.category}
                   </span>
-                  {note.isPinned && (
+                  {onTogglePin ? (
+                    <button
+                      type="button"
+                      onClick={() => onTogglePin(note.id)}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                        note.isPinned
+                          ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                          : 'bg-muted/60 text-muted-foreground hover:text-foreground border border-border'
+                      }`}
+                      title={note.isPinned ? 'Bỏ ghim bài' : 'Ghim bài lên đầu'}
+                    >
+                      <Pin className={`w-3.5 h-3.5 ${note.isPinned ? 'fill-current text-amber-500' : ''}`} />
+                      <span>{note.isPinned ? 'Đã ghim' : 'Ghim'}</span>
+                    </button>
+                  ) : note.isPinned ? (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
                       <Pin className="w-3.5 h-3.5 fill-current" />
                       Đã ghim
                     </span>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
@@ -391,81 +403,12 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
               )}
             </div>
 
-            {/* Quick Actions Grid */}
-            <div className="gap-2 sm:gap-3 p-2.5 sm:p-3.5 min-w-0 grid grid-cols-4 bg-card rounded-xl border border-border shadow-xs">
-              {/* Ghim / Bỏ ghim */}
-              <button
-                type="button"
-                onClick={() => onTogglePin?.(note.id)}
-                className="flex flex-col items-center gap-1 sm:gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
-              >
-                <div
-                  className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors shadow-xs border ${
-                    note.isPinned
-                      ? 'bg-amber-500 text-white border-amber-600'
-                      : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-primary-foreground'
-                  }`}
-                >
-                  <Pin className="w-4 h-4" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-center truncate w-full px-0.5 leading-tight text-primary">
-                  {note.isPinned ? 'Bỏ ghim' : 'Ghim bài'}
-                </span>
-              </button>
-
-              {/* In */}
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex flex-col items-center gap-1 sm:gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
-              >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors shadow-xs border bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground">
-                  <Printer className="w-4 h-4" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-center truncate w-full px-0.5 leading-tight text-muted-foreground">
-                  In tài liệu
-                </span>
-              </button>
-
-              {/* Gửi Email */}
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.href = `mailto:?subject=${encodeURIComponent(note.title)}&body=${encodeURIComponent(
-                    note.summary || note.content.replace(/<[^>]*>?/gm, '')
-                  )}`;
-                }}
-                className="flex flex-col items-center gap-1 sm:gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
-              >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors shadow-xs border bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground">
-                  <Mail className="w-4 h-4" />
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-center truncate w-full px-0.5 leading-tight text-muted-foreground">
-                  Gửi Email
-                </span>
-              </button>
-
-              {/* Sao chép liên kết */}
-              <button
-                type="button"
-                onClick={handleCopyAll}
-                className="flex flex-col items-center gap-1 sm:gap-1.5 transition-[transform,colors] duration-150 outline-none min-w-0 w-full hover:-translate-y-0.5 active:scale-95 cursor-pointer"
-              >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-colors shadow-xs border bg-muted text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground">
-                  {copiedAll ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                </div>
-                <span className="text-[11px] sm:text-xs font-medium text-center truncate w-full px-0.5 leading-tight text-muted-foreground">
-                  {copiedAll ? 'Đã sao chép' : 'Sao chép'}
-                </span>
-              </button>
-            </div>
-
             {/* Section Cards */}
-            <div className="space-y-5">
+            <div className="space-y-2.5">
               {/* Card: Đối tượng nhân viên & Đi cùng ai (Nhật ký) */}
               {((note.participants && note.participants.length > 0) || note.activity) && (
-                <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">
+                <div className="w-full bg-card p-3 sm:p-3.5 rounded-xl border border-border shadow-xs space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 border-b border-primary/20">
                     <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-2 text-primary font-bold">
                       <Users className="w-4 h-4" />
                       <span>Đối tượng nhân viên / Đi cùng ai</span>
@@ -525,8 +468,8 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
               )}
 
               {/* Card 1: Nội dung bài viết & Tài liệu */}
-              <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">
+              <div className="w-full bg-card p-3 sm:p-3.5 rounded-xl border border-border shadow-xs space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-2 text-primary font-bold">
                     <FileText className="w-4 h-4" />
                     <span>Nội dung bài viết & Tài liệu</span>
@@ -547,13 +490,13 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
 
                 {/* Dedicated Link Banner if present */}
                 {note.link && (
-                  <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                  <div className="p-3 rounded-xl bg-primary/5 border border-primary/25 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                        <Globe className="w-4.5 h-4.5" />
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+                        <Globe className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[11px] font-semibold text-muted-foreground block">
+                        <span className="text-[10px] font-semibold text-muted-foreground block">
                           Đường dẫn liên kết đính kèm
                         </span>
                         <a
@@ -588,15 +531,15 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
 
               {/* Card 2: Bộ sưu tập hình ảnh (Gallery) */}
               {note.images && note.images.length > 0 && (
-                <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">
+                <div className="w-full bg-card p-3 sm:p-3.5 rounded-xl border border-border shadow-xs space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 border-b border-primary/20">
                     <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-2 text-primary font-bold">
                       <ImageIcon className="w-4 h-4" />
                       <span>Hình ảnh đính kèm ({note.images.length})</span>
                     </h4>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {note.images.map((img, i) => (
                       <div
                         key={i}
@@ -620,41 +563,41 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
               )}
 
               {/* Card 4: Thông tin hệ thống & Thời gian */}
-              <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">
+              <div className="w-full bg-card p-3 sm:p-3.5 rounded-xl border border-border shadow-xs space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-2 text-primary font-bold">
                     <Clock className="w-4 h-4" />
                     <span>Thông tin hệ thống</span>
                   </h4>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4 text-xs">
-                  <div className="space-y-1">
-                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
+                  <div className="space-y-0.5">
+                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
                       <User className="w-3 h-3" />
                       Tác giả
                     </span>
                     <p className="font-semibold text-foreground">{note.author}</p>
                   </div>
 
-                  <div className="space-y-1">
-                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                  <div className="space-y-0.5">
+                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
                       <Calendar className="w-3 h-3" />
                       Ngày tạo
                     </span>
                     <p className="text-foreground font-mono">{note.createdAt}</p>
                   </div>
 
-                  <div className="space-y-1">
-                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                  <div className="space-y-0.5">
+                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
                       <Clock className="w-3 h-3" />
                       Cập nhật lần cuối
                     </span>
                     <p className="text-foreground font-mono">{note.updatedAt || note.createdAt}</p>
                   </div>
 
-                  <div className="space-y-1">
-                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                  <div className="space-y-0.5">
+                    <span className="text-muted-foreground flex items-center gap-1.5 font-medium text-[11px]">
                       <MapPin className="w-3 h-3" />
                       Tọa độ GPS
                     </span>
@@ -664,8 +607,8 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
               </div>
 
               {/* Card 5: Nhật ký hoạt động */}
-              <div className="w-full bg-card p-4 sm:p-5 rounded-xl border border-border shadow-xs space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2.5 border-b border-primary/20">
+              <div className="w-full bg-card p-3 sm:p-3.5 rounded-xl border border-border shadow-xs space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 pb-2 border-b border-primary/20">
                   <h4 className="text-xs uppercase tracking-wider flex min-w-0 items-center gap-2 text-primary font-bold">
                     <History className="w-4 h-4" />
                     <span>Nhật ký hoạt động</span>
