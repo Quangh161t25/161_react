@@ -41,9 +41,12 @@ import {
   Globe,
   ExternalLink,
   Smile,
+  Map,
+  Building2,
 } from 'lucide-react';
 import { catboxService } from '../../services/catboxService';
 import { Note, NoteCategory, NoteStatus, NoteAttachment, NoteParticipant } from '../../types/note';
+import { LocationPickerModal } from './LocationPickerModal';
 import {
   NOTE_CATEGORIES,
   PRESET_TAGS,
@@ -109,6 +112,12 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
   const [location, setLocation] = useState('');
   const [coordinates, setCoordinates] = useState('');
   const [isLocating, setIsLocating] = useState(false);
+  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+  const searchDebounceRef = useRef<any>(null);
 
   // Tags
   const [tags, setTags] = useState<string[]>([]);
@@ -171,6 +180,46 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       prev.includes(emoji) ? prev.filter((e) => e !== emoji) : [...prev, emoji]
     );
   };
+
+  const handleLocationInputChange = (val: string) => {
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    const q = val.trim();
+    if (q.length < 2) {
+      setLocationSuggestions([]);
+      setIsSuggestionsOpen(false);
+      return;
+    }
+    searchDebounceRef.current = setTimeout(async () => {
+      setIsSearchingLocation(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=vn&addressdetails=1&limit=5`,
+          { headers: { 'Accept-Language': 'vi' } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setLocationSuggestions(data);
+            setIsSuggestionsOpen(data.length > 0);
+          }
+        }
+      } catch (err) {
+        console.warn('Location suggest error:', err);
+      } finally {
+        setIsSearchingLocation(false);
+      }
+    }, 400);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target as Node)) {
+        setIsSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const prevIsOpenRef = useRef(false);
   const prevEditIdRef = useRef<string | null | undefined>(undefined);
@@ -1570,36 +1619,112 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               </div>
 
               {/* Location with GPS */}
-              <div className="space-y-2 pt-1 border-t border-border/50">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-muted-foreground">
-                    Vị trí / Địa điểm (GPS)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => handleGetCurrentLocation(false)}
-                    disabled={isLocating}
-                    className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline disabled:opacity-50"
-                  >
-                    <LocateFixed className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
-                    {isLocating ? 'Đang xác định GPS...' : 'Lấy vị trí GPS hiện tại'}
-                  </button>
+              <div className="space-y-2.5 pt-2 border-t border-border/50">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4 text-primary shrink-0" />
+                    <label className="text-xs font-semibold text-foreground">
+                      Vị trí / Địa điểm cụ thể (GPS)
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setIsLocationModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-xs text-primary font-semibold border border-primary/30 transition-all cursor-pointer shadow-2xs"
+                      title="Mở bản đồ để nhấp chọn điểm hoặc tìm kiếm địa điểm cụ thể"
+                    >
+                      <Map className="w-3.5 h-3.5" />
+                      <span>Chọn trên bản đồ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleGetCurrentLocation(false)}
+                      disabled={isLocating}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted hover:bg-muted/80 text-xs text-foreground font-medium border border-border transition-all cursor-pointer disabled:opacity-50"
+                      title="Lấy tọa độ GPS thiết bị hiện tại của bạn"
+                    >
+                      <LocateFixed className={`w-3.5 h-3.5 text-rose-500 ${isLocating ? 'animate-spin' : ''}`} />
+                      <span>{isLocating ? 'Đang lấy GPS...' : 'GPS hiện tại'}</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="relative">
+                {/* Quick Presets row */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs no-scrollbar">
+                  <span className="text-[11px] text-muted-foreground shrink-0 font-medium">Gợi ý nhanh:</span>
+                  {[
+                    { label: 'Văn phòng Hà Nội', coords: '21.028511° N, 105.854167° E' },
+                    { label: 'Văn phòng TP.HCM', coords: '10.776889° N, 106.700806° E' },
+                    { label: 'Chi nhánh Đà Nẵng', coords: '16.067780° N, 108.220830° E' },
+                    { label: 'Gặp gỡ khách hàng', coords: coordinates },
+                    { label: 'Đi công tác', coords: coordinates },
+                  ].map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => {
+                        setLocation(p.label);
+                        if (p.coords) setCoordinates(p.coords);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/80 hover:bg-secondary text-secondary-foreground text-[11px] font-medium shrink-0 transition-colors border border-border/50 cursor-pointer"
+                    >
+                      <Building2 className="w-2.5 h-2.5 text-primary" />
+                      <span>{p.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Location Input & Coordinates with Autocomplete */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative">
+                  <div className="relative" ref={suggestionsRef}>
                     <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <input
                       type="text"
-                      placeholder="Tên địa điểm / Địa chỉ..."
+                      placeholder="Gõ tìm kiếm tên địa điểm / địa chỉ cụ thể..."
                       value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      className="w-full rounded-xl border border-border bg-background pl-9 pr-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      onChange={(e) => {
+                        setLocation(e.target.value);
+                        handleLocationInputChange(e.target.value);
+                      }}
+                      onFocus={() => {
+                        if (locationSuggestions.length > 0) setIsSuggestionsOpen(true);
+                      }}
+                      className="w-full rounded-xl border border-border bg-background pl-9 pr-8 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                     />
+                    {isSearchingLocation && (
+                      <Loader2 className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground animate-spin" />
+                    )}
+
+                    {/* Suggestions dropdown */}
+                    {isSuggestionsOpen && locationSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-card border border-border rounded-xl shadow-xl max-h-48 overflow-y-auto p-1 space-y-0.5">
+                        {locationSuggestions.map((sug, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              setLocation(sug.display_name);
+                              const lat = parseFloat(sug.lat);
+                              const lng = parseFloat(sug.lon);
+                              if (!isNaN(lat) && !isNaN(lng)) {
+                                setCoordinates(`${lat.toFixed(6)}° N, ${lng.toFixed(6)}° E`);
+                              }
+                              setIsSuggestionsOpen(false);
+                            }}
+                            className="w-full text-left p-2 rounded-lg hover:bg-muted text-xs text-foreground flex items-start gap-2 transition-colors cursor-pointer"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                            <span className="line-clamp-2 leading-relaxed">{sug.display_name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
+
                   <input
                     type="text"
-                    placeholder="Tọa độ GPS (Ví dụ: 10.7951° N, 106.7218° E)"
+                    placeholder="Tọa độ GPS (Ví dụ: 21.028300° N, 105.854000° E)"
                     value={coordinates}
                     onChange={(e) => setCoordinates(e.target.value)}
                     className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary font-mono"
@@ -1777,6 +1902,18 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Location Picker Modal */}
+      <LocationPickerModal
+        isOpen={isLocationModalOpen}
+        onClose={() => setIsLocationModalOpen(false)}
+        initialLocation={location}
+        initialCoordinates={coordinates}
+        onSelectLocation={(newLocation, newCoordinates) => {
+          setLocation(newLocation);
+          setCoordinates(newCoordinates);
+        }}
+      />
     </>
   );
 };
