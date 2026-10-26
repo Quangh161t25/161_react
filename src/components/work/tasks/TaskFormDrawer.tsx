@@ -6,7 +6,6 @@ import {
   Plus,
   Trash2,
   User,
-  Building2,
   FolderKanban,
   PanelRightClose,
   PanelRight,
@@ -72,11 +71,44 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
     return Array.from(new Set(employees.map((e) => e.department).filter(Boolean)));
   }, [employees]);
 
+  // Aggregate project options from master data + previous projects entered in allTasks
+  const projectOptions = useMemo(() => {
+    const list: Array<{ id: string; name: string; code?: string }> = [];
+    const seenNames = new Set<string>();
+
+    // 1. Master projects
+    projects.forEach((p) => {
+      const name = p.name?.trim();
+      if (name && !seenNames.has(name.toLowerCase())) {
+        seenNames.add(name.toLowerCase());
+        list.push({ id: p.id, name, code: p.code });
+      }
+    });
+
+    // 2. Previously entered projects in allTasks
+    allTasks.forEach((t) => {
+      const name = t.projectName?.trim();
+      if (name && !seenNames.has(name.toLowerCase())) {
+        seenNames.add(name.toLowerCase());
+        list.push({
+          id: t.projectId || `proj_${name.toLowerCase().replace(/\s+/g, '_')}`,
+          name,
+          code: t.projectCode,
+        });
+      }
+    });
+
+    return list;
+  }, [projects, allTasks]);
+
   // Form State
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [projectName, setProjectName] = useState('');
+  const [isCustomProject, setIsCustomProject] = useState(false);
+  const [customProjectName, setCustomProjectName] = useState('');
   const [department, setDepartment] = useState('');
   const [assignerId, setAssignerId] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
@@ -121,6 +153,9 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
       setTitle(task.title || '');
       setDescription(task.description || '');
       setProjectId(task.projectId || '');
+      setProjectName(task.projectName || '');
+      setIsCustomProject(false);
+      setCustomProjectName('');
       setDepartment(task.department || '');
       setAssignerId(task.assignerId || task.assignerCode || task.assignerName || '');
       setAssigneeId(task.assigneeId || task.assigneeCode || task.assigneeName || '');
@@ -151,6 +186,9 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
       setTitle('');
       setDescription('');
       setProjectId('');
+      setProjectName('');
+      setIsCustomProject(false);
+      setCustomProjectName('');
       setDepartment(departmentsList[0] || 'Phòng Kỹ thuật & CNTT');
       setAssignerId(employees[0]?.id || '');
       setAssigneeId(employees[0]?.id || '');
@@ -244,7 +282,15 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
     e.preventDefault();
     if (!validate()) return;
 
-    const matchedProject = projects.find((p) => p.id === projectId || p.code === projectId);
+    const finalProjectName = (isCustomProject ? customProjectName.trim() : projectName.trim()) || undefined;
+    const matchedProject = projectOptions.find(
+      (p) =>
+        (finalProjectName && p.name.toLowerCase() === finalProjectName.toLowerCase()) ||
+        (projectId && p.id === projectId)
+    );
+    const finalProjectId = matchedProject?.id || (finalProjectName ? (projectId || 'proj_' + Date.now()) : undefined);
+    const finalProjectCode = matchedProject?.code;
+
     const matchedAssigner = employees.find(
       (emp) => emp.id === assignerId || emp.code === assignerId || emp.name === assignerId
     );
@@ -274,9 +320,9 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
       code: finalCode,
       title: title.trim(),
       description: description.trim(),
-      projectId: matchedProject ? matchedProject.id : undefined,
-      projectCode: matchedProject ? matchedProject.code : undefined,
-      projectName: matchedProject ? matchedProject.name : undefined,
+      projectId: finalProjectId,
+      projectCode: finalProjectCode,
+      projectName: finalProjectName || matchedProject?.name || undefined,
       department: department || (matchedAssignee ? matchedAssignee.department : 'Chung'),
       assignerId: matchedAssigner ? matchedAssigner.id : undefined,
       assignerCode: matchedAssigner ? matchedAssigner.code : undefined,
@@ -459,94 +505,122 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
               </div>
             </div>
 
-            {/* 2. Project & Department */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-border bg-muted/20">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <FolderKanban className="w-3.5 h-3.5 text-purple-500" />
-                  Dự án trực thuộc
-                </label>
-                <select
-                  value={projectId}
-                  onChange={(e) => setProjectId(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">(Không thuộc dự án nào)</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      [{p.code}] {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* 2. Dự án, Người giao việc & Người thực hiện chính */}
+            <div className="p-3.5 rounded-xl border border-border bg-muted/20">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Dự án trực thuộc */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <FolderKanban className="w-3.5 h-3.5 text-purple-500" />
+                    Dự án trực thuộc
+                  </label>
+                  {isCustomProject ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={customProjectName}
+                        onChange={(e) => {
+                          setCustomProjectName(e.target.value);
+                          setProjectName(e.target.value);
+                        }}
+                        placeholder="Nhập tên dự án mới..."
+                        className="flex-1 h-9 px-3 rounded-lg border border-primary bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCustomProject(false);
+                          setCustomProjectName('');
+                          setProjectName('');
+                          setProjectId('');
+                        }}
+                        title="Quay lại chọn từ danh sách"
+                        className="h-9 px-2 rounded-lg border border-border bg-muted hover:bg-muted/80 text-[11px] text-muted-foreground hover:text-foreground shrink-0 transition-colors"
+                      >
+                        Chọn sẵn
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={projectName || projectId || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__custom__') {
+                          setIsCustomProject(true);
+                          setCustomProjectName('');
+                          setProjectName('');
+                          setProjectId('');
+                        } else {
+                          setIsCustomProject(false);
+                          if (!val) {
+                            setProjectName('');
+                            setProjectId('');
+                          } else {
+                            const found = projectOptions.find((p) => p.name === val || p.id === val);
+                            setProjectName(found ? found.name : val);
+                            setProjectId(found ? found.id : '');
+                          }
+                        }
+                      }}
+                      className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="">(Không thuộc dự án nào)</option>
+                      {projectOptions.map((p) => (
+                        <option key={p.id} value={p.name}>
+                          {p.code ? `[${p.code}] ` : ''}{p.name}
+                        </option>
+                      ))}
+                      <option value="__custom__">➕ Nhập dự án mới...</option>
+                    </select>
+                  )}
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-blue-500" />
-                  Phòng ban phụ trách
-                </label>
-                <input
-                  type="text"
-                  list="task-dept-list"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                  placeholder="Chọn hoặc nhập phòng ban..."
-                  className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-                <datalist id="task-dept-list">
-                  {departmentsList.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </datalist>
-              </div>
-            </div>
+                {/* Người giao việc */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-slate-500" />
+                    Người giao việc
+                  </label>
+                  <select
+                    value={assignerId}
+                    onChange={(e) => setAssignerId(e.target.value)}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Chọn người giao việc...</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} {emp.code ? `(${emp.code})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            {/* 3. Assignees & Collaborators */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl border border-border bg-muted/20">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-primary" />
-                  Người thực hiện chính <span className="text-rose-500">*</span>
-                </label>
-                <select
-                  value={assigneeId}
-                  onChange={(e) => {
-                    setAssigneeId(e.target.value);
-                    const emp = employees.find((x) => x.id === e.target.value);
-                    if (emp?.department && !department) {
-                      setDepartment(emp.department);
-                    }
-                  }}
-                  className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">Chọn nhân sự phụ trách...</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} {emp.code ? `(${emp.code})` : ''} - {emp.department}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-500" />
-                  Người giao việc
-                </label>
-                <select
-                  value={assignerId}
-                  onChange={(e) => setAssignerId(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="">Chọn người giao việc...</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.name} {emp.code ? `(${emp.code})` : ''}
-                    </option>
-                  ))}
-                </select>
+                {/* Người thực hiện chính */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-primary" />
+                    Người thực hiện chính <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={assigneeId}
+                    onChange={(e) => {
+                      setAssigneeId(e.target.value);
+                      const emp = employees.find((x) => x.id === e.target.value);
+                      if (emp?.department && !department) {
+                        setDepartment(emp.department);
+                      }
+                    }}
+                    className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="">Chọn nhân sự phụ trách...</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name} {emp.code ? `(${emp.code})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
