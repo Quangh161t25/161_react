@@ -76,6 +76,7 @@
 | 70 | 2026-10-27 00:44:46 (GMT+7) | bảng kanban thì  cho tôi kéo thả để chuyển trạng thái nữa |
 | 71 | 2026-10-27 00:45:35 (GMT+7) | thêm công việc mã công việc auto đi k cần hiện, |
 | 72 | 2026-10-27 00:49:34 (GMT+7) | xóa phòng ban đi. rồi cho 3 dự án , người giao việc người thực hiện cùng 1 dòng.<br/>dự án có thể chọn từ dự án trc mà tôi điền . người thì chọn từ danh sách nhân viên. |
+| 73 | 2026-10-27 00:49:41 (GMT+7) | xóa 3 modul nhỏ này đi |
 
 
 ---
@@ -816,6 +817,16 @@ thêm công việc mã công việc auto đi k cần hiện,
 `
 xóa phòng ban đi. rồi cho 3 dự án , người giao việc người thực hiện cùng 1 dòng.
 dự án có thể chọn từ dự án trc mà tôi điền . người thì chọn từ danh sách nhân viên.
+`
+
+---
+
+### 73. [2026-10-27 00:49:41 (GMT+7)]
+**Thời gian UTC:** 2026-10-26T17:49:41Z
+
+**Nội dung yêu cầu:**
+`
+xóa 3 modul nhỏ này đi
 `
 
 ---

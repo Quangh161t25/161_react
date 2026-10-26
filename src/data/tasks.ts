@@ -1,10 +1,7 @@
 import {
   CheckSquare,
-  FolderKanban,
-  BarChart2,
   CalendarCheck,
   ListTodo,
-  Workflow,
   ListChecks,
 } from 'lucide-react';
 import { Task, Project, WorkflowTemplate, WorkSectionData } from '../types/task';
@@ -58,50 +55,6 @@ export const WORK_SECTIONS: WorkSectionData[] = [
         iconBgColor: 'rgba(139, 92, 246, 0.12)',
         badge: 'Mới',
         badgeColor: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-        isPinned: false,
-      },
-    ],
-  },
-  {
-    id: 'projects_workflows',
-    title: 'Dự án & Quy trình',
-    items: [
-      {
-        id: 'project_list',
-        title: 'Quản lý Dự án',
-        description: 'Dự án lớn, ngân sách, nhân sự tham gia và tiến độ.',
-        href: '/cong-viec/du-an',
-        icon: FolderKanban,
-        iconColor: '#7c3aed', // Violet-600
-        iconBgColor: 'rgba(124, 58, 237, 0.12)',
-        badge: 'Dự án',
-        badgeColor: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-        isPinned: true,
-      },
-      {
-        id: 'workflow_templates',
-        title: 'Quy trình mẫu',
-        description: 'Mẫu quy trình chuẩn nhiều bước và phân quyền SLA.',
-        href: '/cong-viec/quy-trinh',
-        icon: Workflow,
-        iconColor: '#d97706', // Amber-600
-        iconBgColor: 'rgba(217, 119, 6, 0.12)',
-        isPinned: false,
-      },
-    ],
-  },
-  {
-    id: 'analytics_kpi',
-    title: 'Báo cáo & Đánh giá KPI',
-    items: [
-      {
-        id: 'kpi_reports',
-        title: 'Báo cáo hiệu suất & KPI',
-        description: 'Tỷ lệ hoàn thành đúng hạn, khối lượng việc và năng suất.',
-        href: '/cong-viec/kpi-bao-cao',
-        icon: BarChart2,
-        iconColor: '#e11d48', // Rose-600
-        iconBgColor: 'rgba(225, 29, 72, 0.12)',
         isPinned: false,
       },
     ],
