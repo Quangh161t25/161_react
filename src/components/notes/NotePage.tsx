@@ -48,6 +48,7 @@ import {
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { stripMarkdown } from './MarkdownRenderer';
+import { getGoogleMapsUrl } from '../../utils/mapUtils';
 import { useAutoSync } from '../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 
@@ -1008,19 +1009,36 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
           </td>
         );
 
-      case 'location':
+      case 'location': {
+        const displayText = note.location || note.coordinates;
+        const mapUrl = getGoogleMapsUrl(note.location, note.coordinates);
         return (
           <td key={colId} style={tdStyle} className={tdBaseClass}>
-            {note.location ? (
-              <div className="flex items-center gap-1.5 text-xs text-foreground min-w-0 overflow-hidden">
-                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                <span className={textWrapClass}>{note.location}</span>
-              </div>
+            {displayText ? (
+              mapUrl ? (
+                <a
+                  href={mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Bấm để mở bản đồ Google Maps"
+                  className="inline-flex items-center gap-1.5 text-xs text-foreground hover:text-rose-600 dark:hover:text-rose-400 group cursor-pointer"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-rose-500 group-hover:scale-110 transition-transform shrink-0" />
+                  <span className={`${textWrapClass} group-hover:underline underline-offset-2`}>{displayText}</span>
+                </a>
+              ) : (
+                <div className="flex items-center gap-1.5 text-xs text-foreground min-w-0 overflow-hidden">
+                  <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                  <span className={textWrapClass}>{displayText}</span>
+                </div>
+              )
             ) : (
               <span className="text-muted-foreground">—</span>
             )}
           </td>
         );
+      }
 
       case 'attachments':
         const attachCount = (note.attachments?.length || 0) + (note.images?.length || 0);
@@ -1893,12 +1911,28 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                                 {note.noteTime ? `${formatTime(note.noteTime)} · ` : ''}
                                 {note.noteDate ? formatDate(note.noteDate) : (note.createdAt ? formatDate(note.createdAt) : '—')}
                               </span>
-                              {note.location && (
-                                <span className="flex items-center gap-1 truncate max-w-[120px]">
-                                  <MapPin className="w-3 h-3 text-primary shrink-0" />
-                                  <span className="truncate">{note.location}</span>
-                                </span>
-                              )}
+                              {(note.location || note.coordinates) && (() => {
+                                const displayText = note.location || note.coordinates;
+                                const mapUrl = getGoogleMapsUrl(note.location, note.coordinates);
+                                return mapUrl ? (
+                                  <a
+                                    href={mapUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    title="Bấm để mở bản đồ Google Maps"
+                                    className="flex items-center gap-1 truncate max-w-[140px] text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400 group cursor-pointer"
+                                  >
+                                    <MapPin className="w-3 h-3 text-rose-500 group-hover:scale-110 transition-transform shrink-0" />
+                                    <span className="truncate group-hover:underline">{displayText}</span>
+                                  </a>
+                                ) : (
+                                  <span className="flex items-center gap-1 truncate max-w-[140px]">
+                                    <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
+                                    <span className="truncate">{displayText}</span>
+                                  </span>
+                                );
+                              })()}
                             </div>
                           </div>
                         </div>

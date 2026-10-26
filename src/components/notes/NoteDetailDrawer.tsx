@@ -33,6 +33,7 @@ import {
 import { Note, NoteComment } from '../../types/note';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
+import { getGoogleMapsUrl } from '../../utils/mapUtils';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface NoteDetailDrawerProps {
@@ -454,14 +455,32 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
               </div>
 
               {/* Tags & Location row */}
-              {((note.tags && note.tags.filter((t) => t && t.trim()).length > 0) || note.location) && (
+              {((note.tags && note.tags.filter((t) => t && t.trim()).length > 0) || note.location || note.coordinates) && (
                 <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/60 text-xs">
-                  {note.location && (
-                    <div className="inline-flex items-center gap-1.5 text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg">
-                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span className="font-medium text-foreground">{note.location}</span>
-                    </div>
-                  )}
+                  {(note.location || note.coordinates) && (() => {
+                    const displayText = note.location || note.coordinates;
+                    const mapUrl = getGoogleMapsUrl(note.location, note.coordinates);
+                    return mapUrl ? (
+                      <a
+                        href={mapUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group inline-flex items-center gap-1.5 text-muted-foreground bg-muted/60 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 border border-transparent hover:border-rose-500/30 px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-2xs"
+                        title="Bấm để mở bản đồ Google Maps"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0 group-hover:scale-110 transition-transform" />
+                        <span className="font-medium text-foreground group-hover:text-rose-600 dark:group-hover:text-rose-400 underline-offset-2 group-hover:underline">
+                          {displayText}
+                        </span>
+                        <ExternalLink className="w-3 h-3 text-muted-foreground group-hover:text-rose-500 shrink-0 opacity-60 group-hover:opacity-100" />
+                      </a>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-lg">
+                        <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        <span className="font-medium text-foreground">{displayText}</span>
+                      </div>
+                    );
+                  })()}
                   {note.tags
                     ?.filter((t) => t && t.trim())
                     .map((t) => (
