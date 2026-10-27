@@ -10,6 +10,7 @@ import {
   FolderTree,
 } from 'lucide-react';
 import { FinanceCategory, CategoryType, MasterStatus } from '../../../types/financeMaster';
+import { generateId } from '../../../utils/idGenerator';
 
 interface FinanceCategoryFormDrawerProps {
   mode: 'create' | 'edit';
@@ -140,7 +141,7 @@ export const FinanceCategoryFormDrawer: React.FC<FinanceCategoryFormDrawerProps>
     }
 
     const payload: FinanceCategory = {
-      id: category?.id || `cat-${Date.now()}`,
+      id: category?.id || generateId('cat'),
       code: code.trim().toUpperCase(),
       name: name.trim(),
       type,

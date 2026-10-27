@@ -33,6 +33,7 @@ import {
   Counterparty,
   FinanceCategory,
 } from '../../types/financeMaster';
+import { generateId } from '../../utils/idGenerator';
 
 interface CostProposalFormDrawerProps {
   initialData?: CostProposal | null;
@@ -226,7 +227,7 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
   // Line item handlers
   const handleAddLineItem = () => {
     const newItem: ProposalLineItem = {
-      id: `li-${Date.now()}`,
+      id: generateId('li'),
       category: 'Quảng cáo',
       description: '',
       quantity: 1,
@@ -241,7 +242,7 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
     const item = lineItems[index];
     const duplicated: ProposalLineItem = {
       ...item,
-      id: `li-${Date.now()}`,
+      id: generateId('li'),
     };
     const updated = [...lineItems];
     updated.splice(index + 1, 0, duplicated);

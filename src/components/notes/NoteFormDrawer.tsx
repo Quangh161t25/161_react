@@ -58,6 +58,7 @@ import { useAuth } from '../../context/AuthContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { employeeService } from '../../services/employeeService';
 import { Employee } from '../../types/employee';
+import { generateId } from '../../utils/idGenerator';
 
 interface NoteFormDrawerProps {
   isOpen: boolean;
@@ -421,7 +422,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
           const url = await catboxService.uploadFile(file);
           setImages((prev) => [...prev, url]);
           const newAttach: NoteAttachment = {
-            id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            id: generateId('att'),
             name: file.name,
             url,
             type: 'image',
@@ -436,7 +437,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               const localUrl = evt.target.result as string;
               setImages((prev) => [...prev, localUrl]);
               const newAttach: NoteAttachment = {
-                id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                id: generateId('att'),
                 name: file.name,
                 url: localUrl,
                 type: 'image',
@@ -478,8 +479,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
     if (url) {
       setImages((prev) => [...prev, url]);
       const newAttach: NoteAttachment = {
-        id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-        name: `Anh_dan_${Date.now().toString().slice(-4)}.png`,
+        id: generateId('att'),
+        name: `Anh_dan_${generateId('img').replace('img_', '')}.png`,
         url,
         type: 'image',
         size: `${(file.size / 1024).toFixed(1)} KB`,
@@ -646,7 +647,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setParticipants((prev) => [
         ...prev,
         {
-          id: 'custom_' + Date.now(),
+          id: generateId('custom'),
           name: trimmed,
           role: 'Khách / Đối tượng ngoài',
         },

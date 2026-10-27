@@ -12,6 +12,7 @@ import {
   Minimize2,
 } from 'lucide-react';
 import { WorkflowTemplate, WorkflowStep } from '../../../types/task';
+import { generateId } from '../../../utils/idGenerator';
 
 interface WorkflowFormDrawerProps {
   mode: 'create' | 'edit';
@@ -161,7 +162,7 @@ export const WorkflowFormDrawer: React.FC<WorkflowFormDrawerProps> = ({
     const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
     const payload: WorkflowTemplate = {
-      id: workflow?.id || 'wf_' + Date.now(),
+      id: workflow?.id || generateId('wf'),
       code: code.trim(),
       name: name.trim(),
       description: description.trim(),

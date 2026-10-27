@@ -28,6 +28,7 @@ import { TaskCalendarView } from './TaskCalendarView';
 import { TaskStatsTab } from './TaskStatsTab';
 import { TaskFormDrawer } from './TaskFormDrawer';
 import { TaskDetailDrawer } from './TaskDetailDrawer';
+import { generateId } from '../../../utils/idGenerator';
 import {
   ColumnCustomizerPopover,
   ColumnItem,
@@ -257,7 +258,7 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
         const nextComments = [
           ...(t.comments || []),
           {
-            id: 'cm_' + Date.now(),
+            id: generateId('cm'),
             author: 'Quản trị viên',
             content,
             createdAt: timeStr,

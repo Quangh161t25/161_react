@@ -38,6 +38,7 @@ import {
 } from '../../services/financeMasterService';
 import { employeeService } from '../../services/employeeService';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { generateId } from '../../utils/idGenerator';
 import {
   CASH_ACCOUNTS,
   INCOME_CATEGORIES,
@@ -668,7 +669,7 @@ export const CashTransactionPage: React.FC<CashTransactionPageProps> = ({
       }
     } else {
       const created: CashTransaction = {
-        id: `tx-${Date.now()}`,
+        id: generateId('tx'),
         code: formData.code || `GD-${Date.now()}`,
         type: formData.type || 'expense',
         title: formData.title || '',

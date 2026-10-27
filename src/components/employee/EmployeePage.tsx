@@ -30,6 +30,7 @@ import { EmployeeFormDrawer } from './EmployeeFormDrawer';
 import { EmployeeStatsTab } from './EmployeeStatsTab';
 import { employeeService } from '../../services/employeeService';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { generateId } from '../../utils/idGenerator';
 import {
   ColumnCustomizerPopover,
   ColumnItem,
@@ -462,7 +463,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       const newCode = `emp-${String(nextNum).padStart(3, '0')}`;
 
       const created: Employee = {
-        id: String(Date.now()),
+        id: generateId('emp'),
         code: formData.code || newCode,
         name: formData.name || '',
         username: formData.username || formData.name?.toLowerCase().replace(/\s+/g, '') || '',

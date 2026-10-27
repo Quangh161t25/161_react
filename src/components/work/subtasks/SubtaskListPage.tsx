@@ -29,6 +29,7 @@ import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer';
 import { TaskFormDrawer } from '../tasks/TaskFormDrawer';
 import { useAutoSync } from '../../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../../common/RealtimeSyncBadge';
+import { generateId } from '../../../utils/idGenerator';
 
 interface SubtaskListPageProps {
   onBack: () => void;
@@ -207,7 +208,7 @@ export const SubtaskListPage: React.FC<SubtaskListPageProps> = ({ onBack }) => {
 
     const parent = tasks.find((t) => t.id === taskId);
     const newSubtask: TaskSubtask = {
-      id: `st_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: generateId('st'),
       title,
       completed: false,
       assignee: parent?.assigneeName,
@@ -261,7 +262,7 @@ export const SubtaskListPage: React.FC<SubtaskListPageProps> = ({ onBack }) => {
         const nextComments = [
           ...(t.comments || []),
           {
-            id: 'cm_' + Date.now(),
+            id: generateId('cm'),
             author: 'Quản trị viên',
             content,
             createdAt: timeStr,

@@ -40,6 +40,7 @@ import {
 } from '../../types/financeMaster';
 import { TimePickerInput } from '../common/TimePickerInput';
 import { Employee } from '../../types/employee';
+import { generateId } from '../../utils/idGenerator';
 import {
   financeCategoryService,
   financeAccountService,
@@ -489,7 +490,7 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
     const newCode = `DT-${prefix}-${String(count).padStart(2, '0')}`;
 
     const newCp: Counterparty = {
-      id: `cp-${Date.now()}`,
+      id: generateId('cp'),
       code: newCode,
       name: quickCpName.trim(),
       type: quickCpType,

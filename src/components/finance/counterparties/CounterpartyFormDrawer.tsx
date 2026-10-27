@@ -14,6 +14,7 @@ import {
   User,
 } from 'lucide-react';
 import { Counterparty, CounterpartyType, MasterStatus } from '../../../types/financeMaster';
+import { generateId } from '../../../utils/idGenerator';
 
 interface CounterpartyFormDrawerProps {
   mode: 'create' | 'edit';
@@ -166,7 +167,7 @@ export const CounterpartyFormDrawer: React.FC<CounterpartyFormDrawerProps> = ({
     }
 
     const payload: Counterparty = {
-      id: counterparty?.id || `cp-${Date.now()}`,
+      id: counterparty?.id || generateId('cp'),
       code: code.trim().toUpperCase(),
       name: name.trim(),
       type,

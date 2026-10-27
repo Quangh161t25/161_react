@@ -16,6 +16,7 @@ import { Employee } from '../../../types/employee';
 import { Counterparty } from '../../../types/financeMaster';
 import { employeeService } from '../../../services/employeeService';
 import { counterpartyService } from '../../../services/financeMasterService';
+import { generateId } from '../../../utils/idGenerator';
 
 interface ProjectFormDrawerProps {
   mode: 'create' | 'edit';
@@ -188,7 +189,7 @@ export const ProjectFormDrawer: React.FC<ProjectFormDrawerProps> = ({
     const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
     const payload: Project = {
-      id: project?.id || 'proj_' + Date.now(),
+      id: project?.id || generateId('proj'),
       code: code.trim(),
       name: name.trim(),
       description: description.trim(),

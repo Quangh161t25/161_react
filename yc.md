@@ -78,6 +78,7 @@
 | 72 | 2026-10-27 00:49:34 (GMT+7) | xóa phòng ban đi. rồi cho 3 dự án , người giao việc người thực hiện cùng 1 dòng.<br/>dự án có thể chọn từ dự án trc mà tôi điền . người thì chọn từ danh sách nhân viên. |
 | 73 | 2026-10-27 00:49:41 (GMT+7) | xóa 3 modul nhỏ này đi |
 | 74 | 2026-10-27 07:19:42 (GMT+7) | chỉnh sửa sao vẫn còn mã công việc ở đây |
+| 75 | 2026-10-27 07:21:03 (GMT+7) | toàn bộ id của các modul  thì để về dạng  mã modul + random8 ký tự |
 
 
 ---
@@ -838,6 +839,16 @@ xóa 3 modul nhỏ này đi
 **Nội dung yêu cầu:**
 `
 chỉnh sửa sao vẫn còn mã công việc ở đây
+`
+
+---
+
+### 75. [2026-10-27 07:21:03 (GMT+7)]
+**Thời gian UTC:** 2026-10-27T00:21:03Z
+
+**Nội dung yêu cầu:**
+`
+toàn bộ id của các modul  thì để về dạng  mã modul + random8 ký tự
 `
 
 ---

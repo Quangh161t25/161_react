@@ -34,6 +34,7 @@ import { Note, NoteComment } from '../../types/note';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
 import { getGoogleMapsUrl } from '../../utils/mapUtils';
+import { generateId } from '../../utils/idGenerator';
 import { getNoteIconLabel } from '../../data/notes';
 import { MarkdownRenderer } from './MarkdownRenderer';
 
@@ -191,7 +192,7 @@ export const NoteDetailDrawer: React.FC<NoteDetailDrawerProps> = ({
     const timeStr = formatTime(now.toTimeString().slice(0, 5));
 
     const newComment: NoteComment = {
-      id: `cm-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id: generateId('cm'),
       author: currentUser?.name || currentUser?.username || 'Người dùng',
       authorAvatar: currentUser?.avatarUrl,
       content: commentInput.trim(),

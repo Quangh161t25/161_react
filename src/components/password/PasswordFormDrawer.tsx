@@ -19,6 +19,7 @@ import { PasswordItem, PasswordCategory } from '../../types/password';
 import { PASSWORD_CATEGORIES } from '../../data/passwords';
 import { calculatePasswordScore } from '../../services/passwordService';
 import { PasswordGeneratorModal } from './PasswordGeneratorModal';
+import { generateId } from '../../utils/idGenerator';
 
 interface PasswordFormDrawerProps {
   mode: 'create' | 'edit';
@@ -219,7 +220,7 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
     const score = calculatePasswordScore(password);
 
     const payload: PasswordItem = {
-      id: passwordItem?.id || 'pw_' + Date.now(),
+      id: passwordItem?.id || generateId('pw'),
       code: code.trim(),
       title: title.trim(),
       category,

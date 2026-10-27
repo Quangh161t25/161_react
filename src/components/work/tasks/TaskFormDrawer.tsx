@@ -18,6 +18,7 @@ import { Task, TaskPriority, TaskStatus, TaskSubtask, Project } from '../../../t
 import { Employee } from '../../../types/employee';
 import { employeeService } from '../../../services/employeeService';
 import { projectService, taskService } from '../../../services/taskService';
+import { generateId } from '../../../utils/idGenerator';
 
 interface TaskFormDrawerProps {
   mode: 'create' | 'edit';
@@ -211,7 +212,7 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
     setSubtasks([
       ...subtasks,
       {
-        id: 'st_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
+        id: generateId('st'),
         title: subtaskInput.trim(),
         completed: false,
       },
@@ -288,7 +289,7 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
         (finalProjectName && p.name.toLowerCase() === finalProjectName.toLowerCase()) ||
         (projectId && p.id === projectId)
     );
-    const finalProjectId = matchedProject?.id || (finalProjectName ? (projectId || 'proj_' + Date.now()) : undefined);
+    const finalProjectId = matchedProject?.id || (finalProjectName ? (projectId || generateId('proj')) : undefined);
     const finalProjectCode = matchedProject?.code;
 
     const matchedAssigner = employees.find(
@@ -316,7 +317,7 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
     const finalCode = (mode === 'edit' && task?.code) ? task.code : (code.trim() || autoCode);
 
     const payload: Task = {
-      id: task?.id || 'task_' + Date.now(),
+      id: task?.id || generateId('task'),
       code: finalCode,
       title: title.trim(),
       description: description.trim(),

@@ -57,6 +57,7 @@ import { Note, NoteCategory, NoteStatus, NoteAttachment, NoteParticipant } from 
 import { LearningEntry, LearningSourceType, MasteryLevel, DifficultyLevel } from '../../types/learning';
 import { CashTransaction } from '../../types/cashTransaction';
 import { Employee } from '../../types/employee';
+import { generateId } from '../../utils/idGenerator';
 
 import { taskService, projectService } from '../../services/taskService';
 import { noteService } from '../../services/noteService';
@@ -315,7 +316,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     setTaskSubtasks([
       ...taskSubtasks,
       {
-        id: 'st_' + Date.now() + '_' + Math.random().toString(36).substring(2, 5),
+        id: generateId('st'),
         title: taskSubtaskInput.trim(),
         completed: false,
       },
@@ -451,7 +452,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
       setNoteParticipants((prev) => [
         ...prev,
         {
-          id: 'custom_' + Date.now(),
+          id: generateId('custom'),
           name: trimmed,
           role: 'Khách / Bạn bè',
         },
@@ -543,7 +544,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
           const url = await catboxService.uploadFile(file);
           setNoteImages((prev) => [...prev, url]);
           const newAttach: NoteAttachment = {
-            id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            id: generateId('att'),
             name: file.name,
             url,
             type: 'image',
@@ -558,7 +559,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
               const localUrl = evt.target.result as string;
               setNoteImages((prev) => [...prev, localUrl]);
               const newAttach: NoteAttachment = {
-                id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+                id: generateId('att'),
                 name: file.name,
                 url: localUrl,
                 type: 'image',
@@ -595,8 +596,8 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     if (url) {
       setNoteImages((prev) => [...prev, url]);
       const newAttach: NoteAttachment = {
-        id: 'att_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-        name: `Anh_dan_${Date.now().toString().slice(-4)}.png`,
+        id: generateId('att'),
+        name: `Anh_dan_${generateId('img').replace('img_', '')}.png`,
         url,
         type: 'image',
         size: `${(file.size / 1024).toFixed(1)} KB`,
@@ -668,7 +669,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
         }
         const authorEmp = employees.find((e) => e.id === noteAuthorId);
         const newNote: Note = {
-          id: 'note_' + Date.now(),
+          id: generateId('note'),
           code: 'GC-' + Math.floor(1000 + Math.random() * 9000),
           title: noteTitle.trim(),
           summary: noteSummary.trim() || undefined,
@@ -707,7 +708,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
         const assignedEmp = employees.find((e) => e.id === taskAssigneeId);
         const assignerEmp = employees.find((e) => e.id === taskAssignerId);
         const newTask: Task = {
-          id: 'task_' + Date.now(),
+          id: generateId('task'),
           code: taskCode.trim() || `CV-${Math.floor(1000 + Math.random() * 9000)}`,
           title: taskTitle.trim(),
           description: taskDescription.trim(),
@@ -742,7 +743,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
           return;
         }
         const newEntry: LearningEntry = {
-          id: 'learn_' + Date.now(),
+          id: generateId('learn'),
           code: learningCode.trim() || `HH-${Math.floor(1000 + Math.random() * 9000)}`,
           title: learningTitle.trim(),
           summary: learningSummary.trim(),
@@ -782,7 +783,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
         }
         const creatorEmp = employees.find((e) => e.id === cashAssigneeId);
         const newTx: CashTransaction = {
-          id: 'tx_' + Date.now(),
+          id: generateId('tx'),
           code: cashCode.trim() || `${cashType === 'income' ? 'PT' : 'PC'}-${Math.floor(1000 + Math.random() * 9000)}`,
           type: cashType,
           title: cashTitle.trim(),

@@ -42,6 +42,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 import { useSettings } from '../../context/SettingsContext';
 import { TablePagination } from '../common/TablePagination';
+import { generateId } from '../../utils/idGenerator';
 
 interface CostProposalPageProps {
   onBack: () => void;
@@ -486,7 +487,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
       const dateStr = `${dd}/${mm}/${yyyy}`;
 
       const newProposal: CostProposal = {
-        id: String(Date.now()),
+        id: generateId('prop'),
         code: newCode,
         title: formData.title || 'Chi phí mới',
         proposer: formData.proposer || currentUser?.name || 'Nguyễn Văn A',
@@ -596,7 +597,7 @@ const handleDeleteProposal = async (id: string) => {
 
     const cloned: CostProposal = {
       ...item,
-      id: String(Date.now()),
+      id: generateId('prop'),
       code: newCode,
       title: `${item.title} (Bản sao)`,
       approvalStatus: 'draft',

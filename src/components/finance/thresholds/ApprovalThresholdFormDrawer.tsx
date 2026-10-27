@@ -13,6 +13,7 @@ import { ApprovalThreshold, MasterStatus, FinanceCategory } from '../../../types
 import { financeCategoryService } from '../../../services/financeMasterService';
 import { employeeService } from '../../../services/employeeService';
 import { Employee } from '../../../types/employee';
+import { generateId } from '../../../utils/idGenerator';
 
 interface ApprovalThresholdFormDrawerProps {
   mode: 'create' | 'edit';
@@ -181,7 +182,7 @@ export const ApprovalThresholdFormDrawer: React.FC<ApprovalThresholdFormDrawerPr
     }
 
     const payload: ApprovalThreshold = {
-      id: threshold?.id || `thr-${Date.now()}`,
+      id: threshold?.id || generateId('thr'),
       code: code.trim().toUpperCase(),
       name: name.trim(),
       minAmount: Number(minAmount) || 0,

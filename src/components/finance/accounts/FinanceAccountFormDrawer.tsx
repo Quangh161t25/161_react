@@ -12,6 +12,7 @@ import {
   Smartphone,
 } from 'lucide-react';
 import { FinanceAccount, AccountType, MasterStatus } from '../../../types/financeMaster';
+import { generateId } from '../../../utils/idGenerator';
 
 interface FinanceAccountFormDrawerProps {
   mode: 'create' | 'edit';
@@ -146,7 +147,7 @@ export const FinanceAccountFormDrawer: React.FC<FinanceAccountFormDrawerProps> =
     }
 
     const payload: FinanceAccount = {
-      id: account?.id || `acc-${Date.now()}`,
+      id: account?.id || generateId('acc'),
       code: code.trim().toUpperCase(),
       accountName: accountName.trim(),
       type,

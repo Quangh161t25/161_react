@@ -50,6 +50,7 @@ import {
   EmployeeBankAccount,
   VIETNAM_BANKS,
 } from '../../types/employee';
+import { generateId } from '../../utils/idGenerator';
 
 interface EmployeeFormDrawerProps {
   isOpen: boolean;
@@ -263,7 +264,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       } else {
         setBankAccounts([
           {
-            id: 'ba_' + Date.now(),
+            id: generateId('ba'),
             bankName: '',
             accountNumber: '',
             accountHolder: initialData.name ? initialData.name.toUpperCase() : '',
@@ -344,7 +345,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
 
       setBankAccounts([
         {
-          id: 'ba_' + Date.now(),
+          id: generateId('ba'),
           bankName: '',
           accountNumber: '',
           accountHolder: '',
@@ -517,7 +518,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
     setBankAccounts((prev) => [
       ...prev,
       {
-        id: 'ba_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        id: generateId('ba'),
         bankName: '',
         accountNumber: '',
         accountHolder: name ? name.toUpperCase() : '',

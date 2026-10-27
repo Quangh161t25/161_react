@@ -35,6 +35,7 @@ import { CalendarAgendaView } from './CalendarAgendaView';
 import { CalendarStatsTab } from './CalendarStatsTab';
 import { EventDetailModal } from './EventDetailModal';
 import { EventFormModal } from './EventFormModal';
+import { generateId } from '../../utils/idGenerator';
 
 import { NoteDetailDrawer } from '../notes/NoteDetailDrawer';
 import { LearningDetailDrawer } from '../learning/LearningDetailDrawer';
@@ -323,7 +324,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
 
   const handleAddTaskComment = (taskId: string, content: string) => {
     const newComment = {
-      id: `cm_${Date.now()}`,
+      id: generateId('cm'),
       author: 'Tôi',
       content,
       createdAt: new Date().toISOString(),

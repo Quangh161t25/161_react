@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { Task, TaskSubtask } from '../../../types/task';
 import { Employee } from '../../../types/employee';
+import { generateId } from '../../../utils/idGenerator';
 
 interface SubtaskFormModalProps {
   isOpen: boolean;
@@ -89,7 +90,7 @@ export const SubtaskFormModal: React.FC<SubtaskFormModalProps> = ({
     }
 
     const subtaskPayload: TaskSubtask = {
-      id: subtaskToEdit ? subtaskToEdit.subtask.id : `st_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: subtaskToEdit ? subtaskToEdit.subtask.id : generateId('st'),
       title: title.trim(),
       completed,
       assignee: assignee.trim() || undefined,

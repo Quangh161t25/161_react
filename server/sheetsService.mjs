@@ -4115,7 +4115,8 @@ export function rowToPassword(r, idx) {
   const lastChangedDate = (r[11] || '').trim();
   const createdAt = (r[12] || '').trim() || new Date().toISOString();
   const updatedAt = (r[13] || '').trim() || new Date().toISOString();
-  const id = (r[14] || '').trim() || (code ? `pw_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : `pw_${Date.now()}_${idx + 1}`);
+  const random8 = Math.random().toString(36).substring(2, 10);
+  const id = (r[14] || '').trim() || (code ? `pw_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : `pw_${random8}`);
 
   return {
     id,

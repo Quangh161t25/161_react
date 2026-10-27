@@ -38,6 +38,7 @@ import { noteService } from '../../services/noteService';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { NoteDetailDrawer } from './NoteDetailDrawer';
 import { NoteFormDrawer } from './NoteFormDrawer';
+import { generateId } from '../../utils/idGenerator';
 import { NoteStatsTab } from './NoteStatsTab';
 import { NoteCalendarView } from './NoteCalendarView';
 import {
@@ -511,7 +512,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       const newCode = `NOTE-${String(maxNum + 1).padStart(3, '0')}`;
 
       const newNote: Note = {
-        id: 'note_' + Date.now(),
+        id: generateId('note'),
         code: newCode,
         title: formData.title || 'Ghi chú mới',
         summary: formData.summary,

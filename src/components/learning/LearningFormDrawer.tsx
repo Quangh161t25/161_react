@@ -24,6 +24,7 @@ import {
 import { LEARNING_CATEGORIES, LEARNING_SOURCE_TYPES } from '../../data/learning';
 import { catboxService } from '../../services/catboxService';
 import { MarkdownRenderer } from '../notes/MarkdownRenderer';
+import { generateId } from '../../utils/idGenerator';
 
 interface LearningFormDrawerProps {
   isOpen: boolean;
@@ -361,7 +362,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
   const handleAddLink = () => {
     if (!newLinkUrl.trim()) return;
     const newLink: LearningLink = {
-      id: 'link_' + Date.now(),
+      id: generateId('link'),
       title: newLinkTitle.trim() || newLinkUrl.trim(),
       url: newLinkUrl.trim().startsWith('http') ? newLinkUrl.trim() : `https://${newLinkUrl.trim()}`,
     };
@@ -384,7 +385,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
 
     const finalCategory = category === 'Khác' && customCategory.trim() ? customCategory.trim() : category;
     const finalCode = initialEntry?.code || `HH-${String(Date.now()).slice(-4)}`;
-    const finalId = initialEntry?.id || `learn_${finalCode.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    const finalId = initialEntry?.id || generateId('learn');
 
     const entryPayload: LearningEntry = {
       id: finalId,
