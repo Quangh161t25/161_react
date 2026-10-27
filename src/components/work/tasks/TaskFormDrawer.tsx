@@ -443,54 +443,21 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 custom-scrollbar">
             {/* 1. Basic Info */}
             <div className="space-y-3">
-              {mode === 'edit' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-foreground">
-                      Mã công việc
-                    </label>
-                    <input
-                      type="text"
-                      value={code}
-                      readOnly
-                      title="Mã công việc được quản lý tự động"
-                      className="w-full h-9 px-3 rounded-lg border border-border bg-muted/60 font-mono text-xs text-muted-foreground font-bold cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-3 space-y-1">
-                    <label className="text-xs font-semibold text-foreground">
-                      Tên / Tiêu đề công việc <span className="text-rose-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="VD: Thiết kế giao diện báo cáo doanh thu..."
-                      className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
-                        errors.title ? 'border-rose-500' : 'border-border'
-                      }`}
-                    />
-                    {errors.title && <p className="text-[11px] text-rose-500">{errors.title}</p>}
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">
-                    Tên / Tiêu đề công việc <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="VD: Thiết kế giao diện báo cáo doanh thu..."
-                    className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
-                      errors.title ? 'border-rose-500' : 'border-border'
-                    }`}
-                  />
-                  {errors.title && <p className="text-[11px] text-rose-500">{errors.title}</p>}
-                </div>
-              )}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">
+                  Tên / Tiêu đề công việc <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="VD: Thiết kế giao diện báo cáo doanh thu..."
+                  className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
+                    errors.title ? 'border-rose-500' : 'border-border'
+                  }`}
+                />
+                {errors.title && <p className="text-[11px] text-rose-500">{errors.title}</p>}
+              </div>
 
               {/* Description */}
               <div className="space-y-1">

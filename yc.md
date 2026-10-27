@@ -77,6 +77,7 @@
 | 71 | 2026-10-27 00:45:35 (GMT+7) | thêm công việc mã công việc auto đi k cần hiện, |
 | 72 | 2026-10-27 00:49:34 (GMT+7) | xóa phòng ban đi. rồi cho 3 dự án , người giao việc người thực hiện cùng 1 dòng.<br/>dự án có thể chọn từ dự án trc mà tôi điền . người thì chọn từ danh sách nhân viên. |
 | 73 | 2026-10-27 00:49:41 (GMT+7) | xóa 3 modul nhỏ này đi |
+| 74 | 2026-10-27 07:19:42 (GMT+7) | chỉnh sửa sao vẫn còn mã công việc ở đây |
 
 
 ---
@@ -827,6 +828,16 @@ dự án có thể chọn từ dự án trc mà tôi điền . người thì ch�
 **Nội dung yêu cầu:**
 `
 xóa 3 modul nhỏ này đi
+`
+
+---
+
+### 74. [2026-10-27 07:19:42 (GMT+7)]
+**Thời gian UTC:** 2026-10-27T00:19:42Z
+
+**Nội dung yêu cầu:**
+`
+chỉnh sửa sao vẫn còn mã công việc ở đây
 `
 
 ---
