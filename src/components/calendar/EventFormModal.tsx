@@ -58,6 +58,7 @@ import { LearningEntry, LearningSourceType, MasteryLevel, DifficultyLevel } from
 import { CashTransaction } from '../../types/cashTransaction';
 import { Employee } from '../../types/employee';
 import { generateId } from '../../utils/idGenerator';
+import { toLocalDateStr, toLocalTimeStr } from '../../utils/dateUtils';
 
 import { taskService, projectService } from '../../services/taskService';
 import { noteService } from '../../services/noteService';
@@ -81,6 +82,7 @@ interface EventFormModalProps {
   onClose: () => void;
   onSave?: (event: CalendarEvent) => void;
   onSaveSuccess?: (message: string) => void;
+  onSyncFailed?: (message: string) => void;
 }
 
 export const EventFormModal: React.FC<EventFormModalProps> = ({
@@ -89,6 +91,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
   defaultModule = 'note',
   onClose,
   onSaveSuccess,
+  onSyncFailed,
 }) => {
   const { currentUser } = useAuth();
   const [activeModule, setActiveModule] = useState<EventModuleType>(defaultModule);
@@ -241,12 +244,13 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     }
 
     const now = new Date();
-    const today = defaultDate || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const nextWeekDate = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const nextWeek = `${nextWeekDate.getFullYear()}-${String(nextWeekDate.getMonth() + 1).padStart(2, '0')}-${String(nextWeekDate.getDate()).padStart(2, '0')}`;
+    const today = defaultDate || toLocalDateStr(now);
+    const nextWeek = toLocalDateStr(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000));
 
     // Common dates
     setNoteDate(today);
+    setNoteTime(toLocalTimeStr(now));
+    setCashTime(toLocalTimeStr(now));
     setTaskStartDate(today);
     setTaskDueDate(defaultDate || nextWeek);
     setLearningDate(today);
@@ -654,6 +658,73 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
     setLearningTags(learningTags.filter((t) => t !== tag));
   };
 
+  // Xóa dữ liệu của phân hệ vừa lưu để lần mở sau không còn nội dung cũ.
+  // Ngày, giờ, mã và người phụ trách được đặt lại mỗi khi mở form.
+  const resetModuleFields = (module: EventModuleType) => {
+    if (module === 'note') {
+      setNoteTitle('');
+      setNoteSummary('');
+      setNoteCategory('Kế hoạch công việc');
+      setNoteStatus('published');
+      setNoteColor('purple');
+      setNoteLocation('');
+      setNoteCoordinates('');
+      setNoteTags(['Kế hoạch']);
+      setNoteTagInput('');
+      setNoteContent('');
+      setNoteContentTab('edit');
+      setNoteIsPinned(false);
+      setNoteCoverUrl('');
+      setNoteImages([]);
+      setNoteAttachments([]);
+      setNoteParticipants([]);
+      setNoteActivity('');
+      setNoteEmployeeSearch('');
+      setNoteCustomParticipantName('');
+    } else if (module === 'task') {
+      setTaskTitle('');
+      setTaskDescription('');
+      setTaskProjectId('');
+      setTaskPriority('medium');
+      setTaskStatus('todo');
+      setTaskProgress(0);
+      setTaskEstimatedHours(8);
+      setTaskSubtasks([]);
+      setTaskSubtaskInput('');
+      setTaskTags(['Công việc']);
+      setTaskTagInput('');
+      setTaskNote('');
+    } else if (module === 'learning') {
+      setLearningTitle('');
+      setLearningSummary('');
+      setLearningCategory(LEARNING_CATEGORIES[0] || 'Lập trình & Kỹ thuật');
+      setSourceType('Khóa học');
+      setLearningSourceName('');
+      setLearningSourceUrl('');
+      setMasteryLevel('learning');
+      setDifficulty('intermediate');
+      setRating(5);
+      setLearningTags(['Kiến thức']);
+      setLearningTagInput('');
+      setLearningContent('');
+      setLearningIsPinned(false);
+    } else {
+      setCashType('expense');
+      setCashTitle('');
+      setCashAmount('');
+      setCashAccount('Quỹ tiền mặt');
+      setCashCategory('Chi phí hoạt động');
+      setCashCounterparty('');
+      setCashDescription('');
+    }
+  };
+
+  const warnIfNotSynced = (synced: boolean) => {
+    if (!synced && onSyncFailed) {
+      onSyncFailed('Chưa ghi được lên Google Sheet. Dữ liệu vẫn lưu trên máy này và sẽ tự gửi lại khi đồng bộ.');
+    }
+  };
+
   // Handle Form Submit for Active Module
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -679,8 +750,8 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
           isPinned: noteIsPinned,
           color: noteColor,
           coverUrl: noteCoverUrl.trim() || undefined,
-          noteDate: noteDate || new Date().toISOString().slice(0, 10),
-          noteTime: noteTime || '09:00',
+          noteDate: noteDate || toLocalDateStr(),
+          noteTime: noteTime || undefined,
           location: noteLocation.trim() || undefined,
           coordinates: noteCoordinates.trim() || undefined,
           tags: noteTags.length > 0 ? noteTags : [],
@@ -697,7 +768,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
         };
         const notes = [newNote, ...noteService.getInitialNotes()];
         noteService.saveToLocalCache(notes);
-        noteService.appendToSheet(newNote).catch(() => {});
+        noteService.appendToSheet(newNote).then(warnIfNotSynced);
         if (onSaveSuccess) onSaveSuccess(`Đã lưu Ghi chú: "${newNote.title}"`);
       } else if (activeModule === 'task') {
         if (!taskTitle.trim()) {
@@ -722,8 +793,8 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
           assigneeName: assignedEmp?.name || 'Chưa phân công',
           priority: taskPriority,
           status: taskStatus,
-          startDate: taskStartDate || new Date().toISOString().slice(0, 10),
-          dueDate: taskDueDate || new Date().toISOString().slice(0, 10),
+          startDate: taskStartDate || toLocalDateStr(),
+          dueDate: taskDueDate || toLocalDateStr(),
           progress: taskProgress,
           estimatedHours: taskEstimatedHours,
           subtasks: taskSubtasks,
@@ -734,7 +805,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
         };
         const tasks = [newTask, ...taskService.getInitialTasks()];
         taskService.saveToCache(tasks);
-        taskService.appendToSheet(newTask).catch(() => {});
+        taskService.appendToSheet(newTask).then(warnIfNotSynced);
         if (onSaveSuccess) onSaveSuccess(`Đã tạo Công việc mới: "${newTask.title}"`);
       } else if (activeModule === 'learning') {
         if (!learningTitle.trim()) {
@@ -758,7 +829,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
           masteryLevel: learningMasteryLevel,
           difficulty: learningDifficulty,
           rating: learningRating,
-          entryDate: learningDate || new Date().toISOString().slice(0, 10),
+          entryDate: learningDate || toLocalDateStr(),
           nextReviewDate: learningReviewDate || undefined,
           isPinned: learningIsPinned,
           createdAt: new Date().toISOString(),
@@ -766,7 +837,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
         };
         const entries = [newEntry, ...learningService.getInitialEntries()];
         learningService.saveToCache(entries);
-        learningService.appendToSheet(newEntry).catch(() => {});
+        learningService.appendToSheet(newEntry).then(warnIfNotSynced);
         if (onSaveSuccess) onSaveSuccess(`Đã lưu bài học: "${newEntry.title}"`);
       } else if (activeModule === 'cash') {
         if (!cashTitle.trim()) {
@@ -788,8 +859,8 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
           type: cashType,
           title: cashTitle.trim(),
           amount: numAmount,
-          transactionDate: cashDate || new Date().toISOString().slice(0, 10),
-          transactionTime: cashTime || '09:00',
+          transactionDate: cashDate || toLocalDateStr(),
+          transactionTime: cashTime || undefined,
           category: cashCategory,
           account: cashAccount,
           paymentMethod: cashAccount.includes('Ngân hàng') ? 'bank_transfer' : 'cash',
@@ -803,7 +874,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
         };
         const txs = [newTx, ...cashTransactionService.getInitialTransactions()];
         cashTransactionService.saveToCache(txs);
-        cashTransactionService.appendToSheet(newTx).catch(() => {});
+        cashTransactionService.appendToSheet(newTx).then(warnIfNotSynced);
         if (onSaveSuccess) {
           onSaveSuccess(
             `Đã tạo phiếu ${cashType === 'income' ? 'Thu' : 'Chi'} ${numAmount.toLocaleString('vi-VN')} đ`
@@ -811,6 +882,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
         }
       }
 
+      resetModuleFields(activeModule);
       onClose();
     } catch (err) {
       console.error('Error saving item from calendar:', err);
@@ -900,7 +972,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                     ? taskDueDate || taskStartDate
                     : activeModule === 'learning'
                     ? learningDate
-                    : cashDate || defaultDate || new Date().toISOString().slice(0, 10)}
+                    : cashDate || defaultDate || toLocalDateStr()}
                 </p>
               </div>
             </div>

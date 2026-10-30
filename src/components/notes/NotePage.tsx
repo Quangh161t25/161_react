@@ -39,6 +39,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { NoteDetailDrawer } from './NoteDetailDrawer';
 import { NoteFormDrawer } from './NoteFormDrawer';
 import { generateId } from '../../utils/idGenerator';
+import { toLocalDateStr } from '../../utils/dateUtils';
 import { NoteStatsTab } from './NoteStatsTab';
 import { NoteCalendarView } from './NoteCalendarView';
 import {
@@ -523,7 +524,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         color: formData.color || 'blue',
         coverUrl: formData.coverUrl,
         images: formData.images || [],
-        noteDate: formData.noteDate || new Date().toISOString().split('T')[0],
+        noteDate: formData.noteDate || toLocalDateStr(),
         noteTime: formData.noteTime,
         location: formData.location,
         coordinates: formData.coordinates,

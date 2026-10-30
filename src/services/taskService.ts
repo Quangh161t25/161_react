@@ -1,4 +1,5 @@
 import { Task, Project, WorkflowTemplate } from '../types/task';
+import { createPendingSync } from '../utils/pendingSync';
 
 // --------------------------------------------------------------------
 // STORAGE KEYS
@@ -7,6 +8,8 @@ const TASKS_STORAGE_KEY = 'erp_work_tasks_cache';
 const PROJECTS_STORAGE_KEY = 'erp_work_projects_cache';
 const WORKFLOWS_STORAGE_KEY = 'erp_work_workflows_cache';
 const TASKS_LAST_SYNC_KEY = 'erp_work_tasks_last_sync';
+
+const pendingTasks = createPendingSync<Task>('erp_work_tasks_pending', () => taskService.getInitialTasks(), (item) => taskService.appendToSheet(item));
 
 // --------------------------------------------------------------------
 // 1. TASK SERVICE
@@ -47,8 +50,9 @@ export const taskService = {
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        this.saveToCache(data.data);
-        return data.data;
+        const merged = pendingTasks.mergeWithRemote(data.data);
+        this.saveToCache(merged);
+        return merged;
       }
       return this.getInitialTasks();
     } catch (err) {
@@ -58,18 +62,20 @@ export const taskService = {
   },
 
   async appendToSheet(task: Task): Promise<boolean> {
-    try {
-      const res = await fetch('/api/sheets/append-task', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task }),
-      });
-      const data = await res.json();
-      return !!data.success;
-    } catch (err) {
-      console.error('Failed to append task to Google Sheet:', err);
-      return false;
-    }
+    return pendingTasks.track(task.id, async () => {
+      try {
+        const res = await fetch('/api/sheets/append-task', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task }),
+        });
+        const data = await res.json();
+        return !!data.success;
+      } catch (err) {
+        console.error('Failed to append task to Google Sheet:', err);
+        return false;
+      }
+    });
   },
 
   async updateInSheet(task: Task): Promise<boolean> {

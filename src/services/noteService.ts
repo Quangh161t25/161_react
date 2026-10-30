@@ -1,7 +1,10 @@
 import { Note } from '../types/note';
+import { createPendingSync } from '../utils/pendingSync';
 
 const STORAGE_KEY = 'erp_notes_cache';
 const LAST_SYNC_KEY = 'erp_notes_last_sync';
+
+const pendingNotes = createPendingSync<Note>('erp_notes_pending', () => noteService.getInitialNotes(), (item) => noteService.appendToSheet(item));
 
 export const noteService = {
   getInitialNotes(): Note[] {
@@ -48,8 +51,9 @@ export const noteService = {
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        this.saveToCache(data.data);
-        return data.data;
+        const merged = pendingNotes.mergeWithRemote(data.data);
+        this.saveToCache(merged);
+        return merged;
       }
       return this.getInitialNotes();
     } catch (err) {
@@ -59,18 +63,20 @@ export const noteService = {
   },
 
   async appendToSheet(note: Note): Promise<boolean> {
-    try {
-      const res = await fetch('/api/sheets/append-note', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ note }),
-      });
-      const data = await res.json();
-      return !!data.success;
-    } catch (err) {
-      console.error('Failed to append note to Google Sheet:', err);
-      return false;
-    }
+    return pendingNotes.track(note.id, async () => {
+      try {
+        const res = await fetch('/api/sheets/append-note', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ note }),
+        });
+        const data = await res.json();
+        return !!data.success;
+      } catch (err) {
+        console.error('Failed to append note to Google Sheet:', err);
+        return false;
+      }
+    });
   },
 
   async updateInSheet(noteOrId: Note | string, partial?: Partial<Note>): Promise<boolean> {

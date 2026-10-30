@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -36,6 +36,7 @@ import { CalendarStatsTab } from './CalendarStatsTab';
 import { EventDetailModal } from './EventDetailModal';
 import { EventFormModal } from './EventFormModal';
 import { generateId } from '../../utils/idGenerator';
+import { toLocalDateStr } from '../../utils/dateUtils';
 
 import { NoteDetailDrawer } from '../notes/NoteDetailDrawer';
 import { LearningDetailDrawer } from '../learning/LearningDetailDrawer';
@@ -165,9 +166,12 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
   const [activeAddDrawer, setActiveAddDrawer] = useState<'note' | 'task' | 'learning' | 'cash' | null>(null);
   const [addDrawerDate, setAddDrawerDate] = useState<string>('');
 
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => {
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
       setToastMessage(null);
     }, 3000);
   }, []);
@@ -186,7 +190,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
 
   const openAddDrawer = useCallback((mod: 'note' | 'task' | 'learning' | 'cash', dateStr?: string) => {
     closeAllDrawers();
-    setAddDrawerDate(dateStr || currentDate.toISOString().slice(0, 10));
+    setAddDrawerDate(dateStr || toLocalDateStr(currentDate));
     setActiveAddDrawer(mod);
   }, [closeAllDrawers, currentDate]);
 
@@ -1214,6 +1218,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
           setAllEvents(fresh);
           showToast(`✅ ${msg}`);
         }}
+        onSyncFailed={(msg) => showToast(`⚠️ ${msg}`)}
       />
     </div>
   );

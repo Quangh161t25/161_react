@@ -1,7 +1,10 @@
 import { CashTransaction } from '../types/cashTransaction';
+import { createPendingSync } from '../utils/pendingSync';
 
 const STORAGE_KEY = 'erp_cash_transactions_cache';
 const LAST_SYNC_KEY = 'erp_cash_transactions_last_sync';
+
+const pendingTransactions = createPendingSync<CashTransaction>('erp_cash_transactions_pending', () => cashTransactionService.getInitialTransactions(), (item) => cashTransactionService.appendToSheet(item));
 
 export const cashTransactionService = {
   getInitialTransactions(): CashTransaction[] {
@@ -42,8 +45,9 @@ export const cashTransactionService = {
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        this.saveToCache(data.data);
-        return data.data;
+        const merged = pendingTransactions.mergeWithRemote(data.data);
+        this.saveToCache(merged);
+        return merged;
       }
       throw new Error(data.error || 'Empty data returned');
     } catch (err) {
@@ -53,18 +57,20 @@ export const cashTransactionService = {
   },
 
   async appendToSheet(transaction: CashTransaction): Promise<boolean> {
-    try {
-      const res = await fetch('/api/sheets/append-transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transaction }),
-      });
-      const data = await res.json();
-      return !!data.success;
-    } catch (err) {
-      console.error('Failed to append transaction to Google Sheet:', err);
-      return false;
-    }
+    return pendingTransactions.track(transaction.id, async () => {
+      try {
+        const res = await fetch('/api/sheets/append-transaction', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transaction }),
+        });
+        const data = await res.json();
+        return !!data.success;
+      } catch (err) {
+        console.error('Failed to append transaction to Google Sheet:', err);
+        return false;
+      }
+    });
   },
 
   async updateInSheet(transactionOrId: CashTransaction | string, partial?: Partial<CashTransaction>): Promise<boolean> {

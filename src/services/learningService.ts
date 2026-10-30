@@ -1,7 +1,10 @@
 import { LearningEntry } from '../types/learning';
+import { createPendingSync } from '../utils/pendingSync';
 
 const STORAGE_KEY = 'erp_learning_cache';
 const LAST_SYNC_KEY = 'erp_learning_last_sync';
+
+const pendingEntries = createPendingSync<LearningEntry>('erp_learning_pending', () => learningService.getInitialEntries(), (item) => learningService.appendToSheet(item));
 
 export const learningService = {
   getInitialEntries(): LearningEntry[] {
@@ -42,8 +45,9 @@ export const learningService = {
       if (!res.ok) throw new Error(`HTTP error ${res.status}`);
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        this.saveToCache(data.data);
-        return data.data;
+        const merged = pendingEntries.mergeWithRemote(data.data);
+        this.saveToCache(merged);
+        return merged;
       }
       return this.getInitialEntries();
     } catch (err) {
@@ -53,18 +57,20 @@ export const learningService = {
   },
 
   async appendToSheet(entry: LearningEntry): Promise<boolean> {
-    try {
-      const res = await fetch('/api/sheets/append-learning', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entry }),
-      });
-      const data = await res.json();
-      return !!data.success;
-    } catch (err) {
-      console.error('Failed to append learning entry to Google Sheet:', err);
-      return false;
-    }
+    return pendingEntries.track(entry.id, async () => {
+      try {
+        const res = await fetch('/api/sheets/append-learning', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entry }),
+        });
+        const data = await res.json();
+        return !!data.success;
+      } catch (err) {
+        console.error('Failed to append learning entry to Google Sheet:', err);
+        return false;
+      }
+    });
   },
 
   async updateInSheet(entryOrId: LearningEntry | string, partial?: Partial<LearningEntry>): Promise<boolean> {
