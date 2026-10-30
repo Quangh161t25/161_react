@@ -72,6 +72,7 @@ import { MarkdownRenderer } from '../notes/MarkdownRenderer';
 import { LEARNING_CATEGORIES, LEARNING_SOURCE_TYPES } from '../../data/learning';
 import { NOTE_CATEGORIES, NOTE_COLOR_THEMES, PRESET_TAGS } from '../../data/notes';
 import { TimePickerInput } from '../common/TimePickerInput';
+import { MobileDetails } from '../common/MobileFormHelpers';
 
 export type EventModuleType = 'note' | 'task' | 'learning' | 'cash';
 
@@ -1163,7 +1164,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                     </div>
 
                     {/* Summary */}
-                    <div>
+                    <div className="hidden md:block">
                       <label className="block text-xs font-semibold text-muted-foreground mb-1">
                         Tóm tắt nhanh (Lead / Summary)
                       </label>
@@ -1185,7 +1186,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                       {noteContentTab === 'edit' ? (
                         <div className="space-y-2">
                           {/* Rich Toolbar */}
-                          <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl border border-border bg-muted/20">
+                          <div className="hidden md:flex flex-wrap items-center gap-1 p-1.5 rounded-xl border border-border bg-muted/20">
                             <button
                               type="button"
                               title="Tiêu đề H1"
@@ -1330,6 +1331,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                     </div>
                   </div>
 
+                  <MobileDetails label="Thêm chi tiết: ngày giờ, phân loại, địa điểm, ảnh" className="space-y-5">
                   {/* 2. CHUYÊN MỤC, THẺ & TRẠNG THÁI */}
                   <div className="rounded-2xl border border-border/80 bg-card/60 p-4 sm:p-5 shadow-xs transition-all hover:border-border hover:shadow-md space-y-4">
                     <div className="flex items-center justify-between border-b border-border/60 pb-3">
@@ -1876,6 +1878,7 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({
                       />
                     </div>
                   </div>
+                  </MobileDetails>
                 </div>
               )}
 

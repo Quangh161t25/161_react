@@ -60,6 +60,47 @@
   }
 }
 
+/* Điện thoại: chữ ô nhập từ 16px để iOS không tự phóng to khi chạm, vùng chạm đủ lớn */
+@media (max-width: 767px) {
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+
+  input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']),
+  select {
+    min-height: 44px;
+  }
+
+  button[type='submit'] {
+    min-height: 44px;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  button.h-8 {
+    height: 2.5rem;
+  }
+
+  button.h-8.w-8 {
+    width: 2.5rem;
+  }
+
+  div.h-8:has(> button) {
+    height: 2.5rem;
+  }
+
+  div.h-8 > button.h-7 {
+    height: 2.25rem;
+  }
+
+  div.h-8 > button.w-7 {
+    width: 2.25rem;
+  }
+}
+
 /* Hide scrollbar for clean UI */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

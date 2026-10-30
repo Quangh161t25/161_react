@@ -886,6 +886,7 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
 
                   <input
                     type="number"
+                    inputMode="numeric"
                     min="0"
                     step="any"
                     value={amount === 0 ? '' : amount}

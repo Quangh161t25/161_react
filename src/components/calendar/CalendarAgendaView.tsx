@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { toLocalDateStr } from '../../utils/dateUtils';
 import {
   CheckSquare,
   FolderKanban,
@@ -104,6 +105,21 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
     const keys = Object.keys(grouped);
     return keys.sort((a, b) => (sortOrder === 'desc' ? b.localeCompare(a) : a.localeCompare(b)));
   }, [grouped, sortOrder]);
+
+  // Tự cuộn tới ngày đang chọn thay vì bắt đầu từ sự kiện xa nhất trong tương lai
+  const lastScrollKeyRef = useRef('');
+  useEffect(() => {
+    if (scope !== 'all' || dateKeys.length === 0) return;
+    const scrollKey = `${currentDate.getTime()}|${sortOrder}`;
+    if (lastScrollKeyRef.current === scrollKey) return;
+    lastScrollKeyRef.current = scrollKey;
+
+    const targetDate = toLocalDateStr(currentDate);
+    const targetKey = dateKeys.find((key) => (sortOrder === 'desc' ? key <= targetDate : key >= targetDate));
+    if (targetKey) {
+      document.querySelector(`[data-agenda-date="${targetKey}"]`)?.scrollIntoView({ block: 'start' });
+    }
+  }, [dateKeys, currentDate, sortOrder, scope]);
 
   const getSourceIcon = (source: CalendarEventSource) => {
     switch (source) {
@@ -284,7 +300,7 @@ export const CalendarAgendaView: React.FC<CalendarAgendaViewProps> = ({
             const { dayOfWeek, formattedDMY, isToday, isYesterday, isTomorrow, lunar } = formatHeaderDate(dateStr);
 
             return (
-              <div key={dateStr} className="space-y-3">
+              <div key={dateStr} data-agenda-date={dateStr} className="space-y-3">
                 {/* Date Group Header */}
                 <div className="sticky top-0 z-10 py-1 bg-card/95 backdrop-blur-xs flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 flex-wrap">

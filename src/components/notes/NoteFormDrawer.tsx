@@ -54,6 +54,7 @@ import {
   getNoteIconLabel,
 } from '../../data/notes';
 import { TimePickerInput } from '../common/TimePickerInput';
+import { MobileDetails } from '../common/MobileFormHelpers';
 import { useAuth } from '../../context/AuthContext';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { employeeService } from '../../services/employeeService';
@@ -892,7 +893,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 {contentTab === 'edit' ? (
                   <div className="space-y-2">
                     {/* Rich Toolbar */}
-                    <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl border border-border bg-muted/20">
+                    <div className="hidden md:flex flex-wrap items-center gap-1 p-1.5 rounded-xl border border-border bg-muted/20">
                       <button
                         type="button"
                         title="Tiêu đề H1"
@@ -1132,6 +1133,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
               </div>
             </div>
 
+            <MobileDetails label="Thêm chi tiết: đối tượng, thẻ, địa điểm, ảnh" className="space-y-6">
             {/* 2. ĐỐI TƯỢNG LIÊN QUAN & THẺ PHÂN LOẠI (TAGS) CẠNH NHAU */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* CỘT 1: ĐỐI TƯỢNG LIÊN QUAN */}
@@ -1868,7 +1870,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                 />
               </div>
             </div>
-
+            </MobileDetails>
 
           </form>
         </div>

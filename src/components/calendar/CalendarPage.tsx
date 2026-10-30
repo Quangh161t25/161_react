@@ -37,6 +37,7 @@ import { EventDetailModal } from './EventDetailModal';
 import { EventFormModal } from './EventFormModal';
 import { generateId } from '../../utils/idGenerator';
 import { toLocalDateStr } from '../../utils/dateUtils';
+import { MobileAddButton } from '../common/MobileFormHelpers';
 
 import { NoteDetailDrawer } from '../notes/NoteDetailDrawer';
 import { LearningDetailDrawer } from '../learning/LearningDetailDrawer';
@@ -766,7 +767,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                     type="button"
                     onClick={() => window.print()}
                     title="In lịch"
-                    className="h-8 w-8 flex items-center justify-center border rounded-lg transition-all bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="h-8 w-8 hidden md:flex items-center justify-center border rounded-lg transition-all bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <Printer className="w-3.5 h-3.5" />
                   </button>
@@ -776,7 +777,7 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
                     type="button"
                     onClick={handleExportCSV}
                     title="Xuất file CSV"
-                    className="h-8 w-8 flex items-center justify-center border rounded-lg transition-all bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="h-8 w-8 hidden md:flex items-center justify-center border rounded-lg transition-all bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <Download className="w-3.5 h-3.5" />
                   </button>
@@ -942,6 +943,8 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
           )}
         </div>
       </div>
+
+      <MobileAddButton label="Thêm ghi chú" onClick={() => openAddDrawer('note')} />
 
       {/* Module Detail Drawers */}
       {selectedNote && (
