@@ -383,13 +383,6 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
 
     const idSet = new Set(selectedIds);
     const toDelete = employees.filter((e) => idSet.has(e.id));
-    const identifiersToDelete: string[] = [];
-    toDelete.forEach((e) => {
-      if (e.code) identifiersToDelete.push(e.code);
-      if (e.username) identifiersToDelete.push(e.username);
-      if (e.name) identifiersToDelete.push(e.name);
-      if (e.id) identifiersToDelete.push(e.id);
-    });
 
     const updatedList = employees.filter((e) => !idSet.has(e.id));
     setEmployees(updatedList);
@@ -402,7 +395,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
 
     setIsSyncing(true);
     // Delete ONLY selected rows from Google Sheet
-    const ok = await employeeService.deleteFromSheet(identifiersToDelete);
+    const ok = await employeeService.deleteFromSheet(toDelete);
     setIsSyncing(false);
     if (ok) {
       showToast(`Đã xóa thành công ${count} nhân viên và đồng bộ Google Sheet!`);
@@ -559,12 +552,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
 
     setIsSyncing(true);
     // Delete ONLY this specific row from Google Sheet
-    const ok = await employeeService.deleteFromSheet([
-      deleted.code,
-      deleted.username,
-      deleted.name,
-      deleted.id,
-    ].filter(Boolean) as string[]);
+    const ok = await employeeService.deleteFromSheet([deleted]);
     setIsSyncing(false);
     if (ok) {
       showToast(`Đã xóa ${deleted?.name || 'nhân viên'} và đồng bộ Google Sheet!`);

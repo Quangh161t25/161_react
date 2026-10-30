@@ -783,6 +783,34 @@ export async function appendEmployeeToSheet(employee) {
   return { success: true };
 }
 
+// Tìm đúng một dòng của nhân viên, trả về chỉ số 0-based trong rows (kể cả header) hoặc -1.
+// Ưu tiên mã rồi tên đăng nhập. Họ tên có thể trùng nên chỉ dùng cho dòng chưa có mã
+// và khi tên đó là duy nhất.
+function findEmployeeRowIndex(rows, target) {
+  const clean = (value) => String(value || '').trim().toLowerCase();
+  const code = clean(target.code);
+  const username = clean(target.username);
+  const name = clean(target.name);
+  const findRow = (matches) => rows.findIndex((r, idx) => idx > 0 && matches(r));
+
+  if (code) {
+    const byCode = findRow((r) => clean(r[12]) === code || clean(r[0]) === code);
+    if (byCode > 0) return byCode;
+  }
+  if (username) {
+    const byUsername = findRow((r) => clean(r[1]) === username);
+    if (byUsername > 0) return byUsername;
+  }
+  if (name) {
+    const byName = rows.reduce((found, r, idx) => {
+      if (idx > 0 && !clean(r[12]) && clean(r[0]) === name) found.push(idx);
+      return found;
+    }, []);
+    if (byName.length === 1) return byName[0];
+  }
+  return -1;
+}
+
 export async function updateEmployeeInSheet(employee) {
   await ensureNhanVienTabExists();
   const token = await getAccessToken();
@@ -793,22 +821,9 @@ export async function updateEmployeeInSheet(employee) {
   const data = await dataRes.json();
   const rows = data.values || [];
 
-  let rowIndex = -1;
-  let existingRow = null;
-  rows.forEach((r, idx) => {
-    if (idx === 0) return;
-    const code = r[12] || r[11] || '';
-    const username = r[1] || '';
-    const name = r[0] || '';
-    if (
-      (employee.code && (code === employee.code || r[0] === employee.code)) ||
-      (employee.username && username === employee.username) ||
-      (employee.name && name === employee.name)
-    ) {
-      rowIndex = idx + 1; // 1-based row index
-      existingRow = r;
-    }
-  });
+  const foundIndex = findEmployeeRowIndex(rows, employee);
+  const rowIndex = foundIndex > 0 ? foundIndex + 1 : -1; // 1-based row index
+  const existingRow = foundIndex > 0 ? rows[foundIndex] : null;
 
   // Preserve existing password if not provided in update payload
   if ((!employee.password || !employee.password.trim()) && existingRow && existingRow[2]) {
@@ -841,9 +856,9 @@ export async function updateEmployeeInSheet(employee) {
   return { success: true };
 }
 
-export async function deleteEmployeesFromSheet(identifiers) {
-  const idList = Array.isArray(identifiers) ? identifiers : [identifiers];
-  if (idList.length === 0) return { success: true, count: 0 };
+export async function deleteEmployeesFromSheet(targets) {
+  const targetList = Array.isArray(targets) ? targets : [targets];
+  if (targetList.length === 0) return { success: true, count: 0 };
 
   await ensureNhanVienTabExists();
   const token = await getAccessToken();
@@ -862,27 +877,10 @@ export async function deleteEmployeesFromSheet(identifiers) {
   const data = await dataRes.json();
   const rows = data.values || [];
 
-  const cleanIdList = idList.map((id) => String(id || '').trim().toLowerCase()).filter(Boolean);
-
-  const indicesToDelete = [];
-  rows.forEach((r, idx) => {
-    if (idx === 0) return; // skip header
-    const name = String(r[0] || '').trim().toLowerCase();
-    const username = String(r[1] || '').trim().toLowerCase();
-    const code = String(r[12] || r[11] || (r[0] && r[0].startsWith('emp-') ? r[0] : '') || '').trim().toLowerCase();
-
-    const isMatch = cleanIdList.some((cleanId) => {
-      return (
-        (code && cleanId === code) ||
-        (username && cleanId === username) ||
-        (name && cleanId === name)
-      );
-    });
-
-    if (isMatch) {
-      indicesToDelete.push(idx); // 0-based index
-    }
-  });
+  // Mỗi nhân viên cần xóa ứng với đúng một dòng
+  const indicesToDelete = Array.from(
+    new Set(targetList.map((target) => findEmployeeRowIndex(rows, target)).filter((idx) => idx > 0))
+  );
 
   if (indicesToDelete.length === 0) {
     return { success: true, count: 0 };

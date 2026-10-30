@@ -80,18 +80,18 @@ export const employeeService = {
     }
   },
 
-  // Delete specific rows from Google Sheet by identifiers (code, username, or name)
-  async deleteFromSheet(identifiers: string[] | string): Promise<boolean> {
-    const codes = Array.isArray(identifiers) ? identifiers : [identifiers];
-    if (codes.length === 0) return true;
+  // Delete exactly one Google Sheet row per employee. Returns false if any row could not be identified.
+  async deleteFromSheet(employees: Employee[]): Promise<boolean> {
+    if (employees.length === 0) return true;
+    const targets = employees.map(({ code, username, name }) => ({ code, username, name }));
     try {
       const res = await fetch('/api/sheets/delete-employees', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codes }),
+        body: JSON.stringify({ targets }),
       });
       const data = await res.json();
-      return !!data.success;
+      return !!data.success && data.count === targets.length;
     } catch (err) {
       console.error('Failed to delete employees from Google Sheet:', err);
       return false;

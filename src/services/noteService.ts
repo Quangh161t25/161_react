@@ -98,6 +98,8 @@ export const noteService = {
   async deleteFromSheet(identifiers: string[] | string): Promise<boolean> {
     const codes = Array.isArray(identifiers) ? identifiers : [identifiers];
     if (codes.length === 0) return true;
+    // Đợi lệnh thêm đang chạy xong, nếu không dòng vừa thêm sẽ lên Sheet sau khi đã xóa
+    await pendingNotes.settled();
     try {
       const res = await fetch('/api/sheets/delete-notes', {
         method: 'POST',

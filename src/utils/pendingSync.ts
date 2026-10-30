@@ -17,7 +17,7 @@ export function createPendingSync<T extends SyncableItem>(
   getLocalItems: () => T[],
   retryAppend: (item: T) => Promise<boolean>
 ) {
-  const inFlight = new Set<string>();
+  const inFlight = new Map<string, Promise<boolean>>();
 
   const readIds = (): string[] => {
     try {
@@ -39,14 +39,20 @@ export function createPendingSync<T extends SyncableItem>(
   return {
     async track(id: string, send: () => Promise<boolean>): Promise<boolean> {
       writeIds([...readIds(), id]);
-      inFlight.add(id);
+      const request = send();
+      inFlight.set(id, request);
       try {
-        const ok = await send();
+        const ok = await request;
         if (ok) writeIds(readIds().filter((pendingId) => pendingId !== id));
         return ok;
       } finally {
         inFlight.delete(id);
       }
+    },
+
+    // Chờ mọi lệnh gửi lên Sheet đang chạy kết thúc
+    async settled(): Promise<void> {
+      await Promise.allSettled(Array.from(inFlight.values()));
     },
 
     // Gộp bản ghi chưa đồng bộ vào dữ liệu Sheet vừa tải về và gửi lại chúng

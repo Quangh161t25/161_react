@@ -255,8 +255,7 @@ export default async function handler(req, res) {
 
     if ((action === 'employees' && req.method === 'DELETE') || (action === 'delete-employees' && (req.method === 'POST' || req.method === 'DELETE'))) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
-      const codes = body.codes || (body.code ? [body.code] : (body.identifiers || []));
-      const result = await deleteEmployeesFromSheet(codes);
+      const result = await deleteEmployeesFromSheet(body.targets || []);
       return res.status(200).json({ success: true, count: result.count });
     }
 

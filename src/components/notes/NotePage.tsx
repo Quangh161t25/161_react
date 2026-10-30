@@ -40,6 +40,7 @@ import { NoteDetailDrawer } from './NoteDetailDrawer';
 import { NoteFormDrawer } from './NoteFormDrawer';
 import { generateId } from '../../utils/idGenerator';
 import { toLocalDateStr } from '../../utils/dateUtils';
+import { MobileAddButton } from '../common/MobileFormHelpers';
 import { NoteStatsTab } from './NoteStatsTab';
 import { NoteCalendarView } from './NoteCalendarView';
 import {
@@ -552,6 +553,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   // Delete Note
   const handleDeleteNote = async (id: string) => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết ghi chú này?')) return;
+    const target = notes.find((n) => n.id === id);
     const updatedList = notes.filter((n) => n.id !== id);
     setNotes(updatedList);
     noteService.saveToLocalCache(updatedList);
@@ -559,7 +561,8 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       setSelectedNoteForDetail(null);
     }
     setSelectedIds((prev) => prev.filter((i) => i !== id));
-    noteService.deleteFromSheet(id).catch((e) => console.warn('Sync delete failed', e));
+    // Sheet nhận diện theo mã, ghi chú vừa tạo có id nội bộ không khớp với dòng trên Sheet
+    noteService.deleteFromSheet(target?.code || id).catch((e) => console.warn('Sync delete failed', e));
   };
 
   // Bulk Delete
@@ -571,9 +574,9 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     if (selectedNoteForDetail && selectedIds.includes(selectedNoteForDetail.id)) {
       setSelectedNoteForDetail(null);
     }
-    const idsToDelete = [...selectedIds];
+    const codesToDelete = notes.filter((n) => selectedIds.includes(n.id)).map((n) => n.code || n.id);
     setSelectedIds([]);
-    noteService.deleteFromSheet(idsToDelete).catch((e) => console.warn('Sync bulk delete failed', e));
+    noteService.deleteFromSheet(codesToDelete).catch((e) => console.warn('Sync bulk delete failed', e));
   };
 
   // Toggle Pin
@@ -1583,6 +1586,15 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
               />
             </div>
           )}
+
+          <MobileAddButton
+            label="Thêm ghi chú"
+            onClick={() => {
+              setEditingNote(null);
+              setDefaultFormDate(undefined);
+              setIsFormDrawerOpen(true);
+            }}
+          />
 
           {/* Tab 3: Thống kê */}
           {activeTopTab === 'stats' && (
