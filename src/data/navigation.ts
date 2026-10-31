@@ -9,6 +9,7 @@ import {
   KeyRound,
   Calendar,
   GraduationCap,
+  Zap,
 } from 'lucide-react';
 import { NavItem, DashboardModule, UserProfile } from '../types';
 import { getInitialsAvatar } from '../utils/avatarUtils';
@@ -43,6 +44,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Học hỏi',
     href: '/hoc-hoi',
     icon: GraduationCap,
+  },
+  {
+    id: 'trigger',
+    label: 'Trigger',
+    href: '/trigger',
+    icon: Zap,
   },
   {
     id: 'finance',
@@ -111,6 +118,14 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     href: '/hoc-hoi',
     icon: GraduationCap,
     gradientClass: 'from-violet-600 to-fuchsia-700 dark:from-violet-500 dark:to-fuchsia-600',
+  },
+  {
+    id: 'trigger',
+    title: 'Trigger',
+    description: 'Hẹn giờ thông báo hoặc tự thêm ghi chú.',
+    href: '/trigger',
+    icon: Zap,
+    gradientClass: 'from-yellow-500 to-amber-600 dark:from-yellow-500 dark:to-amber-600',
   },
   {
     id: 'finance',

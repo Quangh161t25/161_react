@@ -25,10 +25,13 @@ import { WorkflowListPage } from './components/work/workflows/WorkflowListPage';
 import { WorkReportPage } from './components/work/reports/WorkReportPage';
 import { PasswordPage } from './components/password/PasswordPage';
 import { CalendarPage } from './components/calendar/CalendarPage';
+import { TriggerPage } from './components/trigger/TriggerPage';
+import { TriggerToastHost } from './components/trigger/TriggerToastHost';
 import { DASHBOARD_MODULES, NAV_ITEMS, BOTTOM_NAV_ITEMS } from './data/navigation';
 import { FINANCE_SECTIONS } from './data/finance';
 import { SYSTEM_SECTIONS } from './data/system';
 import { notificationService } from './services/notificationService';
+import { triggerService } from './services/triggerService';
 
 const AppContent: React.FC = () => {
   // Initialize current path from browser URL bar
@@ -78,6 +81,9 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+  // Chạy các trigger đến giờ
+  useEffect(() => triggerService.startScheduler(), []);
+
   // Update document title based on current path
   useEffect(() => {
     if (currentPath === '/') {
@@ -96,6 +102,8 @@ const AppContent: React.FC = () => {
       document.title = 'Báo cáo KPI & Hiệu suất | ERP Doanh Nghiệp';
     } else if (currentPath === '/lich') {
       document.title = 'Lịch & Sự kiện Toàn hệ thống | ERP Doanh Nghiệp';
+    } else if (currentPath === '/trigger') {
+      document.title = 'Trigger | ERP Doanh Nghiệp';
     } else if (currentPath === '/mat-khau') {
       document.title = 'Quản lý Mật khẩu & Két Tài khoản | ERP Doanh Nghiệp';
     } else if (currentPath === '/ghi-chu' || currentPath === '/he-thong/ghi-chu') {
@@ -263,6 +271,11 @@ const AppContent: React.FC = () => {
       return <ApprovalThresholdPage onBack={() => handleNavigate('/tai-chinh')} />;
     }
 
+    // 4g. Trigger
+    if (currentPath === '/trigger') {
+      return <TriggerPage onBack={() => handleNavigate('/')} />;
+    }
+
     // 5. Phân hệ Hệ thống (Hub)
     if (currentPath === '/he-thong') {
       return <SystemPage onNavigate={(path) => handleNavigate(path)} />;
@@ -352,6 +365,7 @@ const AppContent: React.FC = () => {
       onNavigate={(path) => handleNavigate(path)}
     >
       {renderContent()}
+      <TriggerToastHost />
     </MainLayout>
   );
 };

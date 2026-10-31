@@ -41,6 +41,7 @@ import { NoteFormDrawer } from './NoteFormDrawer';
 import { generateId } from '../../utils/idGenerator';
 import { toLocalDateStr } from '../../utils/dateUtils';
 import { MobileAddButton } from '../common/MobileFormHelpers';
+import { NOTES_CHANGED_EVENT } from '../../services/triggerService';
 import { NoteStatsTab } from './NoteStatsTab';
 import { NoteCalendarView } from './NoteCalendarView';
 import {
@@ -159,6 +160,13 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     },
     intervalMs: 25000,
   });
+
+  // Trigger vừa thêm ghi chú: cập nhật ngay để lần lưu tiếp theo không ghi đè mất
+  useEffect(() => {
+    const reload = () => setNotes(noteService.getInitialNotes());
+    window.addEventListener(NOTES_CHANGED_EVENT, reload);
+    return () => window.removeEventListener(NOTES_CHANGED_EVENT, reload);
+  }, []);
 
   // Detail & Edit Drawers
   const [selectedNoteForDetail, setSelectedNoteForDetail] = useState<Note | null>(null);
