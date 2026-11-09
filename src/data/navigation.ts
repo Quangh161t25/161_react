@@ -12,7 +12,6 @@ import {
   Zap,
 } from 'lucide-react';
 import { NavItem, DashboardModule, UserProfile } from '../types';
-import { getInitialsAvatar } from '../utils/avatarUtils';
 
 export const NAV_ITEMS: NavItem[] = [
   {
@@ -162,8 +161,8 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
 ];
 
 export const CURRENT_USER: UserProfile = {
-  name: 'Lê Minh Công',
-  title: 'Tổng Giám Đốc',
-  avatarUrl: getInitialsAvatar('Lê Minh Công', '#0f172a', '#ffffff'),
-  isOnline: true,
+  name: '',
+  title: '',
+  avatarUrl: '',
+  isOnline: false,
 };

@@ -7,7 +7,7 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
-  const { login } = useAuth();
+  const { login, authError, clearAuthError } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,9 +18,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
 
+  const displayError = errorMessage || authError;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+    clearAuthError();
 
     if (!username.trim()) {
       setErrorMessage('Vui lòng nhập tên tài khoản');
@@ -35,7 +38,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      const result = await login(username, password);
+      const result = await login(username, password, rememberMe);
       if (result.success) {
         onLoginSuccess(result.user?.username || username);
       } else {
@@ -75,10 +78,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            {errorMessage && (
+            {displayError && (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium">
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{errorMessage}</span>
+                <span>{displayError}</span>
               </div>
             )}
 
@@ -90,7 +93,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     htmlFor="_r_5c_"
                     className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-1.5 flex items-center gap-1.5 text-muted-foreground"
                   >
-                    Tên tài khoản
+                    Tên tài khoản / Mã nhân viên
                     <span
                       aria-hidden="true"
                       className="text-destructive ml-0.5 not-italic"
@@ -105,11 +108,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                       aria-required="true"
                       className="flex w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50 file:border-0 file:bg-transparent file:text-xs file:font-medium placeholder:text-muted-foreground h-11 text-sm"
                       autoComplete="username"
-                      placeholder="Điền tên đăng nhập"
+                      placeholder="Nhập tên đăng nhập hoặc mã nhân viên (DSNV)"
                       type="text"
                       name="username"
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        if (errorMessage) setErrorMessage(null);
+                        if (authError) clearAuthError();
+                      }}
                     />
                   </div>
                 </div>
@@ -143,7 +150,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                     type={showPassword ? 'text' : 'password'}
                     name="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (errorMessage) setErrorMessage(null);
+                      if (authError) clearAuthError();
+                    }}
                   />
                   <button
                     type="button"

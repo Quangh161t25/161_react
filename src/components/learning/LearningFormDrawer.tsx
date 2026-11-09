@@ -13,6 +13,9 @@ import {
   BookOpen,
   Edit3,
   Tag,
+  PanelRightClose,
+  PanelRight,
+  PanelRightOpen,
 } from 'lucide-react';
 import {
   LearningEntry,
@@ -42,6 +45,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
   allEntries = [],
 }) => {
   const isEditing = !!initialEntry;
+  const [widthMode, setWidthMode] = useState<'narrow' | 'normal' | 'wide'>('wide');
 
   // Form states
   const [title, setTitle] = useState('');
@@ -427,24 +431,65 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
       <div className="absolute inset-0 bg-background/80 backdrop-blur-xs transition-opacity" onClick={onClose} />
 
       <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
-        <div className="w-screen max-w-full sm:max-w-3xl bg-card border-l border-border shadow-2xl flex flex-col">
+        <div
+          className={`w-screen max-w-full ${
+            widthMode === 'narrow' ? 'sm:max-w-xl' : widthMode === 'normal' ? 'sm:max-w-3xl' : 'sm:max-w-5xl'
+          } bg-card border-l border-border shadow-2xl flex flex-col transition-all duration-200`}
+        >
           {/* Header */}
           <div className="px-4 sm:px-6 py-3.5 border-b border-border bg-card flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
                 <BookOpen className="w-4 h-4" />
               </div>
-              <div>
-                <h2 className="text-sm sm:text-base font-bold text-foreground">
+              <div className="min-w-0">
+                <h2 className="text-sm sm:text-base font-bold text-foreground truncate">
                   {isEditing ? `Chỉnh sửa: ${initialEntry.code}` : 'Thêm kiến thức / Bài học mới'}
                 </h2>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground truncate hidden sm:block">
                   Ghi chép kiến thức, đính kèm hình ảnh qua Catbox và liên kết tham khảo.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Width mode toggles for desktop */}
+              <div className="hidden sm:flex items-center gap-0.5 border border-border rounded-lg p-0.5 bg-muted/40">
+                <button
+                  type="button"
+                  aria-label="Thu hẹp"
+                  title="Thu hẹp"
+                  onClick={() => setWidthMode('narrow')}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    widthMode === 'narrow' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <PanelRightClose className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Vừa"
+                  title="Vừa (Mặc định)"
+                  onClick={() => setWidthMode('normal')}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    widthMode === 'normal' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <PanelRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Rộng"
+                  title="Mở rộng"
+                  onClick={() => setWidthMode('wide')}
+                  className={`p-1.5 rounded-md transition-colors ${
+                    widthMode === 'wide' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <PanelRightOpen className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setIsPinned(!isPinned)}
@@ -488,11 +533,158 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="VD: Nguyên lý Dependency Inversion trong Clean Architecture..."
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium"
               />
             </div>
 
-            {/* Tags (Đưa lên trên, hiển thị gợi ý từ các bài học trước) */}
+            {/* Markdown Content Editor (Tiêu đề xong đến Nội dung luôn) */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Edit3 className="w-3.5 h-3.5 text-primary" />
+                  <span>Nội dung ghi chép kiến thức (Markdown)</span>
+                </label>
+
+                {/* View toggles */}
+                <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode('write')}
+                    className={`px-2 py-0.5 rounded font-medium transition-colors ${
+                      editorMode === 'write' ? 'bg-background shadow-xs text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Viết
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode('preview')}
+                    className={`px-2 py-0.5 rounded font-medium transition-colors ${
+                      editorMode === 'preview' ? 'bg-background shadow-xs text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Xem trước
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditorMode('split')}
+                    className={`hidden sm:inline-block px-2 py-0.5 rounded font-medium transition-colors ${
+                      editorMode === 'split' ? 'bg-background shadow-xs text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Chia đôi
+                  </button>
+                </div>
+              </div>
+
+              {/* Markdown Editor Controls */}
+              {editorMode !== 'preview' && (
+                <div className="flex flex-wrap items-center gap-1 p-1 bg-muted/40 border border-border border-b-0 rounded-t-lg text-xs text-muted-foreground">
+                  <button
+                    type="button"
+                    onClick={() => setContent((prev) => `${prev}\n### Tiêu đề phụ\n`)}
+                    className="px-1.5 py-0.5 hover:bg-background rounded"
+                    title="Tiêu đề H3"
+                  >
+                    H3
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContent((prev) => `${prev}**In đậm**`)}
+                    className="px-1.5 py-0.5 font-bold hover:bg-background rounded"
+                    title="In đậm"
+                  >
+                    B
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContent((prev) => `${prev}*In nghiêng*`)}
+                    className="px-1.5 py-0.5 italic hover:bg-background rounded"
+                    title="In nghiêng"
+                  >
+                    I
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContent((prev) => `${prev}\n- Mục 1\n- Mục 2\n`)}
+                    className="px-1.5 py-0.5 hover:bg-background rounded"
+                    title="Danh sách gạch đầu dòng"
+                  >
+                    • List
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContent((prev) => `${prev}\n> [!TIP]\n> Mẹo quan trọng ở đây...\n`)}
+                    className="px-1.5 py-0.5 hover:bg-background rounded"
+                    title="Callout Mẹo"
+                  >
+                    💡 Mẹo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContent((prev) => `${prev}\n> [!NOTE]\n> Lưu ý ghi nhớ...\n`)}
+                    className="px-1.5 py-0.5 hover:bg-background rounded"
+                    title="Callout Lưu ý"
+                  >
+                    📌 Lưu ý
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContent((prev) => prev + '\n```ts\n// Code ví dụ minh họa\nconst example = true;\n```\n')}
+                    className="px-1.5 py-0.5 font-mono hover:bg-background rounded"
+                    title="Khối mã code"
+                  >
+                    {'</>'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContent((prev) => `${prev}\n| Khái niệm | Ý nghĩa |\n| --- | --- |\n| Term A | Định nghĩa A |\n`)}
+                    className="px-1.5 py-0.5 hover:bg-background rounded"
+                    title="Bảng biểu"
+                  >
+                    📊 Bảng
+                  </button>
+                </div>
+              )}
+
+              {/* Editor Workspace */}
+              <div
+                className={`border border-border rounded-b-lg overflow-hidden bg-background ${
+                  editorMode === 'write' ? 'rounded-t-none' : editorMode === 'preview' ? 'rounded-t-lg' : ''
+                }`}
+              >
+                {editorMode === 'split' ? (
+                  <div className="grid grid-cols-2 divide-x divide-border min-h-[300px]">
+                    <textarea
+                      ref={contentTextareaRef}
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      placeholder="Nhập nội dung markdown tại đây hoặc bấm Ctrl+V để dán ảnh..."
+                      rows={14}
+                      className="w-full p-3 text-xs sm:text-sm font-mono bg-transparent focus:outline-none resize-none leading-relaxed"
+                    />
+                    <div className="p-3 overflow-y-auto max-h-[380px] bg-card">
+                      <MarkdownRenderer content={content} />
+                    </div>
+                  </div>
+                ) : editorMode === 'preview' ? (
+                  <div className="p-4 overflow-y-auto min-h-[300px] max-h-[420px] bg-card">
+                    <MarkdownRenderer content={content} />
+                  </div>
+                ) : (
+                  <textarea
+                    ref={contentTextareaRef}
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Soạn thảo kiến thức với Markdown... Bấm Ctrl + V để dán ảnh lên Catbox!"
+                    rows={12}
+                    className="w-full p-3 text-xs sm:text-sm font-mono bg-transparent focus:outline-none resize-y leading-relaxed"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Tags (Đưa xuống dưới Nội dung) */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
@@ -723,153 +915,6 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Markdown Content Editor */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Edit3 className="w-3.5 h-3.5 text-primary" />
-                  <span>Nội dung ghi chép kiến thức (Markdown)</span>
-                </label>
-
-                {/* View toggles */}
-                <div className="flex items-center rounded-lg border border-border p-0.5 bg-muted/40 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setEditorMode('write')}
-                    className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                      editorMode === 'write' ? 'bg-background shadow-xs text-foreground font-semibold' : 'text-muted-foreground'
-                    }`}
-                  >
-                    Viết
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditorMode('preview')}
-                    className={`px-2 py-0.5 rounded font-medium transition-colors ${
-                      editorMode === 'preview' ? 'bg-background shadow-xs text-foreground font-semibold' : 'text-muted-foreground'
-                    }`}
-                  >
-                    Xem trước
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditorMode('split')}
-                    className={`hidden sm:inline-block px-2 py-0.5 rounded font-medium transition-colors ${
-                      editorMode === 'split' ? 'bg-background shadow-xs text-foreground font-semibold' : 'text-muted-foreground'
-                    }`}
-                  >
-                    Chia đôi
-                  </button>
-                </div>
-              </div>
-
-              {/* Markdown Editor Controls */}
-              {editorMode !== 'preview' && (
-                <div className="flex flex-wrap items-center gap-1 p-1 bg-muted/40 border border-border border-b-0 rounded-t-lg text-xs text-muted-foreground">
-                  <button
-                    type="button"
-                    onClick={() => setContent((prev) => `${prev}\n### Tiêu đề phụ\n`)}
-                    className="px-1.5 py-0.5 hover:bg-background rounded"
-                    title="Tiêu đề H3"
-                  >
-                    H3
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContent((prev) => `${prev}**In đậm**`)}
-                    className="px-1.5 py-0.5 font-bold hover:bg-background rounded"
-                    title="In đậm"
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContent((prev) => `${prev}*In nghiêng*`)}
-                    className="px-1.5 py-0.5 italic hover:bg-background rounded"
-                    title="In nghiêng"
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContent((prev) => `${prev}\n- Mục 1\n- Mục 2\n`)}
-                    className="px-1.5 py-0.5 hover:bg-background rounded"
-                    title="Danh sách gạch đầu dòng"
-                  >
-                    • List
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContent((prev) => `${prev}\n> [!TIP]\n> Mẹo quan trọng ở đây...\n`)}
-                    className="px-1.5 py-0.5 hover:bg-background rounded"
-                    title="Callout Mẹo"
-                  >
-                    💡 Mẹo
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContent((prev) => `${prev}\n> [!NOTE]\n> Lưu ý ghi nhớ...\n`)}
-                    className="px-1.5 py-0.5 hover:bg-background rounded"
-                    title="Callout Lưu ý"
-                  >
-                    📌 Lưu ý
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContent((prev) => prev + '\n```ts\n// Code ví dụ minh họa\nconst example = true;\n```\n')}
-                    className="px-1.5 py-0.5 font-mono hover:bg-background rounded"
-                    title="Khối mã code"
-                  >
-                    {'</>'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setContent((prev) => `${prev}\n| Khái niệm | Ý nghĩa |\n| --- | --- |\n| Term A | Định nghĩa A |\n`)}
-                    className="px-1.5 py-0.5 hover:bg-background rounded"
-                    title="Bảng biểu"
-                  >
-                    📊 Bảng
-                  </button>
-                </div>
-              )}
-
-              {/* Editor Workspace */}
-              <div
-                className={`border border-border rounded-b-lg overflow-hidden bg-background ${
-                  editorMode === 'write' ? 'rounded-t-none' : editorMode === 'preview' ? 'rounded-t-lg' : ''
-                }`}
-              >
-                {editorMode === 'split' ? (
-                  <div className="grid grid-cols-2 divide-x divide-border min-h-[300px]">
-                    <textarea
-                      ref={contentTextareaRef}
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder="Nhập nội dung markdown tại đây hoặc bấm Ctrl+V để dán ảnh..."
-                      rows={14}
-                      className="w-full p-3 text-xs sm:text-sm font-mono bg-transparent focus:outline-none resize-none leading-relaxed"
-                    />
-                    <div className="p-3 overflow-y-auto max-h-[380px] bg-card">
-                      <MarkdownRenderer content={content} />
-                    </div>
-                  </div>
-                ) : editorMode === 'preview' ? (
-                  <div className="p-4 overflow-y-auto min-h-[300px] max-h-[420px] bg-card">
-                    <MarkdownRenderer content={content} />
-                  </div>
-                ) : (
-                  <textarea
-                    ref={contentTextareaRef}
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="Soạn thảo kiến thức với Markdown... Bấm Ctrl + V để dán ảnh lên Catbox!"
-                    rows={12}
-                    className="w-full p-3 text-xs sm:text-sm font-mono bg-transparent focus:outline-none resize-y leading-relaxed"
-                  />
-                )}
-              </div>
             </div>
 
             {/* Summary */}

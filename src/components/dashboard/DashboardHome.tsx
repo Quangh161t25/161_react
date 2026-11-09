@@ -25,7 +25,7 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({ onNavigate }) => {
           <div className="mb-6">
             <h1 className="text-lg md:text-xl font-semibold text-foreground tracking-tight">
               {getGreeting()},{' '}
-              <span className="text-primary font-bold">{currentUser.name}</span> 👋
+              <span className="text-primary font-bold">{currentUser?.name || 'Bạn'}</span> 👋
             </h1>
           </div>
 

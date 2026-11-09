@@ -47,6 +47,14 @@ import { ProjectDetailDrawer } from '../work/projects/ProjectDetailDrawer';
 import { CashTransactionDetailDrawer } from '../finance/CashTransactionDetailDrawer';
 import { CostProposalDetailDrawer } from '../finance/CostProposalDetailDrawer';
 
+import { NoteFormDrawer } from '../notes/NoteFormDrawer';
+import { TaskFormDrawer } from '../work/tasks/TaskFormDrawer';
+import { ProjectFormDrawer } from '../work/projects/ProjectFormDrawer';
+import { LearningFormDrawer } from '../learning/LearningFormDrawer';
+import { EmployeeFormDrawer } from '../employee/EmployeeFormDrawer';
+import { CashTransactionFormDrawer } from '../finance/CashTransactionFormDrawer';
+import { CostProposalFormDrawer } from '../finance/CostProposalFormDrawer';
+
 import { Note } from '../../types/note';
 import { LearningEntry } from '../../types/learning';
 import { Employee } from '../../types/employee';
@@ -163,6 +171,15 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
 
   const [selectedCustomEvent, setSelectedCustomEvent] = useState<CalendarEvent | null>(null);
 
+  // Module-specific edit form states
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editingLearning, setEditingLearning] = useState<LearningEntry | null>(null);
+  const [editingCashTx, setEditingCashTx] = useState<CashTransaction | null>(null);
+  const [editingProposal, setEditingProposal] = useState<CostProposal | null>(null);
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+
   // Active Creation Form Drawer
   const [activeAddDrawer, setActiveAddDrawer] = useState<'note' | 'task' | 'learning' | 'cash' | null>(null);
   const [addDrawerDate, setAddDrawerDate] = useState<string>('');
@@ -187,7 +204,174 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
     setSelectedProposal(null);
     setSelectedCustomEvent(null);
     setActiveAddDrawer(null);
+    setEditingNote(null);
+    setEditingTask(null);
+    setEditingProject(null);
+    setEditingLearning(null);
+    setEditingCashTx(null);
+    setEditingProposal(null);
+    setEditingEmployee(null);
   }, []);
+
+  // Handlers for saving edited items right from Calendar
+  const handleSaveNote = async (formData: Partial<Note>) => {
+    if (!editingNote) return;
+    const matchId = editingNote.id;
+    const matchCode = editingNote.code;
+    const currentList = noteService.getInitialNotes();
+    const updatedList = currentList.map((n) =>
+      n.id === matchId || (matchCode && n.code === matchCode)
+        ? ({ ...n, ...formData, code: matchCode || n.code, updatedAt: new Date().toISOString().split('T')[0] } as Note)
+        : n
+    );
+    setAllNotesList(updatedList);
+    noteService.saveToLocalCache(updatedList);
+    setEditingNote(null);
+
+    const target = updatedList.find((n) => n.id === matchId || (matchCode && n.code === matchCode));
+    if (target) {
+      noteService.updateInSheet(target).catch((e) => console.warn('Sync note update failed', e));
+    }
+    const fresh = calendarService.aggregateAllEvents();
+    setAllEvents(fresh);
+    showToast(`Đã cập nhật ghi chú "${formData.title || editingNote.title}"`);
+  };
+
+  const handleSaveTask = (taskPayload: Task) => {
+    const currentTasks = taskService.getInitialTasks();
+    const isEdit = currentTasks.some(
+      (t) => (taskPayload.code && t.code === taskPayload.code) || t.id === taskPayload.id
+    );
+    let updated: Task[];
+    if (isEdit) {
+      updated = currentTasks.map((t) =>
+        (taskPayload.code && t.code === taskPayload.code) || t.id === taskPayload.id
+          ? { ...t, ...taskPayload }
+          : t
+      );
+    } else {
+      updated = [taskPayload, ...currentTasks];
+    }
+    setAllTasksList(updated);
+    taskService.saveAllToSheet(updated);
+    setEditingTask(null);
+
+    const fresh = calendarService.aggregateAllEvents();
+    setAllEvents(fresh);
+    showToast(`Đã cập nhật công việc "${taskPayload.title}"`);
+  };
+
+  const handleSaveProject = (projPayload: Project) => {
+    const currentProjects = projectService.getInitialProjects();
+    const updated = currentProjects.map((p) =>
+      (projPayload.code && p.code === projPayload.code) || p.id === projPayload.id
+        ? { ...p, ...projPayload }
+        : p
+    );
+    setAllProjectsList(updated);
+    projectService.saveAllToSheet(updated);
+    setEditingProject(null);
+
+    const fresh = calendarService.aggregateAllEvents();
+    setAllEvents(fresh);
+    showToast(`Đã cập nhật dự án "${projPayload.name}"`);
+  };
+
+  const handleSaveEmployee = async (formData: Partial<Employee>) => {
+    if (!editingEmployee) return;
+    const updatedEmployee = {
+      ...editingEmployee,
+      ...formData,
+      updatedAt: new Date().toLocaleDateString('vi-VN'),
+    } as Employee;
+    const currentEmployees = employeeService.getInitialEmployees();
+    const updatedList = currentEmployees.map((e) =>
+      e.id === editingEmployee.id || (editingEmployee.code && e.code === editingEmployee.code)
+        ? updatedEmployee
+        : e
+    );
+    setAllEmployeesList(updatedList);
+    employeeService.saveToCache(updatedList);
+    setEditingEmployee(null);
+
+    employeeService.updateInSheet(updatedEmployee).catch((e) => console.warn('Sync employee update failed', e));
+
+    const fresh = calendarService.aggregateAllEvents();
+    setAllEvents(fresh);
+    showToast(`Đã cập nhật nhân sự "${updatedEmployee.name}"`);
+  };
+
+  const handleSaveCashTx = async (formData: Partial<CashTransaction>) => {
+    if (!editingCashTx) return;
+    const updatedTx = {
+      ...editingCashTx,
+      ...formData,
+      updatedAt: new Date().toISOString().split('T')[0],
+    } as CashTransaction;
+    const currentTxs = cashTransactionService.getInitialTransactions();
+    const updatedList = currentTxs.map((t) =>
+      t.id === editingCashTx.id || (editingCashTx.code && t.code === editingCashTx.code)
+        ? updatedTx
+        : t
+    );
+    setAllCashTxsList(updatedList);
+    cashTransactionService.saveToLocalCache(updatedList);
+    setEditingCashTx(null);
+
+    cashTransactionService.updateTransaction(updatedTx).catch((e) => console.warn('Sync cash update failed', e));
+
+    const fresh = calendarService.aggregateAllEvents();
+    setAllEvents(fresh);
+    showToast(`Đã cập nhật phiếu thu chi "${updatedTx.code}"`);
+  };
+
+  const handleSaveProposal = async (formData: Partial<CostProposal>) => {
+    if (!editingProposal) return;
+    const currentProposals = googleSheetsService.getInitialProposals();
+    const updatedList = currentProposals.map((p) =>
+      p.id === editingProposal.id || (editingProposal.code && p.code === editingProposal.code)
+        ? ({
+            ...p,
+            ...formData,
+            updatedAt: new Date().toLocaleDateString('vi-VN'),
+          } as CostProposal)
+        : p
+    );
+    setAllProposalsList(updatedList);
+    googleSheetsService.saveToCache(updatedList);
+    setEditingProposal(null);
+
+    const target = updatedList.find(
+      (p) => p.id === editingProposal.id || (editingProposal.code && p.code === editingProposal.code)
+    );
+    if (target) {
+      googleSheetsService.updateInSheet(target).catch((e) => console.warn('Sync proposal update failed', e));
+    }
+
+    const fresh = calendarService.aggregateAllEvents();
+    setAllEvents(fresh);
+    showToast(`Đã cập nhật đề xuất chi phí "${target?.title || editingProposal.title}"`);
+  };
+
+  const handleSaveLearning = (payload: LearningEntry) => {
+    if (!editingLearning) return;
+    const currentEntries = learningService.getInitialEntries();
+    const matchCode = editingLearning.code || payload.code;
+    const matchId = editingLearning.id || payload.id;
+    const updatedList = currentEntries.map((e) =>
+      (e.code && e.code === matchCode) || e.id === matchId
+        ? { ...e, ...payload, sheetIndex: e.sheetIndex }
+        : e
+    );
+    setAllLearningsList(updatedList);
+    learningService.saveToCache(updatedList);
+    learningService.updateInSheet(payload).catch((e) => console.warn('Sync learning update failed', e));
+    setEditingLearning(null);
+
+    const fresh = calendarService.aggregateAllEvents();
+    setAllEvents(fresh);
+    showToast(`Đã cập nhật bài học "${payload.title}"`);
+  };
 
   const openAddDrawer = useCallback((mod: 'note' | 'task' | 'learning' | 'cash', dateStr?: string) => {
     closeAllDrawers();
@@ -956,9 +1140,9 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
           totalCount={allNotesList.length}
           onClose={() => setSelectedNote(null)}
           onNavigate={(nextNote) => setSelectedNote(nextNote)}
-          onEdit={() => {
+          onEdit={(note) => {
             setSelectedNote(null);
-            if (onNavigate) onNavigate('/ghi-chu');
+            setEditingNote(note);
           }}
           onDelete={(noteId) => {
             const updated = allNotesList.filter((n) => n.id !== noteId);
@@ -1002,9 +1186,9 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
             const idx = allEmployeesList.findIndex((e) => e.id === selectedEmployee.id);
             if (idx < allEmployeesList.length - 1) setSelectedEmployee(allEmployeesList[idx + 1]);
           }}
-          onEdit={() => {
+          onEdit={(emp) => {
             setSelectedEmployee(null);
-            if (onNavigate) onNavigate('/he-thong/nhan-vien');
+            setEditingEmployee(emp);
           }}
           onDelete={(id) => {
             const updated = allEmployeesList.filter((e) => e.id !== id);
@@ -1031,9 +1215,9 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
             const idx = allTasksList.findIndex((t) => t.id === selectedTask.id);
             if (idx < allTasksList.length - 1) setSelectedTask(allTasksList[idx + 1]);
           }}
-          onEdit={() => {
+          onEdit={(task) => {
             setSelectedTask(null);
-            if (onNavigate) onNavigate('/cong-viec/danh-sach');
+            setEditingTask(task);
           }}
           onDelete={(id) => {
             const updated = allTasksList.filter((t) => t.id !== id);
@@ -1064,9 +1248,9 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
             const idx = allProjectsList.findIndex((p) => p.id === selectedProject.id);
             if (idx < allProjectsList.length - 1) setSelectedProject(allProjectsList[idx + 1]);
           }}
-          onEdit={() => {
+          onEdit={(project) => {
             setSelectedProject(null);
-            if (onNavigate) onNavigate('/cong-viec/du-an');
+            setEditingProject(project);
           }}
           onDelete={(id) => {
             const updated = allProjectsList.filter((p) => p.id !== id);
@@ -1100,9 +1284,9 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
             if (idx < allCashTxsList.length - 1) setSelectedCashTx(allCashTxsList[idx + 1]);
           }}
           onNavigate={(tx) => setSelectedCashTx(tx)}
-          onEdit={() => {
+          onEdit={(tx) => {
             setSelectedCashTx(null);
-            if (onNavigate) onNavigate('/tai-chinh/thu-chi');
+            setEditingCashTx(tx);
           }}
           onDelete={(id) => {
             const tx = allCashTxsList.find((t) => t.id === id);
@@ -1153,9 +1337,9 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
             const idx = allProposalsList.findIndex((p) => p.id === selectedProposal.id);
             if (idx < allProposalsList.length - 1) setSelectedProposal(allProposalsList[idx + 1]);
           }}
-          onEdit={() => {
+          onEdit={(proposal) => {
             setSelectedProposal(null);
-            if (onNavigate) onNavigate('/tai-chinh/de-xuat-chi-phi');
+            setEditingProposal(proposal);
           }}
           onDelete={(id) => {
             const updated = allProposalsList.filter((p) => p.id !== id);
@@ -1178,9 +1362,9 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
         <LearningDetailDrawer
           entry={selectedLearning}
           onClose={() => setSelectedLearning(null)}
-          onEdit={() => {
+          onEdit={(entry) => {
             setSelectedLearning(null);
-            if (onNavigate) onNavigate('/hoc-hoi');
+            setEditingLearning(entry);
           }}
           onDelete={(id) => {
             const updated = allLearningsList.filter((e) => e.id !== id);
@@ -1222,6 +1406,66 @@ export const CalendarPage: React.FC<CalendarPageProps> = ({
           showToast(`✅ ${msg}`);
         }}
         onSyncFailed={(msg) => showToast(`⚠️ ${msg}`)}
+      />
+
+      {/* Module Edit Form Drawers right in Calendar */}
+      <NoteFormDrawer
+        isOpen={!!editingNote}
+        initialData={editingNote}
+        existingTags={Array.from(new Set(allNotesList.flatMap((n) => n.tags || [])))}
+        onClose={() => setEditingNote(null)}
+        onSubmit={handleSaveNote}
+      />
+
+      {editingTask && (
+        <TaskFormDrawer
+          mode="edit"
+          task={editingTask}
+          allTasks={allTasksList.length > 0 ? allTasksList : taskService.getInitialTasks()}
+          onClose={() => setEditingTask(null)}
+          onSave={handleSaveTask}
+        />
+      )}
+
+      {editingProject && (
+        <ProjectFormDrawer
+          mode="edit"
+          project={editingProject}
+          allProjects={allProjectsList.length > 0 ? allProjectsList : projectService.getInitialProjects()}
+          onClose={() => setEditingProject(null)}
+          onSave={handleSaveProject}
+        />
+      )}
+
+      <EmployeeFormDrawer
+        isOpen={!!editingEmployee}
+        initialData={editingEmployee}
+        onClose={() => setEditingEmployee(null)}
+        onSubmit={handleSaveEmployee}
+      />
+
+      <CashTransactionFormDrawer
+        isOpen={!!editingCashTx}
+        transactionToEdit={editingCashTx}
+        initialType={editingCashTx?.type || 'expense'}
+        onClose={() => setEditingCashTx(null)}
+        onSave={handleSaveCashTx}
+        onNavigateToModule={onNavigate}
+      />
+
+      <CostProposalFormDrawer
+        isOpen={!!editingProposal}
+        initialData={editingProposal}
+        onClose={() => setEditingProposal(null)}
+        onSubmit={handleSaveProposal}
+      />
+
+      <LearningFormDrawer
+        isOpen={!!editingLearning}
+        initialEntry={editingLearning}
+        allEntries={allLearningsList.length > 0 ? allLearningsList : learningService.getInitialEntries()}
+        onClose={() => setEditingLearning(null)}
+        onSave={handleSaveLearning}
       />
     </div>
   );

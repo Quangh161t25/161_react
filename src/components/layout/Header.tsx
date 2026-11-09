@@ -404,18 +404,18 @@ export const Header: React.FC<HeaderProps> = ({
               <img
                 alt="Avatar"
                 className="h-7 w-7 rounded-lg ring-1 ring-border shadow-sm object-cover"
-                src={currentUser.avatarUrl}
+                src={currentUser?.avatarUrl || ''}
               />
-              {currentUser.isOnline && (
+              {currentUser?.isOnline && (
                 <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-[1.5px] border-card rounded-full" />
               )}
             </div>
             <div className="hidden md:block text-left min-w-0 max-w-[11rem]">
               <p className="text-xs font-semibold text-foreground leading-tight truncate">
-                {currentUser.name}
+                {currentUser?.name || 'Tài khoản'}
               </p>
               <p className="text-[10px] font-normal text-muted-foreground leading-tight truncate">
-                {currentUser.title || currentUser.role}
+                {currentUser?.title || currentUser?.role || 'Nhân viên'}
               </p>
             </div>
             <ChevronDown
@@ -439,13 +439,13 @@ export const Header: React.FC<HeaderProps> = ({
                 {/* Mobile-only user info header */}
                 <div className="px-3 py-2.5 border-b border-border md:hidden">
                   <p className="text-xs font-semibold text-foreground truncate">
-                    {currentUser.name}
+                    {currentUser?.name || 'Tài khoản'}
                   </p>
                   <p className="text-xs text-primary font-medium mt-0.5 truncate">
-                    {currentUser.title || currentUser.role}
+                    {currentUser?.title || currentUser?.role || 'Nhân viên'}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {currentUser.username || 'admin'}
+                    {currentUser?.username || ''}
                   </p>
                 </div>
 

@@ -41,6 +41,7 @@ import { NoteFormDrawer } from './NoteFormDrawer';
 import { generateId } from '../../utils/idGenerator';
 import { toLocalDateStr } from '../../utils/dateUtils';
 import { MobileAddButton } from '../common/MobileFormHelpers';
+import { RowGroupValue, compareText, sortRowsIntoGroups } from '../../utils/tableGrouping';
 import { NOTES_CHANGED_EVENT } from '../../services/triggerService';
 import { NoteStatsTab } from './NoteStatsTab';
 import { NoteCalendarView } from './NoteCalendarView';
@@ -59,6 +60,63 @@ import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 interface NotePageProps {
   onBack: () => void;
 }
+
+const NOTE_STATUS_LABELS: Record<string, string> = {
+  published: 'Đã công bố',
+  draft: 'Bản nháp',
+  archived: 'Lưu trữ',
+};
+
+// Giá trị của một cột để nhóm và sắp xếp: ngày giờ sắp theo giá trị gốc, hiển thị theo kiểu dd/mm/yyyy
+const getNoteColumnValue = (note: Note, colId: string): RowGroupValue => {
+  const text = (value?: string | null): RowGroupValue => {
+    const trimmed = (value || '').trim();
+    return { key: trimmed, label: trimmed };
+  };
+  const date = (value?: string | null): RowGroupValue => {
+    const iso = (value || '').slice(0, 10);
+    return { key: iso, label: iso.split('-').reverse().join('/') };
+  };
+
+  switch (colId) {
+    case 'title':
+      return text(note.title);
+    case 'content':
+      return text(stripMarkdown(note.content || ''));
+    case 'category':
+      return text(note.category);
+    case 'activity':
+      return text(note.activity);
+    case 'participants':
+      return text((note.participants || []).map((p) => p.name).join(', '));
+    case 'tags':
+      return text((note.tags || []).join(', '));
+    case 'status':
+      return text(NOTE_STATUS_LABELS[note.status] || note.status);
+    case 'noteDate':
+      return date(note.noteDate);
+    case 'noteTime':
+      return text((note.noteTime || '').slice(0, 5));
+    case 'location':
+      return text(note.location);
+    case 'attachments': {
+      const count = (note.attachments || []).length + (note.images || []).length;
+      return { key: count ? String(count) : '', label: count ? `${count} tệp` : '' };
+    }
+    case 'link':
+      return text(note.link);
+    case 'author':
+      return text(note.author);
+    case 'summary':
+      return text(note.summary);
+    case 'createdAt':
+      return date(note.createdAt);
+    case 'updatedAt':
+      return date(note.updatedAt);
+    default:
+      return text(note.code || note.id);
+  }
+};
 
 // Ordered columns: Tiêu đề -> Nội dung -> Chuyên mục -> Hoạt động -> Đi cùng ai -> Thẻ -> Trạng thái -> Ngày -> Giờ -> Vị trí -> Đính kèm -> Tác giả
 export const DEFAULT_NOTE_COLUMNS: ColumnItem[] = [
@@ -236,6 +294,9 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
   });
 
   const handleSaveColumns = (newCols: ColumnItem[]) => {
+    if (newCols.find((c) => c.grouped)?.id !== tableColumns.find((c) => c.grouped)?.id) {
+      setCurrentPage(1);
+    }
     setTableColumns(newCols);
     try {
       localStorage.setItem('erp_note_columns_v3', JSON.stringify(newCols));
@@ -433,44 +494,29 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     }
   };
 
+  // Chọn trực tiếp cột và chiều sắp xếp từ Tùy chỉnh cột
+  const handleSortColumnDirection = (colId: string, direction: 'asc' | 'desc') => {
+    setSortField(colId === 'noteDate' || colId === 'noteTime' ? 'dateTime' : colId);
+    setSortDirection(direction);
+    setCurrentPage(1);
+  };
+
+  const groupColumn = useMemo(() => tableColumns.find((c) => c.grouped), [tableColumns]);
+
   // Sort notes: Strictly by selected field, default to Date & Time descending (lớn tới nhỏ)
-  const sortedNotes = useMemo(() => {
-    return [...filteredNotes].sort((a, b) => {
+  const { sortedNotes, noteGroups, getNoteGroupKey } = useMemo(() => {
+    const sorted = [...filteredNotes].sort((a, b) => {
       let diff = 0;
 
       if (sortField === 'dateTime' || sortField === 'noteDate' || sortField === 'noteTime') {
         const timeA = getNoteDateTimeTimestamp(a);
         const timeB = getNoteDateTimeTimestamp(b);
         diff = sortDirection === 'desc' ? timeB - timeA : timeA - timeB;
-      } else if (sortField === 'title') {
-        const titleA = a.title || '';
-        const titleB = b.title || '';
-        diff = sortDirection === 'desc' ? titleB.localeCompare(titleA) : titleA.localeCompare(titleB);
-      } else if (sortField === 'category') {
-        const catA = a.category || '';
-        const catB = b.category || '';
-        diff = sortDirection === 'desc' ? catB.localeCompare(catA) : catA.localeCompare(catB);
-      } else if (sortField === 'author') {
-        const authA = a.author || '';
-        const authB = b.author || '';
-        diff = sortDirection === 'desc' ? authB.localeCompare(authA) : authA.localeCompare(authB);
-      } else if (sortField === 'status') {
-        const stA = a.status || '';
-        const stB = b.status || '';
-        diff = sortDirection === 'desc' ? stB.localeCompare(stA) : stA.localeCompare(stB);
-      } else if (sortField === 'location') {
-        const locA = a.location || '';
-        const locB = b.location || '';
-        diff = sortDirection === 'desc' ? locB.localeCompare(locA) : locA.localeCompare(locB);
-      } else if (sortField === 'activity') {
-        const actA = a.activity || '';
-        const actB = b.activity || '';
-        diff = sortDirection === 'desc' ? actB.localeCompare(actA) : actA.localeCompare(actB);
       } else {
-        // Fallback to code or id
-        const idA = a.code || a.id || '';
-        const idB = b.code || b.id || '';
-        diff = sortDirection === 'desc' ? idB.localeCompare(idA) : idA.localeCompare(idB);
+        const valueA = getNoteColumnValue(a, sortField).key;
+        const valueB = getNoteColumnValue(b, sortField).key;
+        // Ô trống luôn nằm cuối, theo cả hai chiều sắp xếp
+        diff = !valueA || !valueB ? Number(!valueA) - Number(!valueB) : compareText(valueA, valueB, sortDirection);
       }
 
       if (diff !== 0) return diff;
@@ -481,7 +527,28 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
 
       return (b.id || '').localeCompare(a.id || '');
     });
-  }, [filteredNotes, sortField, sortDirection]);
+
+    if (!groupColumn) {
+      return { sortedNotes: sorted, noteGroups: null, getNoteGroupKey: null };
+    }
+    const grouped = sortRowsIntoGroups(
+      sorted,
+      (note) => getNoteColumnValue(note, groupColumn.id),
+      groupColumn.groupDirection || 'asc'
+    );
+    return { sortedNotes: grouped.rows, noteGroups: grouped.groups, getNoteGroupKey: grouped.getGroupKey };
+  }, [filteredNotes, sortField, sortDirection, groupColumn]);
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroupCollapsed = (key: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   // Paginated Notes
   const totalPages = Math.max(1, Math.ceil(sortedNotes.length / pageSize));
@@ -814,6 +881,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
     const textWrapClass = isWrap
       ? 'whitespace-normal break-words leading-relaxed'
       : 'whitespace-nowrap truncate overflow-hidden text-ellipsis block w-full max-w-full';
+    const inlineTextClass = isWrap ? 'whitespace-normal break-words leading-relaxed' : 'truncate';
 
     const offsetInfo = columnOffsets.get(colId);
     const isPinned = !!offsetInfo?.isPinned;
@@ -867,7 +935,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                   </span>
                 )}
                 {note.summary && (
-                  <p className="text-[11px] text-muted-foreground truncate leading-tight">
+                  <p className={`text-[11px] text-muted-foreground leading-tight ${inlineTextClass}`}>
                     {note.summary}
                   </p>
                 )}
@@ -882,8 +950,8 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         const directUrl = note.link || urlMatch?.[0];
         return (
           <td key={colId} style={tdStyle} className={`${tdBaseClass} text-foreground/80`}>
-            <div className={`w-full min-w-0 ${textWrapClass} flex items-center justify-between gap-2`} title={cleanContent}>
-              <span className="truncate">{cleanContent || '—'}</span>
+            <div className="w-full min-w-0 flex items-center justify-between gap-2" title={cleanContent}>
+              <span className={`min-w-0 flex-1 ${inlineTextClass}`}>{cleanContent || '—'}</span>
               {directUrl && (
                 <a
                   href={directUrl.startsWith('http') ? directUrl : `https://${directUrl}`}
@@ -911,11 +979,11 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
-                className="text-primary hover:underline text-xs inline-flex items-center gap-1 font-medium truncate max-w-full"
+                className={`text-primary hover:underline text-xs inline-flex items-center gap-1 font-medium max-w-full ${inlineTextClass}`}
                 title={note.link}
               >
                 <ExternalLink className="w-3 h-3 shrink-0" />
-                <span className="truncate">{note.link}</span>
+                <span className={`min-w-0 ${inlineTextClass}`}>{note.link}</span>
               </a>
             ) : (
               <span className="text-muted-foreground text-xs">—</span>
@@ -934,9 +1002,9 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
         return (
           <td key={colId} style={tdStyle} className={tdBaseClass}>
             {note.activity ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 max-w-full truncate">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 max-w-full ${inlineTextClass}`}>
                 <Sparkles className="w-3 h-3 shrink-0" />
-                <span className="truncate">{note.activity}</span>
+                <span className={`min-w-0 ${inlineTextClass}`}>{note.activity}</span>
               </span>
             ) : (
               <span className="text-muted-foreground text-xs">—</span>
@@ -962,7 +1030,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                   ))}
                 </div>
                 <div
-                  className="min-w-0 flex-1 truncate text-xs text-foreground font-medium"
+                  className={`min-w-0 flex-1 text-xs text-foreground font-medium ${inlineTextClass}`}
                   title={parts.map((p) => p.name).join(', ')}
                 >
                   {parts.map((p) => p.name).join(', ')}
@@ -998,7 +1066,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                 {validTags.map((t, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground border border-border shrink-0 max-w-full truncate"
+                    className={`inline-flex items-center px-2 py-0.5 rounded-md bg-muted/60 text-[11px] font-medium text-foreground border border-border shrink-0 max-w-full ${inlineTextClass}`}
                   >
                     #{t.replace(/^#/, '')}
                   </span>
@@ -1519,6 +1587,9 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                     onChangeDensity={handleSaveDensity}
                     onReset={handleResetColumns}
                     align="right"
+                    sortColumnId={sortField === 'dateTime' ? 'noteDate' : sortField}
+                    sortDirection={sortDirection}
+                    onSortColumn={handleSortColumnDirection}
                   />
 
                   {/* Grid / Table Toggle */}
@@ -1746,9 +1817,38 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                               ? 'bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-850'
                               : 'bg-white dark:bg-card hover:bg-slate-100 dark:hover:bg-slate-850';
 
+                            const groupKey = getNoteGroupKey ? getNoteGroupKey(note) : null;
+                            const groupInfo = groupKey !== null ? noteGroups?.get(groupKey) : undefined;
+                            const isGroupStart =
+                              !!groupInfo && (index === 0 || getNoteGroupKey?.(paginatedNotes[index - 1]) !== groupKey);
+                            const isGroupCollapsed = groupKey !== null && collapsedGroups.has(groupKey);
+
                             return (
+                              <React.Fragment key={note.id}>
+                              {isGroupStart && groupInfo && groupColumn && (
+                                <tr
+                                  onClick={() => toggleGroupCollapsed(groupInfo.key)}
+                                  aria-expanded={!isGroupCollapsed}
+                                  className="cursor-pointer bg-muted hover:bg-muted/80 [&>td]:border-b [&>td]:border-border"
+                                >
+                                  <td colSpan={visibleColumns.length + 2} className={`px-3 ${cellPaddingClass.split(' ')[0]}`}>
+                                    <span className="sticky left-3 inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                                      {isGroupCollapsed ? (
+                                        <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+                                      ) : (
+                                        <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                                      )}
+                                      <span className="text-muted-foreground font-medium">{groupColumn.label}:</span>
+                                      <span>{groupInfo.label}</span>
+                                      <span className="px-1.5 py-0.5 rounded-full bg-background text-[10px] tabular-nums text-muted-foreground border border-border">
+                                        {groupInfo.count}
+                                      </span>
+                                    </span>
+                                  </td>
+                                </tr>
+                              )}
+                              {!isGroupCollapsed && (
                               <tr
-                                key={note.id}
                                 onClick={() => setSelectedNoteForDetail(note)}
                                 aria-current={isActiveDetail}
                                 className={`group cursor-pointer transition-colors ${rowBgClass} [&>td]:border-b [&>td]:border-border`}
@@ -1809,6 +1909,8 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                                   </div>
                                 </td>
                               </tr>
+                              )}
+                              </React.Fragment>
                             );
                           })
                         )}

@@ -10,7 +10,12 @@ import {
   WrapText,
   Baseline,
   Pin,
+  Layers,
+  ArrowDownAZ,
+  ArrowDownZA,
+  X,
 } from 'lucide-react';
+import { GroupDirection } from '../../utils/tableGrouping';
 
 export type ColumnAlign = 'left' | 'center' | 'right';
 export type ColumnWrap = 'truncate' | 'wrap';
@@ -24,6 +29,8 @@ export interface ColumnItem {
   width?: number;
   align?: ColumnAlign;
   wrap?: ColumnWrap;
+  grouped?: boolean; // Bảng đang nhóm theo cột này
+  groupDirection?: GroupDirection;
 }
 
 export type TableDensity = 'compact' | 'normal' | 'relaxed';
@@ -36,6 +43,10 @@ interface ColumnCustomizerPopoverProps {
   onReset: () => void;
   triggerClassName?: string;
   align?: 'left' | 'right';
+  // Truyền onSortColumn để bật nút Nhóm và A-Z cho từng cột
+  sortColumnId?: string;
+  sortDirection?: GroupDirection;
+  onSortColumn?: (columnId: string, direction: GroupDirection) => void;
 }
 
 export const ColumnCustomizerPopover: React.FC<ColumnCustomizerPopoverProps> = ({
@@ -46,7 +57,11 @@ export const ColumnCustomizerPopover: React.FC<ColumnCustomizerPopoverProps> = (
   onReset,
   triggerClassName,
   align = 'right',
+  sortColumnId,
+  sortDirection,
+  onSortColumn,
 }) => {
+  const groupingEnabled = !!onSortColumn;
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -145,6 +160,23 @@ export const ColumnCustomizerPopover: React.FC<ColumnCustomizerPopoverProps> = (
     onChangeColumns(updated);
   };
 
+  // Mỗi lần chỉ nhóm theo một cột
+  const handleToggleColumnGroup = (id: string) => {
+    onChangeColumns(columns.map((col) => ({ ...col, grouped: col.id === id ? !col.grouped : false })));
+  };
+
+  const handleToggleColumnSort = (col: ColumnItem) => {
+    if (col.grouped) {
+      const next: GroupDirection = col.groupDirection === 'desc' ? 'asc' : 'desc';
+      onChangeColumns(columns.map((c) => (c.id === col.id ? { ...c, groupDirection: next } : c)));
+    } else {
+      const isCurrent = sortColumnId === col.id;
+      onSortColumn?.(col.id, isCurrent && sortDirection === 'asc' ? 'desc' : 'asc');
+    }
+  };
+
+  const groupedColumn = useMemo(() => columns.find((c) => c.grouped), [columns]);
+
   // Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -218,7 +250,7 @@ export const ColumnCustomizerPopover: React.FC<ColumnCustomizerPopoverProps> = (
           } top-full mt-2 bg-card backdrop-blur-xl rounded-xl shadow-2xl border border-border z-[60] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150`}
           style={{ opacity: 1, transform: 'none' }}
         >
-          <div className="w-[395px] overflow-hidden flex flex-col">
+          <div className={`${groupingEnabled ? 'w-[460px]' : 'w-[395px]'} max-w-[calc(100vw-1.5rem)] overflow-hidden flex flex-col`}>
             {/* Header */}
             <div className="px-3 py-2 border-b border-border bg-muted/30 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -323,6 +355,27 @@ export const ColumnCustomizerPopover: React.FC<ColumnCustomizerPopoverProps> = (
               </div>
             </div>
 
+            {/* Trạng thái nhóm */}
+            {groupingEnabled && groupedColumn && (
+              <div className="px-3 py-1.5 border-b border-border bg-primary/5 flex items-center justify-between gap-2 text-[11px]">
+                <span className="flex items-center gap-1.5 text-foreground min-w-0">
+                  <Layers className="w-3 h-3 text-primary shrink-0" />
+                  <span className="truncate">
+                    Đang nhóm theo <strong>{groupedColumn.label}</strong> (
+                    {groupedColumn.groupDirection === 'desc' ? 'Z → A' : 'A → Z'})
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleToggleColumnGroup(groupedColumn.id)}
+                  className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                  Bỏ nhóm
+                </button>
+              </div>
+            )}
+
             {/* Search Input */}
             <div className="px-3 py-1.5 border-b border-border bg-muted/10">
               <input
@@ -340,6 +393,8 @@ export const ColumnCustomizerPopover: React.FC<ColumnCustomizerPopoverProps> = (
               <span>Tên cột (Kéo thả)</span>
               <div className="flex items-center gap-2.5 pr-0.5">
                 <span>Căn lề</span>
+                {groupingEnabled && <span>Nhóm</span>}
+                {groupingEnabled && <span>A-Z</span>}
                 <span>Dòng</span>
                 <span>Ghim</span>
                 <span>Độ rộng</span>
@@ -360,6 +415,11 @@ export const ColumnCustomizerPopover: React.FC<ColumnCustomizerPopoverProps> = (
                   const currentAlign = col.align || 'left';
                   const isWrapped = col.wrap === 'wrap';
                   const isPinned = !!col.pinned;
+                  const activeSort: GroupDirection | null = col.grouped
+                    ? col.groupDirection || 'asc'
+                    : sortColumnId === col.id
+                    ? sortDirection || 'asc'
+                    : null;
 
                   return (
                     <div
@@ -463,6 +523,47 @@ export const ColumnCustomizerPopover: React.FC<ColumnCustomizerPopoverProps> = (
                             <AlignRight className="w-2.5 h-2.5" />
                           </button>
                         </div>
+
+                        {groupingEnabled && (
+                          <>
+                            {/* Group By Toggle */}
+                            <button
+                              type="button"
+                              aria-pressed={!!col.grouped}
+                              aria-label={`Nhóm theo ${col.label}`}
+                              onClick={() => handleToggleColumnGroup(col.id)}
+                              className={`p-1 rounded border transition-all cursor-pointer ${
+                                col.grouped
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted'
+                              }`}
+                              title={col.grouped ? 'Đang nhóm theo cột này (Bấm để bỏ nhóm)' : 'Nhóm theo cột này'}
+                            >
+                              <Layers className="w-3 h-3" />
+                            </button>
+
+                            {/* Sort A-Z Toggle */}
+                            <button
+                              type="button"
+                              aria-label={`Sắp xếp ${col.label}`}
+                              onClick={() => handleToggleColumnSort(col)}
+                              className={`p-1 rounded border transition-all cursor-pointer ${
+                                activeSort
+                                  ? 'bg-primary/15 border-primary/40 text-primary font-semibold'
+                                  : 'bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted'
+                              }`}
+                              title={
+                                col.grouped
+                                  ? `Thứ tự các nhóm: ${activeSort === 'desc' ? 'Z → A' : 'A → Z'} (Bấm để đổi)`
+                                  : activeSort
+                                  ? `Đang sắp xếp ${activeSort === 'desc' ? 'Z → A' : 'A → Z'} (Bấm để đổi)`
+                                  : 'Sắp xếp A → Z theo cột này'
+                              }
+                            >
+                              {activeSort === 'desc' ? <ArrowDownZA className="w-3 h-3" /> : <ArrowDownAZ className="w-3 h-3" />}
+                            </button>
+                          </>
+                        )}
 
                         {/* Text Wrap Toggle */}
                         <button

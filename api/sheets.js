@@ -231,6 +231,88 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, message: 'Đổi mật khẩu thành công!' });
     }
 
+    // --- VERIFY SESSION WITH DSNV ---
+    if ((action === 'verify-session' || action === 'auth/verify') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const targetCode = (body.code || '').trim().toLowerCase();
+      const targetUsername = (body.username || '').trim().toLowerCase();
+      const targetName = (body.name || '').trim().toLowerCase();
+      const targetEmail = (body.email || '').trim().toLowerCase();
+      const targetPhone = (body.phone || '').trim().replace(/[\s.-]/g, '');
+
+      if (!targetCode && !targetUsername && !targetEmail && !targetPhone) {
+        return res.status(400).json({ success: false, error: 'Thiếu thông tin tài khoản để đối soát DSNV!' });
+      }
+
+      const employees = await fetchEmployeesFromSheet();
+      const matchedEmp = (employees || []).find((emp) => {
+        const u = (emp.username || '').toLowerCase().trim();
+        const c = (emp.code || '').toLowerCase().trim();
+        const n = (emp.name || '').toLowerCase().trim();
+        const em = (emp.email || '').toLowerCase().trim();
+        const ph = (emp.phone || '').toLowerCase().trim().replace(/[\s.-]/g, '');
+
+        // 1. If username was provided, check if username matches
+        if (targetUsername) {
+          if (u && u === targetUsername) {
+            if (targetName && n && n !== targetName) return false;
+            return true;
+          }
+        }
+
+        // 2. If code was provided, verify code AND identity consistency
+        if (targetCode && c === targetCode) {
+          if (targetUsername && u && u !== targetUsername) return false;
+          if (targetName && n && n !== targetName) return false;
+          return true;
+        }
+
+        // 3. If email was provided
+        if (targetEmail && em && em === targetEmail) {
+          if (targetName && n && n !== targetName) return false;
+          return true;
+        }
+
+        // 4. If phone was provided
+        if (targetPhone && ph && ph === targetPhone) {
+          if (targetName && n && n !== targetName) return false;
+          return true;
+        }
+
+        return false;
+      });
+
+      if (!matchedEmp) {
+        return res.status(404).json({
+          success: false,
+          error: 'Tài khoản không tồn tại trong Danh sách nhân viên (DSNV)!',
+        });
+      }
+
+      if (matchedEmp.status === 'resigned' || matchedEmp.isActiveAccount === false) {
+        return res.status(403).json({
+          success: false,
+          error: 'Tài khoản nhân viên này đã nghỉ việc hoặc bị khóa tài khoản trên hệ thống!',
+        });
+      }
+
+      const safeUser = {
+        id: matchedEmp.id,
+        name: matchedEmp.name,
+        username: matchedEmp.username || matchedEmp.code || targetUsername,
+        title: matchedEmp.role || 'Nhân viên',
+        role: matchedEmp.role || 'Nhân viên',
+        department: matchedEmp.department || 'Phòng ban',
+        avatarUrl: matchedEmp.avatarUrl,
+        isOnline: true,
+        email: matchedEmp.email,
+        phone: matchedEmp.phone,
+        code: matchedEmp.code,
+      };
+
+      return res.status(200).json({ success: true, user: safeUser });
+    }
+
     // --- EMPLOYEES ---
     if (action === 'employees' && req.method === 'GET') {
       const employees = await fetchEmployeesFromSheet();

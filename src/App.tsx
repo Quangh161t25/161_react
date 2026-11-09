@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { SettingsProvider } from './context/SettingsContext';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { MainLayout } from './components/layout/MainLayout';
 import { DashboardHome } from './components/dashboard/DashboardHome';
 import { FinancePage } from './components/finance/FinancePage';
@@ -34,6 +34,8 @@ import { notificationService } from './services/notificationService';
 import { triggerService } from './services/triggerService';
 
 const AppContent: React.FC = () => {
+  const { isAuthenticated, isCheckingAuth, currentUser } = useAuth();
+
   // Initialize current path from browser URL bar
   const [currentPath, setCurrentPath] = useState<string>(() => {
     if (typeof window !== 'undefined' && window.location.pathname) {
@@ -147,14 +149,44 @@ const AppContent: React.FC = () => {
     }
   }, [currentPath]);
 
-  // 1. Standalone Full-screen Login Page
-  if (currentPath === '/dang-nhap') {
+  // Checking authentication against Google Sheet / DSNV on app startup
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen w-full flex flex-col items-center justify-center bg-background text-foreground">
+        <div className="flex flex-col items-center gap-4 p-8 max-w-sm text-center">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+            <span className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-semibold text-base text-foreground">Kiểm tra thông tin tài khoản</h3>
+            <p className="text-xs text-muted-foreground">Đang đối chiếu dữ liệu với Danh sách nhân viên (DSNV)...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Not authenticated or invalid DSNV session: strictly block access!
+  if (!isAuthenticated || !currentUser) {
     return (
       <LoginPage
         onLoginSuccess={() => {
           handleNavigate('/');
         }}
       />
+    );
+  }
+
+  // If already authenticated and visiting /dang-nhap, show dashboard
+  if (currentPath === '/dang-nhap') {
+    return (
+      <MainLayout
+        activePath="/"
+        onNavigate={(path) => handleNavigate(path)}
+      >
+        <DashboardHome onNavigate={(path) => handleNavigate(path)} />
+        <TriggerToastHost />
+      </MainLayout>
     );
   }
 

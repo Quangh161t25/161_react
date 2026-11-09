@@ -192,8 +192,8 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
 
       setProposalDate(defaultDate || todayIso);
       setDueDate(defaultDate || todayIso);
-      setProposer(currentUser.name || 'Lê Minh Công');
-      setDepartment(currentUser.department || 'Ban Giám Đốc');
+      setProposer(currentUser?.name || '');
+      setDepartment(currentUser?.department || '');
       setTitle('');
       setReason('');
       setAccount('Vietcombank - Tài khoản chính');
