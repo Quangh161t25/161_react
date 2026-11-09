@@ -800,88 +800,42 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
                   </h4>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                  {/* Mã chứng từ */}
-                  <div>
-                    <label className="text-xs font-medium mb-1.5 flex items-center gap-1 text-muted-foreground">
-                      <FileText className="w-3 h-3" />
-                      Mã phiếu <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      required
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      placeholder="VD: PC-2026-001"
-                      className="flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-mono font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                    />
-                  </div>
-
-                  {/* Ngày giao dịch */}
-                  <div>
-                    <label className="text-xs font-medium mb-1.5 flex items-center gap-1 text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      Ngày giao dịch <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={transactionDate}
-                      onChange={(e) => setTransactionDate(e.target.value)}
-                      className="flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                    />
-                  </div>
-
-                  {/* Giờ giao dịch */}
-                  <div>
-                    <label className="text-xs font-medium mb-1.5 flex items-center gap-1 text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      Giờ giao dịch (24h)
-                    </label>
-                    <TimePickerInput
-                      value={transactionTime}
-                      onChange={(val) => setTransactionTime(val)}
-                      placeholder="09:00"
-                      force24h={true}
-                    />
-                  </div>
-
-                  {/* Tiêu đề / Lý do */}
-                  <div className="sm:col-span-3">
-                    <label className="text-xs font-medium mb-1.5 flex items-center gap-1 text-muted-foreground">
-                      <FileText className="w-3 h-3" />
-                      Lý do / Nội dung thu chi <span className="text-destructive">*</span>
-                    </label>
-                    <input
-                      required
-                      value={title}
-                      onChange={(e) => {
-                        setTitle(e.target.value);
-                        if (formErrors.title) setFormErrors({ ...formErrors, title: '' });
-                      }}
-                      placeholder={
-                        type === 'income'
-                          ? 'VD: Thu tiền tạm ứng hợp đồng...'
-                          : type === 'expense'
-                          ? 'VD: Chi thanh toán tiền thuê văn phòng...'
-                          : 'VD: Rút tiền tài khoản nhập quỹ...'
-                      }
-                      className={`flex h-9 w-full rounded-lg border bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 ${
-                        formErrors.title ? 'border-destructive' : 'border-border'
-                      }`}
-                    />
-                    {formErrors.title && (
-                      <span className="text-[11px] text-destructive mt-1 block">
-                        {formErrors.title}
-                      </span>
-                    )}
-                  </div>
+                {/* 1. Tiêu đề / Lý do thu chi (Đưa lên trên) */}
+                <div>
+                  <label className="text-xs font-semibold mb-1.5 flex items-center gap-1 text-foreground">
+                    <FileText className="w-3.5 h-3.5 text-primary" />
+                    <span>Lý do / Nội dung thu chi</span> <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    required
+                    value={title}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      if (formErrors.title) setFormErrors({ ...formErrors, title: '' });
+                    }}
+                    placeholder={
+                      type === 'income'
+                        ? 'VD: Thu tiền tạm ứng hợp đồng...'
+                        : type === 'expense'
+                        ? 'VD: Chi thanh toán tiền thuê văn phòng...'
+                        : 'VD: Rút tiền tài khoản nhập quỹ...'
+                    }
+                    className={`flex h-10 w-full rounded-lg border bg-background px-3.5 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 ${
+                      formErrors.title ? 'border-destructive' : 'border-border'
+                    }`}
+                  />
+                  {formErrors.title && (
+                    <span className="text-[11px] text-destructive mt-1 block">
+                      {formErrors.title}
+                    </span>
+                  )}
                 </div>
 
-                {/* Amount Box - Clean, simple, accepts ANY number (step="any") */}
+                {/* 2. Amount Box - Số tiền giao dịch & Bằng chữ (Đưa lên trên, ngay sau lý do) */}
                 <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-2">
                   <label className="text-xs font-bold flex items-center gap-1.5 text-foreground">
                     <CreditCard className="w-3.5 h-3.5 text-primary" />
-                    Số tiền giao dịch (VNĐ) <span className="text-destructive">*</span>
+                    <span>Số tiền giao dịch (VNĐ)</span> <span className="text-destructive">*</span>
                   </label>
 
                   <input
@@ -914,6 +868,53 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
                     <span className="font-medium text-foreground italic truncate">
                       {amountInWords || 'Không đồng chẵn'}
                     </span>
+                  </div>
+                </div>
+
+                {/* 3. Mã phiếu, Ngày giao dịch, Giờ giao dịch (Đặt xuống bên dưới) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+                  {/* Mã chứng từ */}
+                  <div>
+                    <label className="text-xs font-medium mb-1.5 flex items-center gap-1 text-muted-foreground">
+                      <FileText className="w-3 h-3" />
+                      <span>Mã phiếu</span> <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      required
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      placeholder="VD: PC-2026-001"
+                      className="flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-mono font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                    />
+                  </div>
+
+                  {/* Ngày giao dịch */}
+                  <div>
+                    <label className="text-xs font-medium mb-1.5 flex items-center gap-1 text-muted-foreground">
+                      <Calendar className="w-3 h-3" />
+                      <span>Ngày giao dịch</span> <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={transactionDate}
+                      onChange={(e) => setTransactionDate(e.target.value)}
+                      className="flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                    />
+                  </div>
+
+                  {/* Giờ giao dịch */}
+                  <div>
+                    <label className="text-xs font-medium mb-1.5 flex items-center gap-1 text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      <span>Giờ giao dịch (24h)</span>
+                    </label>
+                    <TimePickerInput
+                      value={transactionTime}
+                      onChange={(val) => setTransactionTime(val)}
+                      placeholder="09:00"
+                      force24h={true}
+                    />
                   </div>
                 </div>
               </div>
