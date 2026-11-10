@@ -305,20 +305,6 @@ export const LearningDetailDrawer: React.FC<LearningDetailDrawerProps> = ({
                 </div>
               );
             })()}
-
-            {/* Tags */}
-            {entry.tags && entry.tags.length > 0 && (
-              <div className="border-t border-border pt-4 flex flex-wrap items-center gap-1.5">
-                {entry.tags.map((t) => (
-                  <span
-                    key={t}
-                    className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground border border-border"
-                  >
-                    #{t}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>

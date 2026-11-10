@@ -19,8 +19,8 @@ import {
   Link2,
   Download,
   ChartColumn,
-  RotateCcw,
   GraduationCap,
+  Tag,
   X,
 } from 'lucide-react';
 import { LearningEntry } from '../../types/learning';
@@ -115,7 +115,9 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
   }, [isMobile]);
   const [searchQuery, setSearchQuery] = useState('');
   const [onlyPinned, setOnlyPinned] = useState(false);
-  const [onlyDueForReview, setOnlyDueForReview] = useState(false);
+  const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [isTagMenuOpen, setIsTagMenuOpen] = useState(false);
+  const [tagSearchQuery, setTagSearchQuery] = useState('');
 
   // Dropdowns
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
@@ -413,6 +415,26 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
     }
   };
 
+  // Unique tags with frequency count for filter dropdown
+  const allTagsWithCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    entries.forEach((e) => {
+      (e.tags || []).forEach((t) => {
+        const clean = String(t || '').trim();
+        if (clean) {
+          counts[clean] = (counts[clean] || 0) + 1;
+        }
+      });
+    });
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [entries]);
+
+  const filteredTagList = useMemo(() => {
+    if (!tagSearchQuery.trim()) return allTagsWithCounts;
+    const q = tagSearchQuery.toLowerCase().trim();
+    return allTagsWithCounts.filter(([tag]) => tag.toLowerCase().includes(q));
+  }, [allTagsWithCounts, tagSearchQuery]);
+
   // Filtered Entries
   const todayStr = new Date().toISOString().split('T')[0];
   const filteredEntries = useMemo(() => {
@@ -433,12 +455,12 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
       // Pinned
       if (onlyPinned && !e.isPinned) return false;
 
-      // Due for review
-      if (onlyDueForReview && (!e.nextReviewDate || e.nextReviewDate > todayStr)) return false;
+      // Tag filter
+      if (selectedTag !== 'all' && !(e.tags || []).includes(selectedTag)) return false;
 
       return true;
     });
-  }, [entries, searchQuery, onlyPinned, onlyDueForReview, todayStr]);
+  }, [entries, searchQuery, onlyPinned, selectedTag]);
 
   // Helper to extract numeric rank for sheet order (dưới lên trên)
   const getEntrySheetOrderRank = (entry: LearningEntry, originalIndex: number): number => {
@@ -740,7 +762,19 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
         return (
           <div className={`${padding} flex items-center ${justifyClass} gap-1 overflow-hidden ${isWrap ? 'flex-wrap' : 'truncate'}`}>
             {(entry.tags || []).slice(0, isWrap ? undefined : 2).map((t) => (
-              <span key={t} className="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground border border-border shrink-0">
+              <span
+                key={t}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedTag(selectedTag === t ? 'all' : t);
+                }}
+                className={`px-1.5 py-0.5 rounded text-[10px] border shrink-0 cursor-pointer transition-colors ${
+                  selectedTag === t
+                    ? 'bg-primary text-white border-primary font-semibold'
+                    : 'bg-muted text-muted-foreground border-border hover:bg-primary/10 hover:text-primary hover:border-primary/30'
+                }`}
+                title={`Bấm để lọc theo thẻ #${t}`}
+              >
                 #{t}
               </span>
             ))}
@@ -870,20 +904,6 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                     <span>Ghim</span>
                   </button>
 
-                  {/* Filter: Due for Review */}
-                  <button
-                    type="button"
-                    onClick={() => setOnlyDueForReview(!onlyDueForReview)}
-                    className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                      onlyDueForReview
-                        ? 'bg-rose-500/15 border-rose-500/30 text-rose-600 dark:text-rose-400 font-semibold'
-                        : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Cần ôn tập</span>
-                  </button>
-
                   {/* Sort Mode Dropdown */}
                   <div className="relative">
                     <button
@@ -978,6 +998,109 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                             <span>🔤 Tiêu đề (A → Z)</span>
                             {sortField === 'title' && <span className="text-[10px]">✓</span>}
                           </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Filter: Tag Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTagMenuOpen(!isTagMenuOpen);
+                        setTagSearchQuery('');
+                      }}
+                      className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                        selectedTag !== 'all'
+                          ? 'bg-primary/10 border-primary text-primary font-semibold'
+                          : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+                      }`}
+                      title="Lọc bài học theo thẻ từ khóa (Tags)"
+                    >
+                      <Tag className="w-3.5 h-3.5" />
+                      <span className="truncate max-w-[130px]">
+                        {selectedTag === 'all' ? 'Lọc thẻ' : `#${selectedTag}`}
+                      </span>
+                      {selectedTag !== 'all' ? (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTag('all');
+                          }}
+                          className="p-0.5 hover:bg-primary/20 rounded-full cursor-pointer ml-0.5"
+                          title="Bỏ lọc thẻ"
+                        >
+                          <X className="w-3 h-3" />
+                        </span>
+                      ) : (
+                        <ChevronDown className="w-3 h-3 ml-0.5 opacity-60" />
+                      )}
+                    </button>
+                    {isTagMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-30" onClick={() => setIsTagMenuOpen(false)} />
+                        <div className="absolute left-0 top-full mt-1 w-64 max-h-72 rounded-xl border border-border bg-card shadow-lg z-40 p-2 space-y-1.5 flex flex-col">
+                          {/* Search inside tag popup */}
+                          <div className="relative shrink-0">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                            <input
+                              type="text"
+                              placeholder="Tìm thẻ..."
+                              value={tagSearchQuery}
+                              onChange={(e) => setTagSearchQuery(e.target.value)}
+                              className="w-full h-7 pl-7 pr-2 rounded-lg border border-border bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary"
+                              autoFocus
+                            />
+                          </div>
+
+                          {/* Tag list */}
+                          <div className="overflow-y-auto space-y-0.5 max-h-56 pr-0.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedTag('all');
+                                setIsTagMenuOpen(false);
+                              }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors ${
+                                selectedTag === 'all'
+                                  ? 'bg-primary/10 text-primary font-semibold'
+                                  : 'hover:bg-muted text-foreground'
+                              }`}
+                            >
+                              <span>Tất cả thẻ</span>
+                              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md font-mono">
+                                {entries.length}
+                              </span>
+                            </button>
+
+                            {filteredTagList.map(([t, count]) => (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedTag(t);
+                                  setIsTagMenuOpen(false);
+                                }}
+                                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors truncate ${
+                                  selectedTag === t
+                                    ? 'bg-primary/10 text-primary font-semibold'
+                                    : 'hover:bg-muted text-foreground'
+                                }`}
+                              >
+                                <span className="truncate flex-1 pr-2">#{t}</span>
+                                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md font-mono shrink-0">
+                                  {count}
+                                </span>
+                              </button>
+                            ))}
+
+                            {filteredTagList.length === 0 && (
+                              <p className="text-xs text-muted-foreground italic py-3 text-center">
+                                Không tìm thấy thẻ nào
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </>
                     )}
@@ -1120,7 +1243,19 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                             {/* Badges */}
                             <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
                               {(entry.tags || []).slice(0, 3).map((t) => (
-                                <span key={t} className="px-2 py-0.5 rounded-full font-semibold bg-primary/10 text-primary border border-primary/20 truncate max-w-[130px]">
+                                <span
+                                  key={t}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTag(selectedTag === t ? 'all' : t);
+                                  }}
+                                  className={`px-2 py-0.5 rounded-full font-semibold border truncate max-w-[130px] cursor-pointer transition-colors ${
+                                    selectedTag === t
+                                      ? 'bg-primary text-white border-primary'
+                                      : 'bg-primary/10 text-primary border-primary/20 hover:bg-primary/20'
+                                  }`}
+                                  title={`Bấm để lọc theo thẻ #${t}`}
+                                >
                                   #{t}
                                 </span>
                               ))}
