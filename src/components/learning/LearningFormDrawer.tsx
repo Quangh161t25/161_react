@@ -917,113 +917,56 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
               )}
             </div>
 
-            {/* Summary */}
-            <div>
-              <label className="block text-xs font-semibold text-foreground mb-1">
-                Ý chính cốt lõi / Tóm tắt ngắn (1-2 câu)
-              </label>
-              <input
-                type="text"
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                placeholder="VD: Các module cấp cao không nên phụ thuộc vào module cấp thấp, cả hai nên phụ thuộc abstraction."
-                className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-            </div>
-
-            {/* Category & Mastery Level & Difficulty & Rating */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {/* Category */}
+            {/* Unified Information: Ý chính cốt lõi, Chuyên mục, Nguồn link & Các liên kết mở rộng */}
+            <div className="p-3.5 rounded-xl border border-border bg-card space-y-3">
+              {/* Ý chính cốt lõi / Tóm tắt ngắn */}
               <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Chuyên mục</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
-                >
-                  {LEARNING_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                {category === 'Khác' && (
-                  <input
-                    type="text"
-                    placeholder="Nhập chuyên mục riêng..."
-                    value={customCategory}
-                    onChange={(e) => setCustomCategory(e.target.value)}
-                    className="w-full mt-1.5 px-2.5 py-1 text-xs rounded-lg border border-border bg-background"
-                  />
-                )}
+                <label className="block text-xs font-semibold text-foreground mb-1">
+                  Ý chính cốt lõi / Tóm tắt ngắn (1-2 câu)
+                </label>
+                <input
+                  type="text"
+                  value={summary}
+                  onChange={(e) => setSummary(e.target.value)}
+                  placeholder="VD: Các module cấp cao không nên phụ thuộc vào module cấp thấp, cả hai nên phụ thuộc abstraction."
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                />
               </div>
 
-              {/* Mastery Level */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Mức độ nắm vững</label>
-                <select
-                  value={masteryLevel}
-                  onChange={(e) => setMasteryLevel(e.target.value as MasteryLevel)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
-                >
-                  <option value="learning">📖 Đang học</option>
-                  <option value="practicing">🛠️ Đang thực hành</option>
-                  <option value="mastered">✅ Đã nắm vững</option>
-                  <option value="review_needed">🔄 Cần ôn lại</option>
-                </select>
-              </div>
-
-              {/* Difficulty */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Độ khó</label>
-                <select
-                  value={difficulty}
-                  onChange={(e) => setDifficulty(e.target.value as DifficultyLevel)}
-                  className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
-                >
-                  <option value="beginner">🌱 Cơ bản</option>
-                  <option value="intermediate">⚡ Trung bình</option>
-                  <option value="advanced">🔥 Nâng cao</option>
-                </select>
-              </div>
-
-              {/* Rating */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Độ hữu ích</label>
-                <div className="flex items-center gap-1 py-1">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onClick={() => setRating(star)}
-                      className="p-0.5 hover:scale-110 transition-transform"
-                    >
-                      <Star
-                        className={`w-4 h-4 ${
-                          star <= rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/40'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                  <span className="text-xs text-muted-foreground ml-1.5 font-semibold">({rating}/5)</span>
+              {/* Chuyên mục & Nguồn link (Loại nguồn + Link URL) */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                {/* Chuyên mục */}
+                <div className="sm:col-span-4">
+                  <label className="block text-xs font-semibold text-foreground mb-1">Chuyên mục</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
+                  >
+                    {LEARNING_CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                  {category === 'Khác' && (
+                    <input
+                      type="text"
+                      placeholder="Nhập chuyên mục riêng..."
+                      value={customCategory}
+                      onChange={(e) => setCustomCategory(e.target.value)}
+                      className="w-full mt-1.5 px-2.5 py-1 text-xs rounded-lg border border-border bg-background"
+                    />
+                  )}
                 </div>
-              </div>
-            </div>
 
-            {/* Source Information */}
-            <div className="p-3.5 rounded-xl border border-border bg-muted/20 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                <Link2 className="w-3.5 h-3.5 text-primary" />
-                <span>Nguồn tham khảo & Tài liệu gốc</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Loại nguồn</label>
+                {/* Loại nguồn */}
+                <div className="sm:col-span-3">
+                  <label className="block text-xs font-semibold text-foreground mb-1">Loại nguồn</label>
                   <select
                     value={sourceType}
                     onChange={(e) => setSourceType(e.target.value as LearningSourceType)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background"
+                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
                   >
                     {LEARNING_SOURCE_TYPES.map((st) => (
                       <option key={st} value={st}>
@@ -1033,26 +976,16 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Tên nguồn / Tác giả</label>
-                  <input
-                    type="text"
-                    value={sourceName}
-                    onChange={(e) => setSourceName(e.target.value)}
-                    placeholder="VD: Sách Pragmatic Programmer..."
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-medium text-muted-foreground mb-1">Link nguồn URL</label>
+                {/* Link nguồn URL */}
+                <div className="sm:col-span-5">
+                  <label className="block text-xs font-semibold text-foreground mb-1">Link nguồn URL</label>
                   <div className="flex items-center gap-1">
                     <input
                       type="text"
                       value={sourceUrl}
                       onChange={(e) => setSourceUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background"
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
                     />
                     {sourceUrl && (
                       <a
@@ -1069,58 +1002,102 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
                 </div>
               </div>
 
-              {/* Extra Reference Links */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[11px] font-medium text-muted-foreground">Các liên kết mở rộng khác:</span>
+              {/* Các liên kết mở rộng khác - Dạng bảng */}
+              <div className="pt-2 border-t border-border/60">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Link2 className="w-3.5 h-3.5 text-primary" />
+                    <span>Các liên kết mở rộng khác:</span>
+                    {links.length > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full bg-primary/10 text-primary text-[11px] font-semibold">
+                        {links.length}
+                      </span>
+                    )}
+                  </div>
                 </div>
+
+                {/* Table of links */}
                 {links.length > 0 && (
-                  <div className="space-y-1 mb-2">
-                    {links.map((lnk) => (
-                      <div
-                        key={lnk.id}
-                        className="flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-background border border-border text-xs"
-                      >
-                        <a
-                          href={lnk.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-primary hover:underline truncate flex items-center gap-1 font-medium"
-                        >
-                          <ExternalLink className="w-3 h-3 shrink-0" />
-                          <span className="truncate">{lnk.title || lnk.url}</span>
-                        </a>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveLink(lnk.id)}
-                          className="text-muted-foreground hover:text-rose-500 p-0.5"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="border border-border rounded-lg overflow-hidden mb-2">
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-muted/50 border-b border-border text-muted-foreground text-[11px] font-semibold">
+                          <th className="py-1.5 px-2 text-center w-10">STT</th>
+                          <th className="py-1.5 px-3 text-left w-2/5">Tiêu đề liên kết</th>
+                          <th className="py-1.5 px-3 text-left">Đường dẫn URL</th>
+                          <th className="py-1.5 px-2 text-center w-12">Xóa</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60 bg-background">
+                        {links.map((lnk, index) => (
+                          <tr key={lnk.id} className="hover:bg-muted/30 transition-colors">
+                            <td className="py-1.5 px-2 text-center font-medium text-muted-foreground">
+                              {index + 1}
+                            </td>
+                            <td className="py-1.5 px-3 font-medium text-foreground truncate max-w-[200px]" title={lnk.title || lnk.url}>
+                              {lnk.title || '(Không có tiêu đề)'}
+                            </td>
+                            <td className="py-1.5 px-3">
+                              <a
+                                href={lnk.url.startsWith('http') ? lnk.url : `https://${lnk.url}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary hover:underline inline-flex items-center gap-1 max-w-[280px] sm:max-w-[380px] truncate"
+                                title={lnk.url}
+                              >
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{lnk.url}</span>
+                              </a>
+                            </td>
+                            <td className="py-1.5 px-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveLink(lnk.id)}
+                                className="p-1 rounded hover:bg-rose-500/10 text-muted-foreground hover:text-rose-600 transition-colors"
+                                title="Xóa liên kết"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
 
-                <div className="flex items-center gap-1.5">
+                {/* Input row to add new link */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5">
                   <input
                     type="text"
-                    placeholder="Tiêu đề link..."
+                    placeholder="Tiêu đề link (VD: Tài liệu tham khảo, Demo...)"
                     value={newLinkTitle}
                     onChange={(e) => setNewLinkTitle(e.target.value)}
-                    className="w-1/3 px-2 py-1 text-xs rounded-lg border border-border bg-background"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddLink();
+                      }
+                    }}
+                    className="sm:w-1/3 px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:border-primary"
                   />
                   <input
                     type="text"
                     placeholder="Đường dẫn URL (https://...)"
                     value={newLinkUrl}
                     onChange={(e) => setNewLinkUrl(e.target.value)}
-                    className="flex-1 px-2 py-1 text-xs rounded-lg border border-border bg-background"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddLink();
+                      }
+                    }}
+                    className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background focus:outline-none focus:border-primary"
                   />
                   <button
                     type="button"
                     onClick={handleAddLink}
-                    className="px-2.5 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 flex items-center gap-1 shrink-0"
+                    className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 flex items-center justify-center gap-1 shrink-0"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Thêm</span>
