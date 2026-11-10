@@ -92,7 +92,7 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
       if (name && !seenNames.has(name.toLowerCase())) {
         seenNames.add(name.toLowerCase());
         list.push({
-          id: t.projectId || `proj_${name.toLowerCase().replace(/\s+/g, '_')}`,
+          id: t.projectId || generateId('proj', name),
           name,
           code: t.projectCode,
         });

@@ -5,6 +5,61 @@ import crypto from 'crypto';
 const SPREADSHEET_ID = '1Cx_84szeCGKoLhCSqumeCzKLCErXg1YStQeI_Lrq4nw';
 const SERVICE_ACCOUNT_PATH = path.resolve(process.cwd(), 'service-account.json');
 
+/**
+ * Sinh chuỗi 8 ký tự ngẫu nhiên hoặc giả ngẫu nhiên theo seed (để ID ổn định khi đọc từ Sheet)
+ */
+export function generateRandom8(seed) {
+  const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
+  if (seed) {
+    let h1 = 0xdeadbeef, h2 = 0x41c64e6d;
+    const str = String(seed);
+    for (let i = 0; i < str.length; i++) {
+      const ch = str.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    const combined = (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+    return (combined + 'k7x9m2p4').substring(0, 8);
+  }
+  let result = '';
+  for (let i = 0; i < 8; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+/**
+ * Định dạng ID chuẩn hóa cho mọi module: [prefix]_[code]_[8random] hoặc [prefix]_[8random]
+ * Luôn đảm bảo đuôi ID kết thúc bằng 8 ký tự ngẫu nhiên.
+ */
+export function formatModuleId(prefix, code, existingId, idx) {
+  const cleanPrefix = (prefix || 'item').replace(/[_-]+$/, '');
+  const r8 = generateRandom8(code ? `${cleanPrefix}_${code}` : (idx !== undefined ? `${cleanPrefix}_${idx}` : undefined));
+
+  if (existingId && typeof existingId === 'string' && existingId.trim()) {
+    const trimmed = existingId.trim();
+    if (/_[a-z0-9]{8}$/i.test(trimmed)) {
+      return trimmed;
+    }
+    if (!/^\d+$/.test(trimmed)) {
+      const cleanId = trimmed.replace(/[_-]+$/, '');
+      return `${cleanId}_${r8}`;
+    }
+  }
+
+  if (code && String(code).trim()) {
+    const cleanCode = String(code).trim().toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/^_+|_+$/g, '');
+    if (cleanCode) {
+      return `${cleanPrefix}_${cleanCode}_${r8}`;
+    }
+  }
+
+  return `${cleanPrefix}_${r8}`;
+}
+
+
 export async function getAccessToken() {
   let serviceAccount;
   if (process.env.GOOGLE_SERVICE_ACCOUNT) {
@@ -158,6 +213,15 @@ export async function fetchProposalsFromSheet() {
       try {
         if (row[14]) {
           lineItems = typeof row[14] === 'string' ? JSON.parse(row[14]) : row[14];
+          if (Array.isArray(lineItems)) {
+            lineItems = lineItems.map((li, lIdx) => {
+              if (!li) return li;
+              const liId = (li.id && /_[a-z0-9]{8}$/i.test(li.id))
+                ? li.id
+                : formatModuleId('li', li.id || undefined, li.id, `${idx}_${lIdx}`);
+              return { ...li, id: liId };
+            });
+          }
         }
       } catch {
         lineItems = [];
@@ -171,9 +235,12 @@ export async function fetchProposalsFromSheet() {
         approvalStatus = 'rejected';
       }
 
+      const propCode = row[0] || `DX-${idx + 1}`;
+      const propId = formatModuleId('prop', propCode, undefined, idx);
+
       return {
-        id: String(idx + 1),
-        code: row[0] || `DX-${idx + 1}`,
+        id: propId,
+        code: propCode,
         title: row[1] || '',
         proposalDate: row[2] || '',
         dueDate: row[3] || '',
@@ -454,7 +521,7 @@ export function employeeTo47Row(e) {
     if (e.bankAccount || e.bankName) {
       bankAccountsList = [
         {
-          id: 'ba_1',
+          id: formatModuleId('ba', e.bankAccount || '1', undefined, e.code || '1'),
           bankName: e.bankName || '',
           accountNumber: e.bankAccount || '',
           accountHolder: e.bankAccountHolder || (e.name ? e.name.toUpperCase() : ''),
@@ -577,10 +644,20 @@ export function rowToEmployee(r, idx) {
   const bankName = (r[41] || '').trim();
   const bankBranch = (r[42] || '').trim();
 
+  if (Array.isArray(bankAccounts)) {
+    bankAccounts = bankAccounts.map((ba, bIdx) => {
+      if (!ba) return ba;
+      const baId = (ba.id && /_[a-z0-9]{8}$/i.test(ba.id))
+        ? ba.id
+        : formatModuleId('ba', ba.accountNumber || undefined, ba.id, `${idx}_${bIdx}`);
+      return { ...ba, id: baId };
+    });
+  }
+
   if ((!bankAccounts || bankAccounts.length === 0) && (bankAccount || bankName)) {
     bankAccounts = [
       {
-        id: 'ba_1',
+        id: formatModuleId('ba', bankAccount || '1', undefined, `${idx}_0`),
         bankName,
         accountNumber: bankAccount,
         accountHolder: bankAccountHolder,
@@ -601,7 +678,7 @@ export function rowToEmployee(r, idx) {
   }
 
   return {
-    id: String(idx + 1),
+    id: formatModuleId('emp', code, undefined, idx),
     code,
     name,
     username: (r[1] || '').trim(),
@@ -1043,7 +1120,7 @@ export function noteToRow(n) {
 
 export function rowToNote(r, idx) {
   const code = r[0] || `NOTE-${String(idx + 1).padStart(3, '0')}`;
-  const id = code.startsWith('note_') || code.startsWith('note-') ? code : `note-${code}`;
+  const id = formatModuleId('note', code, undefined, idx);
 
   let tags = [];
   if (r[5]) {
@@ -1071,6 +1148,15 @@ export function rowToNote(r, idx) {
   if (r[15]) {
     try {
       attachments = JSON.parse(r[15]);
+      if (Array.isArray(attachments)) {
+        attachments = attachments.map((att, aIdx) => {
+          if (!att) return att;
+          const attId = (att.id && /_[a-z0-9]{8}$/i.test(att.id))
+            ? att.id
+            : formatModuleId('att', att.name || undefined, att.id, `${idx}_${aIdx}`);
+          return { ...att, id: attId };
+        });
+      }
     } catch {
       attachments = [];
     }
@@ -1574,9 +1660,10 @@ export function rowToTransaction(r, idx) {
   else if (rawStatus.includes('hủy') || rawStatus === 'cancelled') status = 'cancelled';
 
   const code = r[0] || `GD-${String(idx + 1).padStart(4, '0')}`;
+  const id = formatModuleId('tx', code, undefined, idx);
 
   return {
-    id: String(idx + 1),
+    id,
     code,
     type,
     title: r[2] || '',
@@ -1905,9 +1992,12 @@ export function rowToFinanceCategory(r, idx) {
   const status = rawStatus.includes('khóa') || rawStatus === 'inactive' ? 'inactive' : 'active';
   const isPinned = (r[7] || '').toLowerCase().includes('có') || r[7] === true || r[7] === 'TRUE';
 
+  const code = r[0] || `KM-${String(idx + 1).padStart(3, '0')}`;
+  const id = formatModuleId('cat', code, undefined, idx);
+
   return {
-    id: String(idx + 1),
-    code: r[0] || `KM-${String(idx + 1).padStart(3, '0')}`,
+    id,
+    code,
     name: r[1] || '',
     type,
     parentCategory: r[3] || undefined,
@@ -2161,9 +2251,12 @@ export function rowToFinanceAccount(r, idx) {
   const isDefault = (r[10] || '').toLowerCase().includes('có') || r[10] === true || r[10] === 'TRUE';
   const isPinned = (r[12] || '').toLowerCase().includes('có') || r[12] === true || r[12] === 'TRUE';
 
+  const code = r[0] || `TK-${String(idx + 1).padStart(3, '0')}`;
+  const id = formatModuleId('acc', code, undefined, idx);
+
   return {
-    id: String(idx + 1),
-    code: r[0] || `TK-${String(idx + 1).padStart(3, '0')}`,
+    id,
+    code,
     accountName: r[1] || '',
     type,
     accountNumber: r[3] || '',
@@ -2435,9 +2528,12 @@ export function rowToCounterparty(r, idx) {
   const status = rawStatus.includes('ngừng') || rawStatus === 'inactive' ? 'inactive' : 'active';
   const isPinned = (r[13] || '').toLowerCase().includes('có') || r[13] === true || r[13] === 'TRUE';
 
+  const code = r[0] || `DT-${String(idx + 1).padStart(3, '0')}`;
+  const id = formatModuleId('cp', code, undefined, idx);
+
   return {
-    id: String(idx + 1),
-    code: r[0] || `DT-${String(idx + 1).padStart(3, '0')}`,
+    id,
+    code,
     name: r[1] || '',
     type,
     phone: r[3] || '',
@@ -2711,9 +2807,12 @@ export function rowToApprovalThreshold(r, idx) {
   else if (rawApplies.includes('chi') || rawApplies === 'expense') appliesTo = 'expense';
   else if (rawApplies.includes('tạm ứng') || rawApplies === 'advance') appliesTo = 'advance';
 
+  const code = r[0] || `ND-${String(idx + 1).padStart(3, '0')}`;
+  const id = formatModuleId('thr', code, undefined, idx);
+
   return {
-    id: String(idx + 1),
-    code: r[0] || `ND-${String(idx + 1).padStart(3, '0')}`,
+    id,
+    code,
     name: r[1] || '',
     minAmount: Number(r[2]) || 0,
     maxAmount: Number(r[3]) || 0,
@@ -2974,6 +3073,15 @@ export function rowToTask(r, idx) {
   if (r[20]) {
     try {
       subtasks = JSON.parse(r[20]);
+      if (Array.isArray(subtasks)) {
+        subtasks = subtasks.map((st, sIdx) => {
+          if (!st) return st;
+          const stId = (st.id && /_[a-z0-9]{8}$/i.test(st.id))
+            ? st.id
+            : formatModuleId('st', st.id || st.title || undefined, st.id, `${idx}_${sIdx}`);
+          return { ...st, id: stId };
+        });
+      }
     } catch {
       subtasks = [];
     }
@@ -3006,7 +3114,7 @@ export function rowToTask(r, idx) {
   }
 
   return {
-    id: `task_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+    id: formatModuleId('task', code, undefined, idx),
     code,
     title: String(r[1] || '').trim(),
     description: String(r[2] || '').trim(),
@@ -3288,7 +3396,7 @@ export function projectToRow(p) {
 export function rowToProject(r, idx) {
   const code = String(r[0] || '').trim() || `DA-${String(idx + 1).padStart(3, '0')}`;
   return {
-    id: `proj_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+    id: formatModuleId('proj', code, undefined, idx),
     code,
     name: String(r[1] || '').trim(),
     description: String(r[2] || '').trim(),
@@ -3537,7 +3645,7 @@ export function rowToWorkflow(r, idx) {
   } catch {}
 
   return {
-    id: `wf_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+    id: formatModuleId('wf', code, undefined, idx),
     code,
     name: String(r[1] || '').trim(),
     description: String(r[2] || '').trim(),
@@ -3804,6 +3912,15 @@ export function rowToLearningEntry(r, idx) {
   let links = [];
   try {
     links = r[17] ? JSON.parse(r[17]) : [];
+    if (Array.isArray(links)) {
+      links = links.map((lk, lkIdx) => {
+        if (!lk) return lk;
+        const lkId = (lk.id && /_[a-z0-9]{8}$/i.test(lk.id))
+          ? lk.id
+          : formatModuleId('link', lk.url || undefined, lk.id, `${idx}_${lkIdx}`);
+        return { ...lk, id: lkId };
+      });
+    }
   } catch {
     links = [];
   }
@@ -3814,7 +3931,7 @@ export function rowToLearningEntry(r, idx) {
   const fallbackDate = entryDate ? `${entryDate}T00:00:00.000Z` : '';
 
   return {
-    id: `learn_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+    id: formatModuleId('learn', code, undefined, idx),
     code,
     sheetIndex: idx,
     title: String(r[1] || '').trim(),
@@ -4113,8 +4230,7 @@ export function rowToPassword(r, idx) {
   const lastChangedDate = (r[11] || '').trim();
   const createdAt = (r[12] || '').trim() || new Date().toISOString();
   const updatedAt = (r[13] || '').trim() || new Date().toISOString();
-  const random8 = Math.random().toString(36).substring(2, 10);
-  const id = (r[14] || '').trim() || (code ? `pw_${code.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : `pw_${random8}`);
+  const id = formatModuleId('pw', code, r[14], idx);
 
   return {
     id,

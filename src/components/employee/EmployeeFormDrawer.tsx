@@ -253,7 +253,7 @@ export const EmployeeFormDrawer: React.FC<EmployeeFormDrawerProps> = ({
       } else if (initialData.bankAccount || initialData.bankName) {
         setBankAccounts([
           {
-            id: 'ba_1',
+            id: generateId('ba'),
             bankName: initialData.bankName || '',
             accountNumber: initialData.bankAccount || '',
             accountHolder: initialData.bankAccountHolder || initialData.name || '',

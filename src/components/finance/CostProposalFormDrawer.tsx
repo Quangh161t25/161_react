@@ -94,7 +94,7 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
   // Line items
   const [lineItems, setLineItems] = useState<ProposalLineItem[]>([
     {
-      id: 'li-new-1',
+      id: generateId('li'),
       category: 'Quảng cáo',
       description: '',
       quantity: 1,
@@ -172,7 +172,7 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
       } else {
         setLineItems([
           {
-            id: 'li-edit-1',
+            id: generateId('li'),
             category: 'Quảng cáo',
             description: initialData.title || '',
             quantity: 1,
@@ -202,7 +202,7 @@ export const CostProposalFormDrawer: React.FC<CostProposalFormDrawerProps> = ({
       setIsActive(true);
       setLineItems([
         {
-          id: 'li-init-1',
+          id: generateId('li'),
           category: 'Quảng cáo',
           description: '',
           quantity: 1,

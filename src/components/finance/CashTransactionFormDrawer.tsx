@@ -251,7 +251,7 @@ export const CashTransactionFormDrawer: React.FC<CashTransactionFormDrawerProps>
       const liveBal = initial + inflow - outflow;
 
       return {
-        id: acc.id || `acc-${idx}`,
+        id: acc.id || generateId('acc'),
         code: acc.code || `TK-${idx + 1}`,
         name: `${acc.accountName || acc.name}${acc.accountNumber ? ` (${acc.accountNumber})` : ''}`,
         rawName: acc.accountName || acc.name,

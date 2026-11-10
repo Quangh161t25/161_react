@@ -498,7 +498,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
         bankName: formData.bankName || '',
         bankBranch: formData.bankBranch || '',
         bankAccounts: formData.bankAccounts || (formData.bankAccount ? [{
-          id: 'ba_1',
+          id: generateId('ba'),
           bankName: formData.bankName || '',
           accountNumber: formData.bankAccount || '',
           accountHolder: formData.bankAccountHolder || (formData.name ? formData.name.toUpperCase() : ''),
