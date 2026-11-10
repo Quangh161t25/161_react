@@ -32,7 +32,7 @@ export interface LearningEntry {
   title: string;
   content: string; // Markdown formatted rich text
   summary?: string; // Tóm tắt ngắn cốt lõi
-  category: string; // e.g., 'Lập trình', 'Kinh doanh', 'Marketing', etc.
+  category?: string; // (Tùy chọn, đã loại bỏ khỏi UI chính)
   tags: string[];
   sourceType: LearningSourceType;
   sourceName?: string; // Tên nguồn: Tên sách, Kênh youtube, Tác giả, Khóa học

@@ -5,8 +5,8 @@ import {
   Hammer,
   RotateCcw,
   Calendar,
-  Layers,
   Sparkles,
+  Tag,
 } from 'lucide-react';
 import { LearningEntry } from '../../types/learning';
 
@@ -29,12 +29,17 @@ export const LearningStatsTab: React.FC<LearningStatsTabProps> = ({ entries, onS
   const todayStr = new Date().toISOString().split('T')[0];
   const dueForReview = entries.filter((e) => e.nextReviewDate && e.nextReviewDate <= todayStr);
 
-  // Group by category
-  const categoryCounts: Record<string, number> = {};
+  // Group by tags
+  const tagCounts: Record<string, number> = {};
   entries.forEach((e) => {
-    categoryCounts[e.category] = (categoryCounts[e.category] || 0) + 1;
+    (e.tags || []).forEach((t) => {
+      const clean = String(t || '').trim();
+      if (clean) {
+        tagCounts[clean] = (tagCounts[clean] || 0) + 1;
+      }
+    });
   });
-  const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+  const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
 
   // Group by source type
   const sourceCounts: Record<string, number> = {};
@@ -113,23 +118,23 @@ export const LearningStatsTab: React.FC<LearningStatsTabProps> = ({ entries, onS
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Categories Breakdown */}
+        {/* Tags Breakdown */}
         <div className="p-4 sm:p-5 rounded-xl border border-border bg-card shadow-xs">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2 mb-4">
-            <Layers className="w-4 h-4 text-primary" />
-            <span>Phân bố theo Chuyên mục</span>
+            <Tag className="w-4 h-4 text-primary" />
+            <span>Chủ đề & Thẻ từ khóa phổ biến</span>
           </h3>
 
-          {sortedCategories.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic py-4 text-center">Chưa có dữ liệu chuyên mục</p>
+          {sortedTags.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic py-4 text-center">Chưa có dữ liệu thẻ từ khóa</p>
           ) : (
             <div className="space-y-3">
-              {sortedCategories.map(([cat, count]) => {
+              {sortedTags.map(([tag, count]) => {
                 const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                 return (
-                  <div key={cat} className="space-y-1">
+                  <div key={tag} className="space-y-1">
                     <div className="flex items-center justify-between text-xs font-medium">
-                      <span className="text-foreground">{cat}</span>
+                      <span className="text-foreground">#{tag}</span>
                       <span className="text-muted-foreground">
                         {count} ({pct}%)
                       </span>

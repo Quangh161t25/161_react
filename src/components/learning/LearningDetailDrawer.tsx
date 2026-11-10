@@ -180,11 +180,6 @@ export const LearningDetailDrawer: React.FC<LearningDetailDrawerProps> = ({
 
             {/* Badges & Meta */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Category */}
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-                {entry.category}
-              </span>
-
               {/* Mastery Level */}
               <span
                 className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${masteryMeta.bgClass} ${masteryMeta.colorClass} border ${masteryMeta.borderClass}`}

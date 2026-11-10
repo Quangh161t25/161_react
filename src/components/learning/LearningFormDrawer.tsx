@@ -24,7 +24,7 @@ import {
   MasteryLevel,
   DifficultyLevel,
 } from '../../types/learning';
-import { LEARNING_CATEGORIES, LEARNING_SOURCE_TYPES } from '../../data/learning';
+import { LEARNING_SOURCE_TYPES } from '../../data/learning';
 import { catboxService } from '../../services/catboxService';
 import { MarkdownRenderer } from '../notes/MarkdownRenderer';
 import { generateId } from '../../utils/idGenerator';
@@ -51,8 +51,6 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [content, setContent] = useState('');
-  const [category, setCategory] = useState(LEARNING_CATEGORIES[0]);
-  const [customCategory, setCustomCategory] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [sourceType, setSourceType] = useState<LearningSourceType>('Khóa học');
@@ -106,13 +104,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
       setTitle(initialEntry.title || '');
       setSummary(initialEntry.summary || '');
       setContent(initialEntry.content || '');
-      if (LEARNING_CATEGORIES.includes(initialEntry.category)) {
-        setCategory(initialEntry.category);
-        setCustomCategory('');
-      } else {
-        setCategory('Khác');
-        setCustomCategory(initialEntry.category || '');
-      }
+
       setTags(initialEntry.tags || []);
       setSourceType(initialEntry.sourceType || 'Khóa học');
       setSourceName(initialEntry.sourceName || '');
@@ -131,8 +123,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
       setTitle('');
       setSummary('');
       setContent('');
-      setCategory(LEARNING_CATEGORIES[0]);
-      setCustomCategory('');
+
       setTags([]);
       setTagInput('');
       setSourceType('Khóa học');
@@ -387,7 +378,6 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
       return;
     }
 
-    const finalCategory = category === 'Khác' && customCategory.trim() ? customCategory.trim() : category;
     const finalCode = initialEntry?.code || `HH-${String(Date.now()).slice(-4)}`;
     const finalId = initialEntry?.id || generateId('learn');
 
@@ -397,7 +387,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
       title: title.trim(),
       summary: summary.trim(),
       content: content.trim(),
-      category: finalCategory,
+      category: '',
       tags,
       sourceType,
       sourceName: sourceName.trim(),
@@ -933,35 +923,10 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
                 />
               </div>
 
-              {/* Chuyên mục & Nguồn link (Loại nguồn + Link URL) */}
+              {/* Nguồn link (Loại nguồn + Link URL) */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                {/* Chuyên mục */}
-                <div className="sm:col-span-4">
-                  <label className="block text-xs font-semibold text-foreground mb-1">Chuyên mục</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-border bg-background text-foreground focus:outline-none focus:border-primary"
-                  >
-                    {LEARNING_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                  {category === 'Khác' && (
-                    <input
-                      type="text"
-                      placeholder="Nhập chuyên mục riêng..."
-                      value={customCategory}
-                      onChange={(e) => setCustomCategory(e.target.value)}
-                      className="w-full mt-1.5 px-2.5 py-1 text-xs rounded-lg border border-border bg-background"
-                    />
-                  )}
-                </div>
-
                 {/* Loại nguồn */}
-                <div className="sm:col-span-3">
+                <div className="sm:col-span-4">
                   <label className="block text-xs font-semibold text-foreground mb-1">Loại nguồn</label>
                   <select
                     value={sourceType}
@@ -977,7 +942,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
                 </div>
 
                 {/* Link nguồn URL */}
-                <div className="sm:col-span-5">
+                <div className="sm:col-span-8">
                   <label className="block text-xs font-semibold text-foreground mb-1">Link nguồn URL</label>
                   <div className="flex items-center gap-1">
                     <input

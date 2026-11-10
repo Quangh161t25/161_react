@@ -3849,7 +3849,6 @@ export const LEARNING_HEADERS = [
   'Tiêu đề',
   'Nội dung',
   'Tóm tắt',
-  'Chuyên mục',
   'Thẻ (Tags)',
   'Loại nguồn',
   'Tên nguồn',
@@ -3875,7 +3874,6 @@ export function learningEntryToRow(e) {
     e.title || '',
     e.content || '',
     e.summary || '',
-    e.category || 'Khác',
     Array.isArray(e.tags) ? e.tags.join(', ') : e.tags || '',
     e.sourceType || 'Khác',
     e.sourceName || '',
@@ -3900,10 +3898,10 @@ export function rowToLearningEntry(r, idx) {
   const code = String(r[0] || '').trim() || `HH-${String(idx + 1).padStart(3, '0')}`;
   let images = [];
   try {
-    images = r[16] ? JSON.parse(r[16]) : [];
+    images = r[15] ? JSON.parse(r[15]) : [];
   } catch {
-    if (r[16] && typeof r[16] === 'string') {
-      images = r[16].split(/[\n,;]+/).map((u) => u.trim()).filter((u) => /^https?:\/\//i.test(u));
+    if (r[15] && typeof r[15] === 'string') {
+      images = r[15].split(/[\n,;]+/).map((u) => u.trim()).filter((u) => /^https?:\/\//i.test(u));
     } else {
       images = [];
     }
@@ -3911,7 +3909,7 @@ export function rowToLearningEntry(r, idx) {
 
   let links = [];
   try {
-    links = r[17] ? JSON.parse(r[17]) : [];
+    links = r[16] ? JSON.parse(r[16]) : [];
     if (Array.isArray(links)) {
       links = links.map((lk, lkIdx) => {
         if (!lk) return lk;
@@ -3925,9 +3923,9 @@ export function rowToLearningEntry(r, idx) {
     links = [];
   }
 
-  const rawCreatedAt = String(r[20] || '').trim();
-  const rawUpdatedAt = String(r[21] || '').trim();
-  const entryDate = String(r[12] || '').trim();
+  const rawCreatedAt = String(r[19] || '').trim();
+  const rawUpdatedAt = String(r[20] || '').trim();
+  const entryDate = String(r[11] || '').trim();
   const fallbackDate = entryDate ? `${entryDate}T00:00:00.000Z` : '';
 
   return {
@@ -3937,22 +3935,21 @@ export function rowToLearningEntry(r, idx) {
     title: String(r[1] || '').trim(),
     content: String(r[2] || '').trim(),
     summary: String(r[3] || '').trim(),
-    category: String(r[4] || 'Khác').trim(),
-    tags: r[5] ? String(r[5]).split(',').map((t) => t.trim()).filter(Boolean) : [],
-    sourceType: String(r[6] || 'Khác').trim(),
-    sourceName: String(r[7] || '').trim(),
-    sourceUrl: String(r[8] || '').trim(),
-    masteryLevel: String(r[9] || 'learning').trim(),
-    difficulty: String(r[10] || 'intermediate').trim(),
-    rating: Number(r[11]) || 5,
+    tags: r[4] ? String(r[4]).split(',').map((t) => t.trim()).filter(Boolean) : [],
+    sourceType: String(r[5] || 'Khác').trim(),
+    sourceName: String(r[6] || '').trim(),
+    sourceUrl: String(r[7] || '').trim(),
+    masteryLevel: String(r[8] || 'learning').trim(),
+    difficulty: String(r[9] || 'intermediate').trim(),
+    rating: Number(r[10]) || 5,
     entryDate,
-    nextReviewDate: String(r[13] || '').trim(),
-    isPinned: String(r[14] || '').toLowerCase() === 'true',
-    coverUrl: String(r[15] || '').trim(),
+    nextReviewDate: String(r[12] || '').trim(),
+    isPinned: String(r[13] || '').toLowerCase() === 'true',
+    coverUrl: String(r[14] || '').trim(),
     images: Array.isArray(images) ? images : [],
     links: Array.isArray(links) ? links : [],
-    color: String(r[18] || '#8b5cf6').trim(),
-    author: String(r[19] || '').trim(),
+    color: String(r[17] || '#8b5cf6').trim(),
+    author: String(r[18] || '').trim(),
     createdAt: rawCreatedAt || fallbackDate,
     updatedAt: rawUpdatedAt || fallbackDate,
   };
@@ -3984,7 +3981,7 @@ export async function ensureHocHoiTabExists() {
 
     // Write header
     await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A1:V1?valueInputOption=USER_ENTERED`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A1:U1?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {
@@ -4003,7 +4000,7 @@ export async function fetchLearningEntriesFromSheet() {
   await ensureHocHoiTabExists();
   const token = await getAccessToken();
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A2:V`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A2:U`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   if (!res.ok) throw new Error(`Fetch learning entries failed: ${await res.text()}`);
@@ -4021,7 +4018,7 @@ export async function saveAllLearningEntriesToSheet(entries) {
   const values = [LEARNING_HEADERS, ...rows];
 
   await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A1:V1000:clear`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A1:U1000:clear`,
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -4029,7 +4026,7 @@ export async function saveAllLearningEntriesToSheet(entries) {
   );
 
   const writeRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A1:V${values.length}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A1:U${values.length}?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -4046,7 +4043,7 @@ export async function appendLearningEntryToSheet(entry) {
   const token = await getAccessToken();
   const row = learningEntryToRow(entry);
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A:V:append?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A:U:append?valueInputOption=USER_ENTERED`,
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -4092,7 +4089,7 @@ export async function updateLearningEntryInSheet(entry) {
 
   const row = learningEntryToRow(entry);
   const updateRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A${targetRowIndex}:V${targetRowIndex}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/HocHoi!A${targetRowIndex}:U${targetRowIndex}?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
