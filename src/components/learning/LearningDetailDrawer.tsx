@@ -18,6 +18,7 @@ import {
 import { LearningEntry } from '../../types/learning';
 import { MarkdownRenderer } from '../notes/MarkdownRenderer';
 import { getLearningEntryImages } from './LearningPage';
+import { formatDate } from '../../utils/dateUtils';
 
 interface LearningDetailDrawerProps {
   entry: LearningEntry | null;
@@ -186,7 +187,7 @@ export const LearningDetailDrawer: React.FC<LearningDetailDrawerProps> = ({
               {entry.entryDate && (
                 <span className="flex items-center gap-1 text-[11px] text-muted-foreground ml-auto">
                   <Calendar className="w-3 h-3" />
-                  <span>Ngày học: {entry.entryDate}</span>
+                  <span>Ngày học: {formatDate(entry.entryDate)}</span>
                 </span>
               )}
             </div>
@@ -268,7 +269,7 @@ export const LearningDetailDrawer: React.FC<LearningDetailDrawerProps> = ({
               <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300 text-xs flex items-center justify-between">
                 <div className="flex items-center gap-2 font-medium">
                   <Calendar className="w-4 h-4 text-amber-600" />
-                  <span>Lịch ôn tập tiếp theo: <strong>{entry.nextReviewDate}</strong></span>
+                  <span>Lịch ôn tập tiếp theo: <strong>{formatDate(entry.nextReviewDate)}</strong></span>
                 </div>
               </div>
             )}

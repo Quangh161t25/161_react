@@ -183,7 +183,7 @@ export const ProjectListPage: React.FC<ProjectListPageProps> = ({
   }, [projects, searchQuery, selectedStatus]);
 
   // User global settings
-  const { settings } = useSettings();
+  const { settings, formatDate } = useSettings();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -514,7 +514,7 @@ export const ProjectListPage: React.FC<ProjectListPageProps> = ({
                               </div>
                               <div>
                                 <span className="block text-[11px] opacity-70">Thời hạn:</span>
-                                <span className="font-medium text-foreground tabular-nums">{proj.endDate}</span>
+                                <span className="font-medium text-foreground tabular-nums">{proj.endDate ? formatDate(proj.endDate) : '—'}</span>
                               </div>
                             </div>
                           </div>
@@ -588,7 +588,7 @@ export const ProjectListPage: React.FC<ProjectListPageProps> = ({
                           <td className="px-4 py-2.5 text-right font-medium text-amber-600 tabular-nums">{formatMoney(p.spentAmount || 0)} đ</td>
                           <td className="px-4 py-2.5 text-center font-bold text-primary tabular-nums">{p.progress}%</td>
                           <td className="px-4 py-2.5 text-center">{getStatusBadge(p.status)}</td>
-                          <td className="px-4 py-2.5 text-center tabular-nums text-muted-foreground">{p.endDate}</td>
+                          <td className="px-4 py-2.5 text-center tabular-nums text-muted-foreground">{p.endDate ? formatDate(p.endDate) : '—'}</td>
                           <td
                             onClick={(e) => e.stopPropagation()}
                             className="px-4 py-2.5 text-center sticky right-0 bg-card shadow-[-1px_0_0_0_hsl(var(--border))]"

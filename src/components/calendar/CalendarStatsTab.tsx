@@ -15,6 +15,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { CalendarEvent } from '../../types/calendar';
+import { formatDate } from '../../utils/dateUtils';
 
 interface CalendarStatsTabProps {
   events: CalendarEvent[];
@@ -319,7 +320,7 @@ export const CalendarStatsTab: React.FC<CalendarStatsTabProps> = ({
                     {evt.title}
                   </div>
                   <div className="text-[11px] text-muted-foreground font-mono">
-                    {evt.startDate} {evt.time ? `• ${evt.time}` : ''} {evt.assigneeName ? `• ${evt.assigneeName}` : ''}
+                    {formatDate(evt.startDate)} {evt.time ? `• ${evt.time}` : ''} {evt.assigneeName ? `• ${evt.assigneeName}` : ''}
                   </div>
                 </div>
               </div>

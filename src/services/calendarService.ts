@@ -5,6 +5,7 @@ import { cashTransactionService } from './cashTransactionService';
 import { employeeService } from './employeeService';
 import { noteService } from './noteService';
 import { learningService } from './learningService';
+import { formatDate } from '../utils/dateUtils';
 
 const CUSTOM_EVENTS_KEY = 'erp_custom_calendar_events';
 
@@ -418,7 +419,7 @@ export const calendarService = {
       const notes = noteService.getInitialNotes();
       const idx = notes.findIndex((n) => n.id === nId || n.code === event.sourceId);
       if (idx !== -1) {
-        notes[idx].noteDate = newDateStr;
+        notes[idx].noteDate = formatDate(newDateStr);
         if (roundedTime !== undefined) {
           notes[idx].noteTime = roundedTime;
         }
@@ -434,7 +435,7 @@ export const calendarService = {
       const txs = cashTransactionService.getInitialTransactions();
       const idx = txs.findIndex((t) => t.id === txId || t.code === event.sourceId);
       if (idx !== -1) {
-        txs[idx].transactionDate = newDateStr;
+        txs[idx].transactionDate = formatDate(newDateStr);
         if (roundedTime !== undefined) {
           txs[idx].transactionTime = roundedTime;
         }
@@ -450,7 +451,7 @@ export const calendarService = {
       const tasks = taskService.getInitialTasks();
       const idx = tasks.findIndex((t) => t.id === tId || t.code === event.sourceId);
       if (idx !== -1) {
-        tasks[idx].dueDate = newDateStr;
+        tasks[idx].dueDate = formatDate(newDateStr);
         tasks[idx].updatedAt = new Date().toISOString();
         taskService.saveToCache(tasks);
         updated = true;
@@ -463,7 +464,7 @@ export const calendarService = {
       const projects = projectService.getInitialProjects();
       const idx = projects.findIndex((p) => p.id === pId || p.code === event.sourceId);
       if (idx !== -1) {
-        projects[idx].endDate = newDateStr;
+        projects[idx].endDate = formatDate(newDateStr);
         projects[idx].updatedAt = new Date().toISOString();
         projectService.saveToCache(projects);
         updated = true;
@@ -492,9 +493,9 @@ export const calendarService = {
       const idx = entries.findIndex((l) => l.id === lId || l.code === event.sourceId);
       if (idx !== -1) {
         if (eventId.startsWith('learning_review_')) {
-          entries[idx].nextReviewDate = newDateStr;
+          entries[idx].nextReviewDate = formatDate(newDateStr);
         } else {
-          entries[idx].entryDate = newDateStr;
+          entries[idx].entryDate = formatDate(newDateStr);
         }
         learningService.saveToCache(entries);
         updated = true;

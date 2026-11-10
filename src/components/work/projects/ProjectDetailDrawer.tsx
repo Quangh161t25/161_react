@@ -18,6 +18,7 @@ import {
   Check,
 } from 'lucide-react';
 import { Project, Task, ProjectStatus } from '../../../types/task';
+import { formatDate } from '../../../utils/dateUtils';
 
 interface ProjectDetailDrawerProps {
   project: Project;
@@ -116,7 +117,7 @@ export const ProjectDetailDrawer: React.FC<ProjectDetailDrawerProps> = ({
     const text = `DỰ ÁN: ${project.name} (${project.code})
 Quản trị (PM): ${project.managerName}
 Khách hàng: ${project.customerName || 'Nội bộ'}
-Thời gian: ${project.startDate} đến ${project.endDate}
+Thời gian: ${project.startDate ? formatDate(project.startDate) : '—'} đến ${project.endDate ? formatDate(project.endDate) : '—'}
 Ngân sách: ${formatMoney(project.budget)} VNĐ
 Tiến độ: ${project.progress}%`;
     navigator.clipboard.writeText(text);
@@ -327,7 +328,7 @@ Tiến độ: ${project.progress}%`;
                 <div className="p-3 rounded-lg border border-border bg-card">
                   <span className="text-muted-foreground block mb-1">Thời gian triển khai</span>
                   <div className="font-semibold text-foreground tabular-nums">
-                    {project.startDate} → {project.endDate}
+                    {project.startDate ? formatDate(project.startDate) : '—'} → {project.endDate ? formatDate(project.endDate) : '—'}
                   </div>
                 </div>
 

@@ -23,6 +23,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { Counterparty } from '../../../types/financeMaster';
+import { formatDate } from '../../../utils/dateUtils';
 
 interface CounterpartyDetailDrawerProps {
   counterparty: Counterparty;
@@ -412,11 +413,11 @@ Ghi chú: ${counterparty.note || '—'}`;
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
                   <span className="text-muted-foreground block mb-1">Ngày tạo</span>
-                  <span className="font-medium text-foreground">{counterparty.createdAt || '—'}</span>
+                  <span className="font-medium text-foreground">{counterparty.createdAt ? formatDate(counterparty.createdAt) : '—'}</span>
                 </div>
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
                   <span className="text-muted-foreground block mb-1">Cập nhật lần cuối</span>
-                  <span className="font-medium text-foreground">{counterparty.updatedAt || '—'}</span>
+                  <span className="font-medium text-foreground">{counterparty.updatedAt ? formatDate(counterparty.updatedAt) : '—'}</span>
                 </div>
               </div>
             </div>

@@ -8,6 +8,7 @@ import {
   GripVertical,
 } from 'lucide-react';
 import { Task, TaskStatus, TaskPriority } from '../../../types/task';
+import { formatDate } from '../../../utils/dateUtils';
 
 interface TaskKanbanViewProps {
   tasks: Task[];
@@ -294,7 +295,7 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
                             }`}
                           >
                             <Calendar className="w-3 h-3" />
-                            <span className="tabular-nums">{task.dueDate}</span>
+                            <span className="tabular-nums">{formatDate(task.dueDate)}</span>
                           </div>
                         </div>
 

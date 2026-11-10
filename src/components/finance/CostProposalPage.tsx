@@ -342,7 +342,7 @@ export const CostProposalPage: React.FC<CostProposalPageProps> = ({ onBack }) =>
   }, [proposals, searchQuery, statusFilter, getResolvedProposer, getResolvedAccount, getResolvedBeneficiary]);
 
   // User global settings
-  const { settings } = useSettings();
+  const { settings, formatDate } = useSettings();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -813,9 +813,9 @@ const handleDeleteProposal = async (id: string) => {
         );
 
       case 'proposalDate':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground ${textWrapClass}`}>{item.proposalDate}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground ${textWrapClass}`}>{item.proposalDate ? formatDate(item.proposalDate) : '—'}</td>;
       case 'dueDate':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground ${textWrapClass}`}>{item.dueDate}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground ${textWrapClass}`}>{item.dueDate ? formatDate(item.dueDate) : '—'}</td>;
       case 'proposer': {
         const resolvedProp = getResolvedProposer(item.proposer);
         return (
@@ -936,7 +936,7 @@ const handleDeleteProposal = async (id: string) => {
           </td>
         );
       case 'updatedAt':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground truncate`}>{item.updatedAt}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-foreground truncate`}>{item.updatedAt ? formatDate(item.updatedAt) : '—'}</td>;
       default:
         return <td key={colId} style={colStyle} className={tdBaseClass}>—</td>;
     }
@@ -1372,7 +1372,7 @@ const handleDeleteProposal = async (id: string) => {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-semibold text-xs text-primary">{item.code}</span>
-                            <span className="text-[11px] text-muted-foreground">{item.proposalDate}</span>
+                            <span className="text-[11px] text-muted-foreground">{item.proposalDate ? formatDate(item.proposalDate) : '—'}</span>
                           </div>
                           <h4 className="font-medium text-xs text-foreground truncate mt-0.5">{item.title}</h4>
                         </div>
@@ -1413,7 +1413,7 @@ const handleDeleteProposal = async (id: string) => {
                         <div className="space-y-1.5 pt-2 border-t border-border/60 text-xs text-muted-foreground">
                           <div className="flex items-center justify-between">
                             <span>Ngày cần chi:</span>
-                            <span className="text-foreground">{item.dueDate}</span>
+                            <span className="text-foreground">{item.dueDate ? formatDate(item.dueDate) : '—'}</span>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Tổng tiền:</span>

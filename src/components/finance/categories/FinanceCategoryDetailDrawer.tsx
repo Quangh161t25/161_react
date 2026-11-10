@@ -19,6 +19,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { FinanceCategory } from '../../../types/financeMaster';
+import { formatDate } from '../../../utils/dateUtils';
 
 interface FinanceCategoryDetailDrawerProps {
   category: FinanceCategory;
@@ -60,7 +61,7 @@ Nhóm cha: ${category.parentCategory || '—'}
 Trạng thái: ${category.status === 'active' ? 'Đang hoạt động' : 'Tạm ngừng'}
 Mô tả: ${category.description || '—'}
 Người tạo: ${category.createdBy || '—'}
-Ngày tạo: ${category.createdAt || '—'}`;
+Ngày tạo: ${category.createdAt ? formatDate(category.createdAt) : '—'}`;
 
     navigator.clipboard.writeText(text);
     setCopiedAll(true);
@@ -372,11 +373,11 @@ Ngày tạo: ${category.createdAt || '—'}`;
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
                   <span className="text-muted-foreground block mb-1">Ngày tạo</span>
-                  <span className="font-medium text-foreground">{category.createdAt || '—'}</span>
+                  <span className="font-medium text-foreground">{category.createdAt ? formatDate(category.createdAt) : '—'}</span>
                 </div>
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
                   <span className="text-muted-foreground block mb-1">Cập nhật lần cuối</span>
-                  <span className="font-medium text-foreground">{category.updatedAt || '—'}</span>
+                  <span className="font-medium text-foreground">{category.updatedAt ? formatDate(category.updatedAt) : '—'}</span>
                 </div>
               </div>
             </div>

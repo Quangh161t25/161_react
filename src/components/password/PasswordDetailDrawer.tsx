@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { PasswordItem } from '../../types/password';
 import { PASSWORD_CATEGORIES } from '../../data/passwords';
+import { formatDate } from '../../utils/dateUtils';
 
 interface PasswordDetailDrawerProps {
   item: PasswordItem;
@@ -403,15 +404,15 @@ export const PasswordDetailDrawer: React.FC<PasswordDetailDrawerProps> = ({
             <div className="p-3 bg-muted/20 rounded-xl border border-border text-[11px] text-muted-foreground space-y-1">
               <div className="flex items-center justify-between">
                 <span>Ngày đổi mật khẩu gần nhất:</span>
-                <span className="font-semibold text-foreground">{item.lastChangedDate || 'Chưa cập nhật'}</span>
+                <span className="font-semibold text-foreground">{item.lastChangedDate ? formatDate(item.lastChangedDate) : 'Chưa cập nhật'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Khởi tạo lúc:</span>
-                <span className="font-semibold text-foreground">{item.createdAt || '—'}</span>
+                <span className="font-semibold text-foreground">{item.createdAt ? formatDate(item.createdAt) : '—'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span>Cập nhật lần cuối:</span>
-                <span className="font-semibold text-foreground">{item.updatedAt || '—'}</span>
+                <span className="font-semibold text-foreground">{item.updatedAt ? formatDate(item.updatedAt) : '—'}</span>
               </div>
             </div>
           </div>

@@ -26,6 +26,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Task, TaskStatus, TaskPriority } from '../../../types/task';
+import { formatDate } from '../../../utils/dateUtils';
 
 interface TaskDetailDrawerProps {
   task: Task;
@@ -161,7 +162,7 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
 Mã: ${task.code}
 Người thực hiện: ${task.assigneeName} (${task.assigneeCode || '—'})
 Phòng ban: ${task.department}
-Hạn chót: ${task.dueDate}
+Hạn chót: ${formatDate(task.dueDate)}
 Tiến độ: ${task.progress}%
 Trạng thái: ${task.status}
 Nội dung: ${task.description || '—'}`;
@@ -488,7 +489,7 @@ Nội dung: ${task.description || '—'}`;
                       <span className="text-muted-foreground block mb-1">Hạn chót hoàn thành</span>
                       <div className="font-bold text-foreground flex items-center gap-1.5 tabular-nums">
                         <Calendar className="w-3.5 h-3.5 text-rose-500" />
-                        <span>{task.dueDate}</span>
+                        <span>{formatDate(task.dueDate)}</span>
                       </div>
                     </div>
 
@@ -671,7 +672,7 @@ Nội dung: ${task.description || '—'}`;
                     </div>
                     <div>
                       <span className="font-semibold block text-muted-foreground">Hạn hoàn thành:</span>
-                      <p className="font-bold text-foreground tabular-nums">{task.dueDate}</p>
+                      <p className="font-bold text-foreground tabular-nums">{formatDate(task.dueDate)}</p>
                     </div>
                   </div>
 

@@ -38,6 +38,7 @@ import {
 } from '../../services/financeMasterService';
 import { Employee } from '../../types/employee';
 import { FinanceAccount, Counterparty, FinanceCategory } from '../../types/financeMaster';
+import { formatDate } from '../../utils/dateUtils';
 
 interface CostProposalDetailDrawerProps {
   proposal: CostProposal;
@@ -418,7 +419,7 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                     Ngày đề xuất
                   </span>
                   <p className="text-xs sm:text-sm text-foreground leading-relaxed tabular-nums">
-                    {proposal.proposalDate}
+                    {proposal.proposalDate ? formatDate(proposal.proposalDate) : '—'}
                   </p>
                 </div>
 
@@ -429,7 +430,7 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                     Ngày cần chi
                   </span>
                   <p className="text-xs sm:text-sm text-foreground leading-relaxed tabular-nums">
-                    {proposal.dueDate}
+                    {proposal.dueDate ? formatDate(proposal.dueDate) : '—'}
                   </p>
                 </div>
 
@@ -720,7 +721,7 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                     Được tạo lúc
                   </span>
                   <p className="text-xs sm:text-sm text-foreground leading-relaxed tabular-nums">
-                    {proposal.createdAt || `08:00 - ${proposal.proposalDate}`}
+                    {proposal.createdAt ? formatDate(proposal.createdAt) : (proposal.proposalDate ? `08:00 - ${formatDate(proposal.proposalDate)}` : '—')}
                   </p>
                 </div>
                 <div className="space-y-1 min-w-0 w-full">
@@ -729,7 +730,7 @@ export const CostProposalDetailDrawer: React.FC<CostProposalDetailDrawerProps> =
                     Cập nhật
                   </span>
                   <p className="text-xs sm:text-sm text-foreground leading-relaxed tabular-nums">
-                    {proposal.updatedAt}
+                    {proposal.updatedAt ? formatDate(proposal.updatedAt) : '—'}
                   </p>
                 </div>
               </div>

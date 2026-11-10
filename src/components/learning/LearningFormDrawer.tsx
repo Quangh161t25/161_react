@@ -28,6 +28,7 @@ import { LEARNING_SOURCE_TYPES } from '../../data/learning';
 import { catboxService } from '../../services/catboxService';
 import { MarkdownRenderer } from '../notes/MarkdownRenderer';
 import { generateId } from '../../utils/idGenerator';
+import { formatDate, toInputDateValue } from '../../utils/dateUtils';
 
 interface LearningFormDrawerProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
   const [masteryLevel, setMasteryLevel] = useState<MasteryLevel>('learning');
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('intermediate');
   const [rating, setRating] = useState(5);
-  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [entryDate, setEntryDate] = useState(() => toInputDateValue(new Date()));
   const [nextReviewDate, setNextReviewDate] = useState('');
   const [isPinned, setIsPinned] = useState(false);
   const [color, setColor] = useState('#8b5cf6');
@@ -113,8 +114,8 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
       setMasteryLevel(initialEntry.masteryLevel || 'learning');
       setDifficulty(initialEntry.difficulty || 'intermediate');
       setRating(initialEntry.rating ?? 5);
-      setEntryDate(initialEntry.entryDate || new Date().toISOString().split('T')[0]);
-      setNextReviewDate(initialEntry.nextReviewDate || '');
+      setEntryDate(toInputDateValue(initialEntry.entryDate) || toInputDateValue(new Date()));
+      setNextReviewDate(toInputDateValue(initialEntry.nextReviewDate));
       setIsPinned(initialEntry.isPinned || false);
       setColor(initialEntry.color || '#8b5cf6');
       setCoverUrl(initialEntry.coverUrl || '');
@@ -135,7 +136,7 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
       setMasteryLevel('learning');
       setDifficulty('intermediate');
       setRating(5);
-      setEntryDate(new Date().toISOString().split('T')[0]);
+      setEntryDate(toInputDateValue(new Date()));
       setNextReviewDate('');
       setIsPinned(false);
       setColor('#8b5cf6');
@@ -402,8 +403,8 @@ export const LearningFormDrawer: React.FC<LearningFormDrawerProps> = ({
       masteryLevel,
       difficulty,
       rating,
-      entryDate,
-      nextReviewDate: nextReviewDate || undefined,
+      entryDate: formatDate(entryDate),
+      nextReviewDate: nextReviewDate ? formatDate(nextReviewDate) : undefined,
       isPinned,
       color,
       createdAt: initialEntry?.createdAt || new Date().toISOString(),

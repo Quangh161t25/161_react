@@ -51,6 +51,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { employeeService } from '../../services/employeeService';
 import { Employee } from '../../types/employee';
 import { generateId } from '../../utils/idGenerator';
+import { formatDate, toInputDateValue } from '../../utils/dateUtils';
 
 interface NoteFormDrawerProps {
   isOpen: boolean;
@@ -251,7 +252,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       setAuthor(initialData.author || currentUser?.name || currentUser?.username || 'admin');
       setAuthorAvatar(initialData.authorAvatar || currentUser?.avatarUrl || '');
 
-      setNoteDate(initialData.noteDate || '');
+      setNoteDate(toInputDateValue(initialData.noteDate) || '');
       setNoteTime(initialData.noteTime || '');
 
       setLocation(initialData.location || '');
@@ -682,7 +683,7 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
       color,
       icons: icons.length > 0 ? icons : undefined,
       coverUrl: coverUrl.trim() || undefined,
-      noteDate: noteDate || undefined,
+      noteDate: noteDate ? formatDate(noteDate) : undefined,
       noteTime: noteTime || undefined,
       location: location.trim() || undefined,
       coordinates: coordinates.trim() || undefined,

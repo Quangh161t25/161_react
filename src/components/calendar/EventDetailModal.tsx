@@ -13,6 +13,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { CalendarEvent } from '../../types/calendar';
+import { formatDate } from '../../utils/dateUtils';
 
 interface EventDetailModalProps {
   event: CalendarEvent | null;
@@ -71,9 +72,9 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
         <div className="space-y-3 bg-muted/40 p-4 rounded-xl border border-border text-xs">
           <div className="flex items-center gap-2 text-foreground font-semibold">
             <Calendar className="w-4 h-4 text-primary shrink-0" />
-            <span>Ngày: {event.startDate}</span>
+            <span>Ngày: {formatDate(event.startDate)}</span>
             {event.endDate && event.endDate !== event.startDate && (
-              <span>→ {event.endDate}</span>
+              <span>→ {formatDate(event.endDate)}</span>
             )}
           </div>
 

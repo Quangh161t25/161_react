@@ -59,6 +59,28 @@ export function formatModuleId(prefix, code, existingId, idx) {
   return `${cleanPrefix}_${r8}`;
 }
 
+/**
+ * Chuẩn hóa ngày về định dạng DD/MM/YYYY cho Google Sheet và đồng bộ dữ liệu.
+ */
+export function formatSheetDate(input) {
+  if (!input) return '';
+  const str = String(input).trim();
+  if (!str) return '';
+  const yyyymmdd = str.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (yyyymmdd) {
+    return `${yyyymmdd[3].padStart(2, '0')}/${yyyymmdd[2].padStart(2, '0')}/${yyyymmdd[1]}`;
+  }
+  const ddmmyyyy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (ddmmyyyy) {
+    return `${ddmmyyyy[1].padStart(2, '0')}/${ddmmyyyy[2].padStart(2, '0')}/${ddmmyyyy[3]}`;
+  }
+  const ddmmyyyyDash = str.match(/^(\d{1,2})-(\d{1,2})-(\d{4})/);
+  if (ddmmyyyyDash) {
+    return `${ddmmyyyyDash[1].padStart(2, '0')}/${ddmmyyyyDash[2].padStart(2, '0')}/${ddmmyyyyDash[3]}`;
+  }
+  return str;
+}
+
 
 export async function getAccessToken() {
   let serviceAccount;
@@ -173,8 +195,8 @@ export function proposalToRow(p) {
   return [
     p.code,
     p.title,
-    p.proposalDate,
-    p.dueDate,
+    formatSheetDate(p.proposalDate),
+    formatSheetDate(p.dueDate),
     p.proposer,
     p.department,
     p.account,
@@ -242,8 +264,8 @@ export async function fetchProposalsFromSheet() {
         id: propId,
         code: propCode,
         title: row[1] || '',
-        proposalDate: row[2] || '',
-        dueDate: row[3] || '',
+        proposalDate: formatSheetDate(row[2]),
+        dueDate: formatSheetDate(row[3]),
         proposer: row[4] || 'Lê Minh Công',
         department: row[5] || 'Ban Giám Đốc',
         account: row[6] || 'Vietcombank - Tài khoản chính',
@@ -563,7 +585,7 @@ export function employeeTo47Row(e) {
     e.updatedAt || '',
     e.code || '',
     e.avatarUrl || '',
-    e.dob || '',
+    formatSheetDate(e.dob),
     e.maritalStatus || '',
     e.nationality || '',
     e.ethnicity || '',
@@ -572,12 +594,12 @@ export function employeeTo47Row(e) {
     e.role || '',
     e.department || '',
     e.rank || '',
-    e.startDate || '',
-    e.officialDate || '',
-    e.resignationDate || '',
+    formatSheetDate(e.startDate),
+    formatSheetDate(e.officialDate),
+    formatSheetDate(e.resignationDate),
     e.resignationReason || '',
     e.idCardNumber || '',
-    e.idCardDate || '',
+    formatSheetDate(e.idCardDate),
     e.idCardPlace || '',
     e.permanentAddress || '',
     e.currentAddress || '',
@@ -695,19 +717,19 @@ export function rowToEmployee(r, idx) {
     avatarUrl: ((r[13] || '').trim() && !(r[13] || '').includes('ui-avatars.com'))
       ? (r[13] || '').trim()
       : getInitialsAvatarSvg(name || 'User', '1d4ed8', 'ffffff'),
-    dob: (r[14] || '').trim(),
+    dob: formatSheetDate(r[14]),
     maritalStatus: (r[15] || '').trim(),
     nationality: (r[16] || '').trim(),
     ethnicity: (r[17] || '').trim(),
     religion: (r[18] || '').trim(),
     hometown: (r[19] || '').trim(),
     rank: r[22] ? (Number(r[22]) || r[22]) : '',
-    startDate: (r[23] || '').trim(),
-    officialDate: (r[24] || '').trim(),
-    resignationDate: (r[25] || '').trim(),
+    startDate: formatSheetDate(r[23]),
+    officialDate: formatSheetDate(r[24]),
+    resignationDate: formatSheetDate(r[25]),
     resignationReason: (r[26] || '').trim(),
     idCardNumber: (r[27] || '').trim(),
-    idCardDate: (r[28] || '').trim(),
+    idCardDate: formatSheetDate(r[28]),
     idCardPlace: (r[29] || '').trim(),
     permanentAddress: (r[30] || '').trim(),
     currentAddress: (r[31] || '').trim(),
@@ -1099,7 +1121,7 @@ export function noteToRow(n) {
     n.status || 'published',
     isPinnedText,
     Array.isArray(n.icons) && n.icons.length > 0 ? JSON.stringify(n.icons) : (n.color || 'blue'),
-    n.noteDate || '',
+    formatSheetDate(n.noteDate) || '',
     n.noteTime || '',
     n.location || '',
     n.coordinates || '',
@@ -1198,7 +1220,7 @@ export function rowToNote(r, idx) {
     isPinned,
     color: r[7] || 'blue',
     icons: Array.isArray(icons) ? icons : [],
-    noteDate: r[8] || '',
+    noteDate: formatSheetDate(r[8]),
     noteTime: r[9] || '',
     location: r[10] || '',
     coordinates: r[11] || '',
@@ -1596,7 +1618,7 @@ export function transactionToRow(t) {
     t.title || '',
     t.amount || 0,
     t.amountInWords || '',
-    t.transactionDate || '',
+    formatSheetDate(t.transactionDate) || '',
     t.transactionTime || '09:00',
     t.category || '',
     t.subCategory || '',
@@ -1667,7 +1689,7 @@ export function rowToTransaction(r, idx) {
     title: r[2] || '',
     amount: Number(r[3]) || 0,
     amountInWords: r[4] || '',
-    transactionDate: r[5] || '',
+    transactionDate: formatSheetDate(r[5]),
     transactionTime: r[6] || '09:00',
     category: r[7] || '',
     subCategory: r[8] || '',
@@ -3050,8 +3072,8 @@ export function taskToRow(t) {
     t.assigneeName || '',
     t.priority || 'medium',
     t.status || 'todo',
-    t.startDate || '',
-    t.dueDate || '',
+    formatSheetDate(t.startDate) || '',
+    formatSheetDate(t.dueDate) || '',
     t.progress ?? 0,
     t.estimatedHours ?? '',
     t.actualHours ?? '',
@@ -3125,8 +3147,8 @@ export function rowToTask(r, idx) {
     assigneeName: String(r[9] || '').trim(),
     priority: String(r[10] || 'medium').trim(),
     status: String(r[11] || 'todo').trim(),
-    startDate: String(r[12] || '').trim(),
-    dueDate: String(r[13] || '').trim(),
+    startDate: formatSheetDate(r[12]),
+    dueDate: formatSheetDate(r[13]),
     progress: parseInt(r[14], 10) || 0,
     estimatedHours: r[15] !== '' && r[15] !== undefined ? Number(r[15]) : undefined,
     actualHours: r[16] !== '' && r[16] !== undefined ? Number(r[16]) : undefined,
@@ -3379,8 +3401,8 @@ export function projectToRow(p) {
     p.customerCode || p.customerId || '',
     p.customerName || '',
     p.department || '',
-    p.startDate || '',
-    p.endDate || '',
+    formatSheetDate(p.startDate) || '',
+    formatSheetDate(p.endDate) || '',
     p.budget || 0,
     p.spentAmount || 0,
     p.status || 'planning',
@@ -3403,8 +3425,8 @@ export function rowToProject(r, idx) {
     customerCode: String(r[5] || '').trim() || undefined,
     customerName: String(r[6] || '').trim() || undefined,
     department: String(r[7] || '').trim(),
-    startDate: String(r[8] || '').trim(),
-    endDate: String(r[9] || '').trim(),
+    startDate: formatSheetDate(r[8]),
+    endDate: formatSheetDate(r[9]),
     budget: Number(r[10]) || 0,
     spentAmount: Number(r[11]) || 0,
     status: String(r[12] || 'planning').trim(),
@@ -3879,8 +3901,8 @@ export function learningEntryToRow(e) {
     e.masteryLevel || 'learning',
     e.difficulty || 'intermediate',
     e.rating ?? 5,
-    e.entryDate || '',
-    e.nextReviewDate || '',
+    formatSheetDate(e.entryDate) || '',
+    formatSheetDate(e.nextReviewDate) || '',
     e.isPinned ? 'true' : 'false',
     e.coverUrl || '',
     JSON.stringify(Array.isArray(e.images) ? e.images : []),
@@ -3923,7 +3945,7 @@ export function rowToLearningEntry(r, idx) {
 
   const rawCreatedAt = String(r[19] || '').trim();
   const rawUpdatedAt = String(r[20] || '').trim();
-  const entryDate = String(r[11] || '').trim();
+  const entryDate = formatSheetDate(r[11]);
   const fallbackDate = entryDate ? `${entryDate}T00:00:00.000Z` : '';
 
   return {
@@ -3941,7 +3963,7 @@ export function rowToLearningEntry(r, idx) {
     difficulty: String(r[9] || 'intermediate').trim(),
     rating: Number(r[10]) || 5,
     entryDate,
-    nextReviewDate: String(r[12] || '').trim(),
+    nextReviewDate: formatSheetDate(r[12]),
     isPinned: String(r[13] || '').toLowerCase() === 'true',
     coverUrl: String(r[14] || '').trim(),
     images: Array.isArray(images) ? images : [],
@@ -4188,7 +4210,7 @@ export function passwordToRow(p) {
     tagsText,
     isFav,
     p.securityScore != null ? String(p.securityScore) : '',
-    p.lastChangedDate || '',
+    formatSheetDate(p.lastChangedDate) || '',
     p.createdAt || new Date().toISOString(),
     p.updatedAt || new Date().toISOString(),
     p.id || '',
@@ -4222,7 +4244,7 @@ export function rowToPassword(r, idx) {
     (r[9] || '').trim().toLowerCase() === 'co' ||
     (r[9] || '').trim().toLowerCase() === 'true';
   const securityScore = parseInt(r[10], 10) || 70;
-  const lastChangedDate = (r[11] || '').trim();
+  const lastChangedDate = formatSheetDate(r[11]);
   const createdAt = (r[12] || '').trim() || new Date().toISOString();
   const updatedAt = (r[13] || '').trim() || new Date().toISOString();
   const id = formatModuleId('pw', code, r[14], idx);

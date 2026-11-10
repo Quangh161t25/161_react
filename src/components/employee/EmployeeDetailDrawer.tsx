@@ -49,6 +49,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Employee } from '../../types/employee';
+import { formatDate } from '../../utils/dateUtils';
 
 interface EmployeeDetailDrawerProps {
   employee: Employee;
@@ -135,7 +136,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
       `Email công việc: ${employee.email || '—'}`,
       `Email cá nhân: ${employee.personalEmail || '—'}`,
       `Giới tính: ${employee.gender || '—'}`,
-      `Ngày sinh: ${employee.dob || '—'}`,
+      `Ngày sinh: ${employee.dob ? formatDate(employee.dob) : '—'}`,
       `CMND/CCCD: ${employee.idCardNumber || '—'}`,
       `Địa chỉ: ${employee.currentAddress || employee.permanentAddress || '—'}`,
       `Tài khoản ngân hàng:\n${bankListStr}`,
@@ -521,7 +522,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Ngày sinh
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.dob || '—'}
+                      {employee.dob ? formatDate(employee.dob) : '—'}
                     </p>
                   </div>
 
@@ -653,7 +654,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Ngày vào làm
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.startDate || '—'}
+                      {employee.startDate ? formatDate(employee.startDate) : '—'}
                     </p>
                   </div>
 
@@ -663,7 +664,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Ngày chính thức
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.officialDate || '—'}
+                      {employee.officialDate ? formatDate(employee.officialDate) : '—'}
                     </p>
                   </div>
 
@@ -673,7 +674,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Ngày nghỉ việc
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.resignationDate || '—'}
+                      {employee.resignationDate ? formatDate(employee.resignationDate) : '—'}
                     </p>
                   </div>
 
@@ -802,7 +803,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Ngày cấp
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.idCardDate || '—'}
+                      {employee.idCardDate ? formatDate(employee.idCardDate) : '—'}
                     </p>
                   </div>
 
@@ -1388,7 +1389,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Ngày tạo
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.createdAt || '—'}
+                      {employee.createdAt ? formatDate(employee.createdAt) : '—'}
                     </p>
                   </div>
 
@@ -1398,7 +1399,7 @@ export const EmployeeDetailDrawer: React.FC<EmployeeDetailDrawerProps> = ({
                       Cập nhật lần cuối
                     </span>
                     <p className="text-xs text-foreground leading-relaxed min-w-0 wrap-anywhere">
-                      {employee.updatedAt || '—'}
+                      {employee.updatedAt ? formatDate(employee.updatedAt) : '—'}
                     </p>
                   </div>
                 </div>

@@ -84,7 +84,7 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
 
   // User global settings
-  const { settings } = useSettings();
+  const { settings, formatDate } = useSettings();
 
   // Table Selection & Pagination
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -1059,7 +1059,7 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                                         overdue ? 'text-rose-600 font-bold' : 'text-foreground'
                                       }`}
                                     >
-                                      {item.dueDate}
+                                      {item.dueDate ? formatDate(item.dueDate) : '—'}
                                     </span>
                                   </td>
                                 );

@@ -28,6 +28,7 @@ import { SubtaskFormModal } from './SubtaskFormModal';
 import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer';
 import { TaskFormDrawer } from '../tasks/TaskFormDrawer';
 import { useAutoSync } from '../../../hooks/useAutoSync';
+import { formatDate } from '../../../utils/dateUtils';
 import { RealtimeSyncBadge } from '../../common/RealtimeSyncBadge';
 import { generateId } from '../../../utils/idGenerator';
 
@@ -853,7 +854,7 @@ export const SubtaskListPage: React.FC<SubtaskListPageProps> = ({ onBack }) => {
                             {task.dueDate && (
                               <span className="flex items-center gap-1">
                                 <Calendar className="w-3 h-3 text-rose-500" />
-                                {task.dueDate}
+                                {formatDate(task.dueDate)}
                               </span>
                             )}
                           </div>
@@ -947,7 +948,7 @@ export const SubtaskListPage: React.FC<SubtaskListPageProps> = ({ onBack }) => {
                                   {st.dueDate && (
                                     <span className="hidden sm:flex items-center gap-1 text-[11px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md">
                                       <Calendar className="w-3 h-3 text-rose-500" />
-                                      {st.dueDate}
+                                      {formatDate(st.dueDate)}
                                     </span>
                                   )}
 
@@ -1104,7 +1105,7 @@ export const SubtaskListPage: React.FC<SubtaskListPageProps> = ({ onBack }) => {
                             {item.dueDate ? (
                               <span className="inline-flex items-center gap-1">
                                 <Calendar className="w-3 h-3 text-rose-500 shrink-0" />
-                                {item.dueDate}
+                                {formatDate(item.dueDate)}
                               </span>
                             ) : (
                               '—'

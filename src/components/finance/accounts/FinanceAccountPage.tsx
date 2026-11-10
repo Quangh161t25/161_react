@@ -137,7 +137,7 @@ export const FinanceAccountPage: React.FC<FinanceAccountPageProps> = ({ onBack }
   });
 
   // User global settings
-  const { settings } = useSettings();
+  const { settings, formatDate } = useSettings();
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -909,6 +909,10 @@ export const FinanceAccountPage: React.FC<FinanceAccountPageProps> = ({ onBack }
                                       ) : (
                                         <span className="text-muted-foreground">—</span>
                                       )
+                                    ) : col.id === 'createdAt' || col.id === 'updatedAt' ? (
+                                      <span className="text-foreground truncate block tabular-nums">
+                                        {(item as any)[col.id] ? formatDate((item as any)[col.id]) : '—'}
+                                      </span>
                                     ) : (
                                       <span className="text-foreground truncate block">
                                         {(item as any)[col.id] || '—'}

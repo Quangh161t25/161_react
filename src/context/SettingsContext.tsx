@@ -5,15 +5,16 @@ import {
   COLOR_CONFIG,
   FONT_CONFIG,
 } from '../types/settings';
+import { parseDateParts } from '../utils/dateUtils';
 
 interface SettingsContextType {
   settings: UserSettings;
   updateSettings: (partial: Partial<UserSettings>) => void;
   resetDefaults: () => void;
   formatCurrency: (amount: number) => string;
-  formatDate: (date: Date | string) => string;
-  formatTime: (time: Date | string | undefined | null) => string;
-  formatDateTime: (date: Date | string) => string;
+  formatDate: (date?: Date | string | number | null) => string;
+  formatTime: (time?: Date | string | null) => string;
+  formatDateTime: (date?: Date | string | number | null) => string;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -137,20 +138,18 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Helper: Format Date according to settings
-  const formatDate = (dateInput: Date | string): string => {
-    const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-    if (isNaN(d.getTime())) return '';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
+  const formatDate = (dateInput?: Date | string | number | null): string => {
+    const parts = parseDateParts(dateInput);
+    if (!parts) return typeof dateInput === 'string' ? dateInput : '';
 
-    if (settings.dateFormat === 'dd/mm/yyyy') {
-      return `${day}/${month}/${year}`;
-    }
     if (settings.dateFormat === 'mm/dd/yyyy') {
-      return `${month}/${day}/${year}`;
+      return `${parts.month}/${parts.day}/${parts.year}`;
     }
-    return `${year}-${month}-${day}`;
+    if (settings.dateFormat === 'yyyy-mm-dd') {
+      return `${parts.year}-${parts.month}-${parts.day}`;
+    }
+    // Default to 'dd/mm/yyyy'
+    return `${parts.day}/${parts.month}/${parts.year}`;
   };
 
   // Helper: Format Time according to settings
@@ -159,7 +158,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     let hours = 0;
     let minutes = 0;
     if (typeof timeInput === 'string') {
-      const match = timeInput.match(/^(\d{1,2}):(\d{2})/);
+      const match = timeInput.match(/(\d{1,2}):(\d{2})/);
       if (!match) return timeInput;
       hours = parseInt(match[1], 10);
       minutes = parseInt(match[2], 10);
@@ -178,12 +177,21 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   // Helper: Format DateTime according to settings
-  const formatDateTime = (dateInput: Date | string): string => {
-    const d = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
-    if (isNaN(d.getTime())) return '';
-    const formattedDate = formatDate(d);
-    const formattedTime = formatTime(d);
-    return `${formattedDate} ${formattedTime}`;
+  const formatDateTime = (dateInput?: Date | string | number | null): string => {
+    const parts = parseDateParts(dateInput);
+    if (!parts) return typeof dateInput === 'string' ? dateInput : '';
+    const formattedDate = formatDate(dateInput);
+    if (parts.hours !== undefined && parts.minutes !== undefined) {
+      let h = parseInt(parts.hours, 10);
+      const m = parts.minutes;
+      if (settings.timeFormat === '12h') {
+        const ampm = h >= 12 ? 'CH' : 'SA';
+        h = h % 12 || 12;
+        return `${formattedDate} ${String(h).padStart(2, '0')}:${m} ${ampm}`;
+      }
+      return `${formattedDate} ${String(h).padStart(2, '0')}:${m}`;
+    }
+    return formattedDate;
   };
 
   return (

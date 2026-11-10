@@ -295,7 +295,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
   }, [employees, searchQuery, selectedDept, selectedRole, selectedStatus]);
 
   // User global settings
-  const { settings } = useSettings();
+  const { settings, formatDate } = useSettings();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -999,9 +999,9 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
           </td>
         );
       case 'createdAt':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.createdAt}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.createdAt ? formatDate(emp.createdAt) : '—'}</td>;
       case 'updatedAt':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.updatedAt}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.updatedAt ? formatDate(emp.updatedAt) : '—'}</td>;
       case 'code':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono font-semibold text-foreground ${textWrapClass}`}>{emp.code}</td>;
       case 'avatarUrl':
@@ -1017,7 +1017,7 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
           </td>
         );
       case 'dob':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.dob || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.dob ? formatDate(emp.dob) : '—'}</td>;
       case 'maritalStatus':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.maritalStatus || '—'}</td>;
       case 'nationality':
@@ -1035,17 +1035,17 @@ export const EmployeePage: React.FC<EmployeePageProps> = ({ onBack }) => {
       case 'rank':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.rank ? `Bậc ${emp.rank}` : '—'}</td>;
       case 'startDate':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.startDate || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.startDate ? formatDate(emp.startDate) : '—'}</td>;
       case 'officialDate':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.officialDate || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.officialDate ? formatDate(emp.officialDate) : '—'}</td>;
       case 'resignationDate':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-destructive font-medium ${textWrapClass}`}>{emp.resignationDate || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-destructive font-medium ${textWrapClass}`}>{emp.resignationDate ? formatDate(emp.resignationDate) : '—'}</td>;
       case 'resignationReason':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.resignationReason || '—'}</td>;
       case 'idCardNumber':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} font-mono text-foreground ${textWrapClass}`}>{emp.idCardNumber || '—'}</td>;
       case 'idCardDate':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.idCardDate || '—'}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{emp.idCardDate ? formatDate(emp.idCardDate) : '—'}</td>;
       case 'idCardPlace':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} text-muted-foreground ${textWrapClass}`}>{emp.idCardPlace || '—'}</td>;
       case 'permanentAddress':

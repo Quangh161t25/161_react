@@ -9,6 +9,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { LearningEntry } from '../../types/learning';
+import { formatDate } from '../../utils/dateUtils';
 
 interface LearningStatsTabProps {
   entries: LearningEntry[];
@@ -206,7 +207,7 @@ export const LearningStatsTab: React.FC<LearningStatsTabProps> = ({ entries, onS
               >
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                   <span className="font-mono font-semibold">{item.code}</span>
-                  <span className="text-rose-500 font-medium">Hạn: {item.nextReviewDate}</span>
+                  <span className="text-rose-500 font-medium">Hạn: {formatDate(item.nextReviewDate)}</span>
                 </div>
                 <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors line-clamp-1">
                   {item.title}

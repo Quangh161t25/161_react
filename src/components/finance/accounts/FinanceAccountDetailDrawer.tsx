@@ -24,6 +24,7 @@ import {
 import { FinanceAccount } from '../../../types/financeMaster';
 import { CashTransaction } from '../../../types/cashTransaction';
 import { cashTransactionService } from '../../../services/cashTransactionService';
+import { formatDate } from '../../../utils/dateUtils';
 
 interface FinanceAccountDetailDrawerProps {
   account: FinanceAccount;
@@ -502,11 +503,11 @@ Ghi chú: ${account.note || '—'}`;
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
                   <span className="text-muted-foreground block mb-1">Ngày tạo</span>
-                  <span className="font-medium text-foreground">{account.createdAt || '—'}</span>
+                  <span className="font-medium text-foreground">{account.createdAt ? formatDate(account.createdAt) : '—'}</span>
                 </div>
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
                   <span className="text-muted-foreground block mb-1">Cập nhật lần cuối</span>
-                  <span className="font-medium text-foreground">{account.updatedAt || '—'}</span>
+                  <span className="font-medium text-foreground">{account.updatedAt ? formatDate(account.updatedAt) : '—'}</span>
                 </div>
               </div>
             </div>

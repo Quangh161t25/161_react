@@ -19,6 +19,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { ApprovalThreshold } from '../../../types/financeMaster';
+import { formatDate } from '../../../utils/dateUtils';
 
 interface ApprovalThresholdDetailDrawerProps {
   threshold: ApprovalThreshold;
@@ -334,11 +335,11 @@ Ghi chú: ${threshold.note || '—'}`;
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
                   <span className="text-muted-foreground block mb-1">Ngày tạo</span>
-                  <span className="font-medium text-foreground">{threshold.createdAt || '—'}</span>
+                  <span className="font-medium text-foreground">{threshold.createdAt ? formatDate(threshold.createdAt) : '—'}</span>
                 </div>
                 <div className="p-3 rounded-lg border border-border bg-muted/20">
                   <span className="text-muted-foreground block mb-1">Cập nhật lần cuối</span>
-                  <span className="font-medium text-foreground">{threshold.updatedAt || '—'}</span>
+                  <span className="font-medium text-foreground">{threshold.updatedAt ? formatDate(threshold.updatedAt) : '—'}</span>
                 </div>
               </div>
             </div>

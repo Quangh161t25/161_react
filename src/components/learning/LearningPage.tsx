@@ -164,7 +164,7 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
   }, [galleryModal]);
 
   // User global settings
-  const { settings } = useSettings();
+  const { settings, formatDate } = useSettings();
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -792,7 +792,7 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
         );
 
       case 'entryDate':
-        return <div className={`${padding} text-center tabular-nums text-muted-foreground`}>{entry.entryDate || '—'}</div>;
+        return <div className={`${padding} text-center tabular-nums text-muted-foreground`}>{entry.entryDate ? formatDate(entry.entryDate) : '—'}</div>;
 
       case 'nextReviewDate':
         const isDue = entry.nextReviewDate && entry.nextReviewDate <= todayStr;
@@ -800,7 +800,7 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
           <div className={`${padding} text-center tabular-nums`}>
             {entry.nextReviewDate ? (
               <span className={`px-1.5 py-0.5 rounded text-[11px] font-semibold ${isDue ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20' : 'text-muted-foreground'}`}>
-                {entry.nextReviewDate}
+                {formatDate(entry.nextReviewDate)}
               </span>
             ) : (
               <span className="text-muted-foreground">—</span>
@@ -816,7 +816,7 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
         );
 
       case 'createdAt':
-        return <div className={`${padding} text-center tabular-nums text-muted-foreground`}>{entry.createdAt ? entry.createdAt.slice(0, 10) : '—'}</div>;
+        return <div className={`${padding} text-center tabular-nums text-muted-foreground`}>{entry.createdAt ? formatDate(entry.createdAt) : '—'}</div>;
 
       default:
         return <div className={`${padding} ${alignClass}`}>—</div>;

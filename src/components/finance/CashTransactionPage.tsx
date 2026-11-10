@@ -1245,9 +1245,9 @@ export const CashTransactionPage: React.FC<CashTransactionPageProps> = ({
       case 'approvedBy':
         return <td key={colId} style={colStyle} className={`${tdBaseClass} text-foreground ${textWrapClass}`}>{tx.approvedBy || '—'}</td>;
       case 'createdAt':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{tx.createdAt}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{tx.createdAt ? formatDate(tx.createdAt) : '—'}</td>;
       case 'updatedAt':
-        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{tx.updatedAt}</td>;
+        return <td key={colId} style={colStyle} className={`${tdBaseClass} tabular-nums text-muted-foreground ${textWrapClass}`}>{tx.updatedAt ? formatDate(tx.updatedAt) : '—'}</td>;
 
       default:
         return <td key={colId} style={colStyle} className={tdBaseClass}>—</td>;

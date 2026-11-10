@@ -135,7 +135,7 @@ export const PasswordPage: React.FC<PasswordPageProps> = ({ onBack }) => {
   }, [passwords]);
 
   // User global settings
-  const { settings } = useSettings();
+  const { settings, formatDate } = useSettings();
 
   // Table selection & pagination
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -711,21 +711,21 @@ export const PasswordPage: React.FC<PasswordPageProps> = ({ onBack }) => {
       case 'lastChangedDate':
         return (
           <div className={`${padding} text-center text-muted-foreground`}>
-            {item.lastChangedDate || '—'}
+            {item.lastChangedDate ? formatDate(item.lastChangedDate) : '—'}
           </div>
         );
 
       case 'createdAt':
         return (
           <div className={`${padding} text-center text-muted-foreground`}>
-            {item.createdAt ? (item.createdAt.includes('T') ? item.createdAt.split('T')[0] : item.createdAt) : '—'}
+            {item.createdAt ? formatDate(item.createdAt) : '—'}
           </div>
         );
 
       case 'updatedAt':
         return (
           <div className={`${padding} text-center text-muted-foreground`}>
-            {item.updatedAt ? (item.updatedAt.includes('T') ? item.updatedAt.split('T')[0] : item.updatedAt) : '—'}
+            {item.updatedAt ? formatDate(item.updatedAt) : '—'}
           </div>
         );
 
