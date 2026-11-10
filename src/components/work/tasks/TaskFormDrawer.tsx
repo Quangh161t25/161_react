@@ -12,13 +12,13 @@ import {
   PanelRightOpen,
   Maximize2,
   Minimize2,
-  Clock,
 } from 'lucide-react';
 import { Task, TaskPriority, TaskStatus, TaskSubtask, Project } from '../../../types/task';
 import { Employee } from '../../../types/employee';
 import { employeeService } from '../../../services/employeeService';
 import { projectService, taskService } from '../../../services/taskService';
 import { generateId } from '../../../utils/idGenerator';
+import { useAuth } from '../../../context/AuthContext';
 
 interface TaskFormDrawerProps {
   mode: 'create' | 'edit';
@@ -41,6 +41,7 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
   onClose,
   onSave,
 }) => {
+  const { currentUser } = useAuth();
   const [widthMode, setWidthMode] = useState<DrawerWidthMode>('wide');
   const [prevWidthMode, setPrevWidthMode] = useState<DrawerWidthMode>('wide');
 
@@ -190,21 +191,28 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
       setProjectName('');
       setIsCustomProject(false);
       setCustomProjectName('');
-      setDepartment(departmentsList[0] || 'Phòng Kỹ thuật & CNTT');
-      setAssignerId(employees[0]?.id || '');
-      setAssigneeId(employees[0]?.id || '');
+      // Tìm nhân sự tương ứng với tài khoản đang đăng nhập để làm Người giao việc
+      const loggedInEmp = employees.find(
+        (e) =>
+          (currentUser?.id && e.id === currentUser.id) ||
+          (currentUser?.code && e.code === currentUser.code) ||
+          (currentUser?.name && e.name.toLowerCase() === currentUser.name.toLowerCase())
+      );
+      setDepartment(loggedInEmp?.department || departmentsList[0] || 'Phòng Kỹ thuật & CNTT');
+      setAssignerId(loggedInEmp ? loggedInEmp.id : (currentUser?.id || currentUser?.name || ''));
+      setAssigneeId(''); // Không điền trước, để người dùng tự chọn
       setCollaborators([]);
       setPriority('medium');
       setStatus(defaultStatus);
       setStartDate(today);
       setDueDate(defaultDate || nextWeek);
       setProgress(0);
-      setEstimatedHours(8);
+      setEstimatedHours(0);
       setSubtasks([]);
       setTags(['Công việc']);
       setNote('');
     }
-  }, [mode, task, allTasks, defaultStatus, defaultDate, employees, departmentsList]);
+  }, [mode, task, allTasks, defaultStatus, defaultDate, employees, departmentsList, currentUser]);
 
   // Subtasks handler
   const handleAddSubtask = () => {
@@ -274,6 +282,7 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
   const validate = () => {
     const errs: Record<string, string> = {};
     if (!title.trim()) errs.title = 'Vui lòng nhập tên/tiêu đề công việc';
+    if (!assigneeId.trim()) errs.assigneeId = 'Vui lòng chọn người thực hiện chính';
     if (!dueDate) errs.dueDate = 'Vui lòng chọn hạn chót hoàn thành';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -292,8 +301,13 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
     const finalProjectId = matchedProject?.id || (finalProjectName ? (projectId || generateId('proj')) : undefined);
     const finalProjectCode = matchedProject?.code;
 
+    const currentUserName = currentUser?.name || '';
     const matchedAssigner = employees.find(
-      (emp) => emp.id === assignerId || emp.code === assignerId || emp.name === assignerId
+      (emp) =>
+        emp.id === assignerId ||
+        emp.code === assignerId ||
+        emp.name === assignerId ||
+        (assignerId && assignerId.toLowerCase() === emp.name.toLowerCase())
     );
     const matchedAssignee = employees.find(
       (emp) => emp.id === assigneeId || emp.code === assigneeId || emp.name === assigneeId
@@ -325,9 +339,9 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
       projectCode: finalProjectCode,
       projectName: finalProjectName || matchedProject?.name || undefined,
       department: department || (matchedAssignee ? matchedAssignee.department : 'Chung'),
-      assignerId: matchedAssigner ? matchedAssigner.id : undefined,
-      assignerCode: matchedAssigner ? matchedAssigner.code : undefined,
-      assignerName: matchedAssigner ? matchedAssigner.name : 'Quản trị viên',
+      assignerId: matchedAssigner ? matchedAssigner.id : (currentUser?.id || undefined),
+      assignerCode: matchedAssigner ? matchedAssigner.code : (currentUser?.code || undefined),
+      assignerName: matchedAssigner ? matchedAssigner.name : (currentUserName || 'Quản trị viên'),
       assigneeId: matchedAssignee ? matchedAssignee.id : undefined,
       assigneeCode: matchedAssignee ? matchedAssignee.code : undefined,
       assigneeName: matchedAssignee ? matchedAssignee.name : 'Chưa phân công',
@@ -478,10 +492,13 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {/* Dự án trực thuộc */}
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <FolderKanban className="w-3.5 h-3.5 text-purple-500" />
-                    Dự án trực thuộc
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5" title="Chọn dự án lớn mà công việc này trực thuộc, hoặc để nguyên nếu là công việc độc lập">
+                      <FolderKanban className="w-3.5 h-3.5 text-purple-500" />
+                      <span>Dự án trực thuộc</span>
+                    </label>
+                    <span className="text-[10px] text-muted-foreground font-normal">(Tùy chọn)</span>
+                  </div>
                   {isCustomProject ? (
                     <div className="flex items-center gap-1.5">
                       <input
@@ -555,7 +572,11 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
                     onChange={(e) => setAssignerId(e.target.value)}
                     className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                   >
-                    <option value="">Chọn người giao việc...</option>
+                    {currentUser?.name && !employees.some((e) => e.name.toLowerCase() === currentUser.name.toLowerCase()) && (
+                      <option value={currentUser.id || currentUser.name}>
+                        {currentUser.name} (Đang đăng nhập)
+                      </option>
+                    )}
                     {employees.map((emp) => (
                       <option key={emp.id} value={emp.id}>
                         {emp.name} {emp.code ? `(${emp.code})` : ''}
@@ -574,20 +595,30 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
                     value={assigneeId}
                     onChange={(e) => {
                       setAssigneeId(e.target.value);
+                      if (errors.assigneeId) {
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          delete copy.assigneeId;
+                          return copy;
+                        });
+                      }
                       const emp = employees.find((x) => x.id === e.target.value);
                       if (emp?.department && !department) {
                         setDepartment(emp.department);
                       }
                     }}
-                    className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    className={`w-full h-9 px-3 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 ${
+                      errors.assigneeId ? 'border-rose-500 focus:ring-rose-500' : 'border-border focus:ring-primary'
+                    }`}
                   >
-                    <option value="">Chọn nhân sự phụ trách...</option>
+                    <option value="">-- Chọn người thực hiện --</option>
                     {employees.map((emp) => (
                       <option key={emp.id} value={emp.id}>
                         {emp.name} {emp.code ? `(${emp.code})` : ''}
                       </option>
                     ))}
                   </select>
+                  {errors.assigneeId && <p className="text-[11px] text-rose-500">{errors.assigneeId}</p>}
                 </div>
               </div>
             </div>
@@ -648,39 +679,6 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
                   className={`w-full h-9 px-2 rounded-lg border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary ${
                     errors.dueDate ? 'border-rose-500' : 'border-border'
                   }`}
-                />
-              </div>
-            </div>
-
-            {/* 5. Progress Slider & Estimated Hours */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-3.5 rounded-xl border border-border bg-card">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">Tiến độ hoàn thành:</span>
-                  <span className="font-bold text-primary tabular-nums">{progress}%</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={progress}
-                  onChange={(e) => setProgress(Number(e.target.value))}
-                  className="w-full accent-primary cursor-pointer"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-muted-foreground" />
-                  Số giờ ước tính (Hours)
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={estimatedHours}
-                  onChange={(e) => setEstimatedHours(Number(e.target.value))}
-                  className="w-full h-9 px-3 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary tabular-nums"
                 />
               </div>
             </div>
