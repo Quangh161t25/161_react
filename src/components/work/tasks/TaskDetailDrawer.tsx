@@ -23,7 +23,6 @@ import {
   Minimize2,
   Tag,
   Send,
-  Sparkles,
 } from 'lucide-react';
 import { Task, TaskStatus } from '../../../types/task';
 import { formatDate } from '../../../utils/dateUtils';
@@ -104,17 +103,11 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
             <span>Đang thực hiện</span>
           </span>
         );
-      case 'review':
-        return (
-          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Chờ duyệt / Nghiệm thu</span>
-          </span>
-        );
       case 'cancelled':
         return (
-          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-muted text-muted-foreground border border-border">
-            Tạm hoãn
+          <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 flex items-center gap-1.5">
+            <X className="w-3.5 h-3.5" />
+            <span>Đã hủy</span>
           </span>
         );
       case 'todo':
@@ -358,7 +351,7 @@ Nội dung: ${task.description || '—'}`;
                   {/* Quick Change Status Buttons */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/50">
                     <span className="text-xs text-muted-foreground mr-1">Chuyển trạng thái:</span>
-                    {(['todo', 'in_progress', 'review', 'completed'] as TaskStatus[]).map((st) => (
+                    {(['todo', 'in_progress', 'completed', 'cancelled'] as TaskStatus[]).map((st) => (
                       <button
                         key={st}
                         type="button"
@@ -373,9 +366,9 @@ Nội dung: ${task.description || '—'}`;
                           ? 'Chưa làm'
                           : st === 'in_progress'
                           ? 'Đang làm'
-                          : st === 'review'
-                          ? 'Chờ duyệt'
-                          : 'Hoàn thành ✓'}
+                          : st === 'completed'
+                          ? 'Hoàn thành ✓'
+                          : 'Đã hủy ✕'}
                       </button>
                     ))}
                   </div>

@@ -3146,7 +3146,10 @@ export function rowToTask(r, idx) {
     assigneeCode: String(r[8] || '').trim() || undefined,
     assigneeName: String(r[9] || '').trim(),
     priority: String(r[10] || 'medium').trim(),
-    status: String(r[11] || 'todo').trim(),
+    status: (() => {
+      const rawStatus = String(r[11] || 'todo').trim();
+      return rawStatus === 'review' ? 'in_progress' : rawStatus;
+    })(),
     startDate: formatSheetDate(r[12]),
     dueDate: formatSheetDate(r[13]),
     progress: parseInt(r[14], 10) || 0,

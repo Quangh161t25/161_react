@@ -515,7 +515,6 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
     switch (s) {
       case 'todo': return 'Chưa làm';
       case 'in_progress': return 'Đang làm';
-      case 'review': return 'Chờ duyệt';
       case 'completed': return 'Đã xong';
       case 'cancelled': return 'Đã hủy';
       default: return 'Trạng thái';
@@ -662,17 +661,17 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                           </button>
                           <button
                             type="button"
-                            onClick={() => { setSelectedStatus('review'); setIsStatusOpen(false); setCurrentPage(1); }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors text-blue-600 ${selectedStatus === 'review' ? 'bg-blue-500/10 font-semibold' : 'hover:bg-muted'}`}
-                          >
-                            Chờ duyệt
-                          </button>
-                          <button
-                            type="button"
                             onClick={() => { setSelectedStatus('completed'); setIsStatusOpen(false); setCurrentPage(1); }}
                             className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors text-emerald-600 ${selectedStatus === 'completed' ? 'bg-emerald-500/10 font-semibold' : 'hover:bg-muted'}`}
                           >
                             Đã xong
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedStatus('cancelled'); setIsStatusOpen(false); setCurrentPage(1); }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors text-rose-600 ${selectedStatus === 'cancelled' ? 'bg-rose-500/10 font-semibold' : 'hover:bg-muted'}`}
+                          >
+                            Đã hủy
                           </button>
                         </div>
                       </>
@@ -1230,8 +1229,8 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                                           ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                                           : item.status === 'in_progress'
                                           ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                                          : item.status === 'review'
-                                          ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                                          : item.status === 'cancelled'
+                                          ? 'bg-rose-500/10 text-rose-600 border-rose-500/20'
                                           : 'bg-slate-500/10 text-slate-600 border-slate-500/20'
                                       }`}
                                     >
@@ -1239,8 +1238,8 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                                         ? 'Đã xong'
                                         : item.status === 'in_progress'
                                         ? 'Đang làm'
-                                        : item.status === 'review'
-                                        ? 'Chờ duyệt'
+                                        : item.status === 'cancelled'
+                                        ? 'Đã hủy'
                                         : 'Chưa làm'}
                                     </span>
                                   </td>

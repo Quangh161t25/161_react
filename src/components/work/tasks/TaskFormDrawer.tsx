@@ -638,9 +638,8 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
                 >
                   <option value="todo">Chưa thực hiện</option>
                   <option value="in_progress">Đang thực hiện</option>
-                  <option value="review">Chờ duyệt / Nghiệm thu</option>
                   <option value="completed">Đã hoàn thành</option>
-                  <option value="cancelled">Tạm hoãn / Huỷ</option>
+                  <option value="cancelled">Đã hủy</option>
                 </select>
               </div>
 

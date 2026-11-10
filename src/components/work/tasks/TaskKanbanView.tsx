@@ -39,18 +39,18 @@ const KANBAN_COLUMNS: Array<{
     borderColor: 'border-amber-500/20',
   },
   {
-    id: 'review',
-    label: 'Chờ duyệt / Nghiệm thu',
-    color: 'text-blue-600 dark:text-blue-400',
-    bgLight: 'bg-blue-500/10',
-    borderColor: 'border-blue-500/20',
-  },
-  {
     id: 'completed',
     label: 'Đã hoàn thành',
     color: 'text-emerald-600 dark:text-emerald-400',
     bgLight: 'bg-emerald-500/10',
     borderColor: 'border-emerald-500/20',
+  },
+  {
+    id: 'cancelled',
+    label: 'Đã hủy',
+    color: 'text-rose-600 dark:text-rose-400',
+    bgLight: 'bg-rose-500/10',
+    borderColor: 'border-rose-500/20',
   },
 ];
 
@@ -121,7 +121,9 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start pb-6">
       {KANBAN_COLUMNS.map((col) => {
-        const colTasks = tasks.filter((t) => t.status === col.id);
+        const colTasks = tasks.filter((t) =>
+          col.id === 'in_progress' && t.status === 'review' ? true : t.status === col.id
+        );
         const isDragOver = dragOverColId === col.id;
 
         return (
@@ -286,15 +288,6 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
                               Đang làm
                             </button>
                           )}
-                          {col.id !== 'review' && (
-                            <button
-                              type="button"
-                              onClick={() => onStatusChange(task.id, 'review')}
-                              className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 hover:bg-blue-500/20"
-                            >
-                              Duyệt
-                            </button>
-                          )}
                           {col.id !== 'completed' && (
                             <button
                               type="button"
@@ -302,6 +295,15 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
                               className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 font-semibold"
                             >
                               Xong ✓
+                            </button>
+                          )}
+                          {col.id !== 'cancelled' && (
+                            <button
+                              type="button"
+                              onClick={() => onStatusChange(task.id, 'cancelled')}
+                              className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 hover:bg-rose-500/20"
+                            >
+                              Hủy ✕
                             </button>
                           )}
                         </div>

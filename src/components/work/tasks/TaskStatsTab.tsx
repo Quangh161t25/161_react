@@ -17,8 +17,8 @@ interface TaskStatsTabProps {
 export const TaskStatsTab: React.FC<TaskStatsTabProps> = ({ tasks }) => {
   const total = tasks.length;
   const completed = tasks.filter((t) => t.status === 'completed').length;
-  const inProgress = tasks.filter((t) => t.status === 'in_progress').length;
-  const review = tasks.filter((t) => t.status === 'review').length;
+  const inProgress = tasks.filter((t) => t.status === 'in_progress' || (t.status as any) === 'review').length;
+  const cancelled = tasks.filter((t) => t.status === 'cancelled').length;
   const todo = tasks.filter((t) => t.status === 'todo').length;
 
   const now = new Date();
@@ -82,7 +82,7 @@ export const TaskStatsTab: React.FC<TaskStatsTabProps> = ({ tasks }) => {
           <div>
             <span className="text-xs text-muted-foreground font-medium">Đang triển khai</span>
             <h4 className="text-xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
-              {inProgress + review} việc
+              {inProgress} việc
             </h4>
           </div>
         </div>
@@ -134,11 +134,11 @@ export const TaskStatsTab: React.FC<TaskStatsTabProps> = ({ tasks }) => {
 
             <div className="space-y-1.5">
               <div className="flex justify-between font-medium">
-                <span className="text-muted-foreground">Chờ duyệt / Nghiệm thu</span>
-                <span className="font-bold text-blue-600 tabular-nums">{review} ({total > 0 ? Math.round((review/total)*100) : 0}%)</span>
+                <span className="text-muted-foreground">Đã hủy</span>
+                <span className="font-bold text-rose-600 tabular-nums">{cancelled} ({total > 0 ? Math.round((cancelled/total)*100) : 0}%)</span>
               </div>
               <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-blue-500 rounded-full" style={{ width: `${total > 0 ? (review/total)*100 : 0}%` }} />
+                <div className="h-full bg-rose-500 rounded-full" style={{ width: `${total > 0 ? (cancelled/total)*100 : 0}%` }} />
               </div>
             </div>
 
