@@ -39,7 +39,7 @@ import { useIsMobile } from '../../hooks/useIsMobile';
 import { NoteDetailDrawer } from './NoteDetailDrawer';
 import { NoteFormDrawer } from './NoteFormDrawer';
 import { generateId } from '../../utils/idGenerator';
-import { toLocalDateStr } from '../../utils/dateUtils';
+import { toLocalDateStr, toDateSortKey, toDateTimestamp, formatDate } from '../../utils/dateUtils';
 import { MobileAddButton } from '../common/MobileFormHelpers';
 import { RowGroupValue, compareText, sortRowsIntoGroups } from '../../utils/tableGrouping';
 import { NOTES_CHANGED_EVENT } from '../../services/triggerService';
@@ -74,8 +74,7 @@ const getNoteColumnValue = (note: Note, colId: string): RowGroupValue => {
     return { key: trimmed, label: trimmed };
   };
   const date = (value?: string | null): RowGroupValue => {
-    const iso = (value || '').slice(0, 10);
-    return { key: iso, label: iso.split('-').reverse().join('/') };
+    return { key: toDateSortKey(value), label: value ? formatDate(value) : '' };
   };
 
   switch (colId) {
@@ -140,36 +139,9 @@ export const DEFAULT_NOTE_COLUMNS: ColumnItem[] = [
 // Helper to convert note date and time into a comparable timestamp (milliseconds)
 export function getNoteDateTimeTimestamp(note: Note): number {
   const dateStr = (note.noteDate || note.createdAt || note.updatedAt || '').trim();
-  let y = 1970, m = 1, d = 1;
-
-  if (/^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
-    const parts = dateStr.slice(0, 10).split('-');
-    y = parseInt(parts[0], 10) || 1970;
-    m = parseInt(parts[1], 10) || 1;
-    d = parseInt(parts[2], 10) || 1;
-  } else if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(dateStr)) {
-    const parts = dateStr.split('/');
-    d = parseInt(parts[0], 10) || 1;
-    m = parseInt(parts[1], 10) || 1;
-    y = parseInt(parts[2], 10) || 1970;
-  } else if (dateStr) {
-    const parsed = new Date(dateStr);
-    if (!isNaN(parsed.getTime())) {
-      y = parsed.getFullYear();
-      m = parsed.getMonth() + 1;
-      d = parsed.getDate();
-    }
-  }
-
-  let hour = 0, minute = 0;
-  if (note.noteTime && /^\d{1,2}:\d{2}/.test(note.noteTime.trim())) {
-    const timeParts = note.noteTime.trim().split(':');
-    hour = parseInt(timeParts[0], 10) || 0;
-    minute = parseInt(timeParts[1], 10) || 0;
-  }
-
-  const dt = new Date(y, m - 1, d, hour, minute, 0, 0);
-  return isNaN(dt.getTime()) ? 0 : dt.getTime();
+  const timeStr = (note.noteTime || '').trim();
+  const combined = timeStr ? `${dateStr} ${timeStr}` : dateStr;
+  return toDateTimestamp(combined);
 }
 
 export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {

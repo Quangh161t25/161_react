@@ -53,6 +53,7 @@ import { useAutoSync } from '../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 import { useSettings } from '../../context/SettingsContext';
 import { TablePagination } from '../common/TablePagination';
+import { compareDates } from '../../utils/dateUtils';
 import {
   ColumnCustomizerPopover,
   ColumnItem,
@@ -476,17 +477,13 @@ export const PasswordPage: React.FC<PasswordPageProps> = ({ onBack }) => {
           valB = b.pinOr2FA || '';
           break;
         case 'createdAt':
-          valA = a.createdAt || '';
-          valB = b.createdAt || '';
-          break;
         case 'updatedAt':
-          valA = a.updatedAt || '';
-          valB = b.updatedAt || '';
-          break;
         case 'lastChangedDate':
-          valA = a.lastChangedDate || '';
-          valB = b.lastChangedDate || '';
-          break;
+          return compareDates(
+            sortField === 'createdAt' ? a.createdAt : sortField === 'updatedAt' ? a.updatedAt : a.lastChangedDate,
+            sortField === 'createdAt' ? b.createdAt : sortField === 'updatedAt' ? b.updatedAt : b.lastChangedDate,
+            sortDirection
+          );
         default:
           return 0;
       }

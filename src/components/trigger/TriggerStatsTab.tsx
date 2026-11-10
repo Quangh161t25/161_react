@@ -10,7 +10,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Trigger } from '../../types/trigger';
-import { formatDate } from '../../utils/dateUtils';
+import { formatDate, compareDates } from '../../utils/dateUtils';
 
 interface TriggerStatsTabProps {
   triggers: Trigger[];
@@ -47,7 +47,7 @@ export const TriggerStatsTab: React.FC<TriggerStatsTabProps> = ({
   const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
   const upcoming = pending
     .filter((t) => t.runAt && t.runAt <= next24h)
-    .sort((a, b) => (a.runAt || '').localeCompare(b.runAt || ''));
+    .sort((a, b) => compareDates(a.runAt, b.runAt, 'asc'));
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto text-xs">

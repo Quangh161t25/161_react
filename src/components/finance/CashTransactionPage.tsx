@@ -58,6 +58,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { useAutoSync } from '../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 import { TablePagination } from '../common/TablePagination';
+import { compareDates } from '../../utils/dateUtils';
 
 interface CashTransactionPageProps {
   onBack: () => void;
@@ -508,9 +509,12 @@ export const CashTransactionPage: React.FC<CashTransactionPageProps> = ({
   const runningBalanceMap = useMemo(() => {
     const isAccountFilter = selectedAccount !== 'all';
     const sorted = [...transactions].sort((a, b) => {
-      const dtA = `${a.transactionDate || ''} ${a.transactionTime || ''} ${a.code || ''}`;
-      const dtB = `${b.transactionDate || ''} ${b.transactionTime || ''} ${b.code || ''}`;
-      return dtA.localeCompare(dtB);
+      const cmpDate = compareDates(a.transactionDate, b.transactionDate, 'asc');
+      if (cmpDate !== 0) return cmpDate;
+      const timeA = a.transactionTime || '';
+      const timeB = b.transactionTime || '';
+      if (timeA !== timeB) return timeA.localeCompare(timeB);
+      return (a.code || '').localeCompare(b.code || '');
     });
 
     let currentBal = 0;

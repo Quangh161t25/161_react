@@ -48,7 +48,7 @@ import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 import { TriggerFormDrawer } from './TriggerFormDrawer';
 import { TriggerDetailDrawer } from './TriggerDetailDrawer';
 import { TriggerStatsTab } from './TriggerStatsTab';
-import { formatDate, toLocalDateStr } from '../../utils/dateUtils';
+import { formatDate, toLocalDateStr, compareDates } from '../../utils/dateUtils';
 
 interface TriggerPageProps {
   onBack: () => void;
@@ -398,18 +398,21 @@ export const TriggerPage: React.FC<TriggerPageProps> = ({ onBack }) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
 
-      let compare = 0;
       if (sortField === 'runAt') {
-        compare = (a.runAt || '').localeCompare(b.runAt || '');
-      } else if (sortField === 'createdAt') {
-        compare = (a.createdAt || '').localeCompare(b.createdAt || '');
-      } else if (sortField === 'code') {
-        compare = (a.code || a.id).localeCompare(b.code || b.id);
-      } else if (sortField === 'title') {
-        compare = (a.title || '').localeCompare(b.title || '', 'vi');
+        return compareDates(a.runAt, b.runAt, sortDirection);
       }
-
-      return sortDirection === 'asc' ? compare : -compare;
+      if (sortField === 'createdAt') {
+        return compareDates(a.createdAt, b.createdAt, sortDirection);
+      }
+      if (sortField === 'code') {
+        const cmp = (a.code || a.id).localeCompare(b.code || b.id);
+        return sortDirection === 'asc' ? cmp : -cmp;
+      }
+      if (sortField === 'title') {
+        const cmp = (a.title || '').localeCompare(b.title || '', 'vi');
+        return sortDirection === 'asc' ? cmp : -cmp;
+      }
+      return 0;
     });
 
     return list;

@@ -40,6 +40,7 @@ import { stripMarkdown } from '../notes/MarkdownRenderer';
 import { useAutoSync } from '../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../common/RealtimeSyncBadge';
 import { useSettings } from '../../context/SettingsContext';
+import { compareDates, isDateLike } from '../../utils/dateUtils';
 
 // Helper to extract all image URLs (cover, uploaded images array/string, and markdown images) from a learning entry
 export function getLearningEntryImages(entry: LearningEntry): string[] {
@@ -479,7 +480,12 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(colId);
-      setSortDirection(colId === 'entryDate' || colId === 'rating' ? 'desc' : 'asc');
+      const isDescDefault =
+        colId === 'entryDate' ||
+        colId === 'nextReviewDate' ||
+        colId === 'createdAt' ||
+        colId === 'rating';
+      setSortDirection(isDescDefault ? 'desc' : 'asc');
     }
   };
 
@@ -515,13 +521,10 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
         diff = sortDirection === 'asc'
           ? (a.title || '').localeCompare(b.title || '', 'vi')
           : (b.title || '').localeCompare(a.title || '', 'vi');
-      } else if (sortField === 'entryDate') {
-        const dateA = a.entryDate || a.createdAt || '';
-        const dateB = b.entryDate || b.createdAt || '';
-        diff = sortDirection === 'asc'
-          ? dateA.localeCompare(dateB)
-          : dateB.localeCompare(dateA);
-
+      } else if (sortField === 'entryDate' || sortField === 'nextReviewDate' || sortField === 'createdAt') {
+        const valA = (a as any)[sortField] || (sortField === 'entryDate' ? a.createdAt : '');
+        const valB = (b as any)[sortField] || (sortField === 'entryDate' ? b.createdAt : '');
+        diff = compareDates(valA, valB, sortDirection);
       } else if (sortField === 'rating') {
         const rA = a.rating ?? 5;
         const rB = b.rating ?? 5;
@@ -531,11 +534,17 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
           ? (a.masteryLevel || '').localeCompare(b.masteryLevel || '')
           : (b.masteryLevel || '').localeCompare(a.masteryLevel || '');
       } else {
-        const valA = String((a as any)[sortField] || '');
-        const valB = String((b as any)[sortField] || '');
-        diff = sortDirection === 'asc'
-          ? valA.localeCompare(valB, 'vi')
-          : valB.localeCompare(valA, 'vi');
+        const rawA = (a as any)[sortField];
+        const rawB = (b as any)[sortField];
+        if (isDateLike(rawA) || isDateLike(rawB)) {
+          diff = compareDates(rawA, rawB, sortDirection);
+        } else {
+          const valA = String(rawA || '');
+          const valB = String(rawB || '');
+          diff = sortDirection === 'asc'
+            ? valA.localeCompare(valB, 'vi', { numeric: true })
+            : valB.localeCompare(valA, 'vi', { numeric: true });
+        }
       }
 
       if (diff !== 0) return diff;

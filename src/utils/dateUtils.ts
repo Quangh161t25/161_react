@@ -113,6 +113,67 @@ export function toInputDateValue(input?: Date | string | number | null): string 
 export const toDisplayDate = formatDate;
 
 /**
+ * Chuyển ngày giờ bất kỳ sang key chuẩn YYYY-MM-DD[THH:mm:ss] để sắp xếp thứ tự chính xác.
+ */
+export function toDateSortKey(input?: Date | string | number | null): string {
+  const parts = parseDateParts(input);
+  if (!parts) return '';
+  const time =
+    parts.hours !== undefined && parts.minutes !== undefined
+      ? `T${parts.hours}:${parts.minutes}:${parts.seconds || '00'}`
+      : '';
+  return `${parts.year}-${parts.month}-${parts.day}${time}`;
+}
+
+/**
+ * Trả về timestamp mili-giây từ ngày giờ bất kỳ (hoặc 0 nếu không hợp lệ).
+ */
+export function toDateTimestamp(input?: Date | string | number | null): number {
+  const parts = parseDateParts(input);
+  if (!parts) return 0;
+  const y = parseInt(parts.year, 10);
+  const m = parseInt(parts.month, 10) - 1;
+  const d = parseInt(parts.day, 10);
+  const h = parts.hours ? parseInt(parts.hours, 10) : 0;
+  const min = parts.minutes ? parseInt(parts.minutes, 10) : 0;
+  const s = parts.seconds ? parseInt(parts.seconds, 10) : 0;
+  return new Date(y, m, d, h, min, s).getTime();
+}
+
+/**
+ * Kiểm tra xem một giá trị có phải là dạng ngày giờ hay không.
+ */
+export function isDateLike(val: any): boolean {
+  if (!val) return false;
+  if (val instanceof Date) return true;
+  if (typeof val !== 'string') return false;
+  const trimmed = val.trim();
+  return (
+    /^\d{1,2}\/\d{1,2}\/\d{4}/.test(trimmed) ||
+    /^\d{1,2}-\d{1,2}-\d{4}/.test(trimmed) ||
+    /^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(trimmed)
+  );
+}
+
+/**
+ * So sánh 2 ngày giờ chuẩn xác theo thứ tự thời gian.
+ * - Chuỗi rỗng luôn được đưa xuống cuối cùng (kể cả khi sắp xếp asc hay desc).
+ */
+export function compareDates(
+  a?: Date | string | number | null,
+  b?: Date | string | number | null,
+  direction: 'asc' | 'desc' = 'asc'
+): number {
+  const keyA = toDateSortKey(a);
+  const keyB = toDateSortKey(b);
+  if (!keyA && !keyB) return 0;
+  if (!keyA) return 1; // a rỗng -> a xuống sau b
+  if (!keyB) return -1; // b rỗng -> b xuống sau a
+  const cmp = keyA.localeCompare(keyB);
+  return direction === 'asc' ? cmp : -cmp;
+}
+
+/**
  * Ngày theo giờ máy người dùng, dạng YYYY-MM-DD.
  * Không dùng toISOString() vì nó tính theo UTC: ở Việt Nam, trước 7h sáng sẽ ra ngày hôm trước.
  */
