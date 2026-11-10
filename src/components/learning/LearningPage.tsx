@@ -20,11 +20,10 @@ import {
   Download,
   ChartColumn,
   RotateCcw,
-  CheckCircle2,
   GraduationCap,
   X,
 } from 'lucide-react';
-import { LearningEntry, MasteryLevel } from '../../types/learning';
+import { LearningEntry } from '../../types/learning';
 import { MASTERY_LEVEL_MAP } from '../../data/learning';
 import { learningService } from '../../services/learningService';
 import { useIsMobile } from '../../hooks/useIsMobile';
@@ -92,15 +91,11 @@ export const DEFAULT_LEARNING_COLUMNS: ColumnItem[] = [
   { id: 'image', label: 'Hình ảnh', visible: true, width: 130, align: 'center', wrap: 'wrap' },
   { id: 'title', label: 'Tiêu đề kiến thức', visible: true, pinned: true, width: 280, align: 'left', wrap: 'truncate' },
   { id: 'content', label: 'Nội dung', visible: true, width: 340, align: 'left', wrap: 'truncate' },
-  { id: 'masteryLevel', label: 'Mức độ nắm vững', visible: true, width: 150, align: 'center', wrap: 'truncate' },
-  { id: 'rating', label: 'Đánh giá', visible: true, width: 110, align: 'center', wrap: 'truncate' },
-  { id: 'source', label: 'Nguồn & Tác giả', visible: true, width: 200, align: 'left', wrap: 'truncate' },
-  { id: 'sourceUrl', label: 'Link tham khảo', visible: true, width: 180, align: 'left', wrap: 'truncate' },
   { id: 'tags', label: 'Thẻ (Tags)', visible: true, width: 180, align: 'left', wrap: 'truncate' },
+  { id: 'sourceUrl', label: 'Link tham khảo', visible: true, width: 180, align: 'left', wrap: 'truncate' },
   { id: 'summary', label: 'Ý chính cốt lõi', visible: true, width: 300, align: 'left', wrap: 'truncate' },
   { id: 'entryDate', label: 'Ngày học', visible: true, width: 130, align: 'center', wrap: 'truncate' },
   { id: 'nextReviewDate', label: 'Ngày ôn lại', visible: true, width: 130, align: 'center', wrap: 'truncate' },
-  { id: 'difficulty', label: 'Độ khó', visible: false, width: 110, align: 'center', wrap: 'truncate' },
   { id: 'createdAt', label: 'Ngày tạo', visible: false, width: 130, align: 'center', wrap: 'truncate' },
 ];
 
@@ -119,12 +114,10 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
     setViewMode(isMobile ? 'grid' : 'table');
   }, [isMobile]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMastery, setSelectedMastery] = useState<string>('all');
   const [onlyPinned, setOnlyPinned] = useState(false);
   const [onlyDueForReview, setOnlyDueForReview] = useState(false);
 
   // Dropdowns
-  const [isMasteryOpen, setIsMasteryOpen] = useState(false);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
   // Sorting: Default 'sheetOrder' desc = "Từ dưới lên trên" (dòng dưới cùng trong Sheet lên đầu)
@@ -188,7 +181,11 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
   // Column Customizer & Density State
   const [tableColumns, setTableColumns] = useState<ColumnItem[]>(() => {
     try {
-      const saved = localStorage.getItem('erp_learning_columns');
+      let saved = localStorage.getItem('erp_learning_columns');
+      if (saved && saved.includes('category')) {
+        localStorage.removeItem('erp_learning_columns');
+        saved = null;
+      }
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
@@ -433,9 +430,6 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
         }
       }
 
-      // Mastery
-      if (selectedMastery !== 'all' && e.masteryLevel !== selectedMastery) return false;
-
       // Pinned
       if (onlyPinned && !e.isPinned) return false;
 
@@ -444,7 +438,7 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
 
       return true;
     });
-  }, [entries, searchQuery, selectedMastery, onlyPinned, onlyDueForReview, todayStr]);
+  }, [entries, searchQuery, onlyPinned, onlyDueForReview, todayStr]);
 
   // Helper to extract numeric rank for sheet order (dưới lên trên)
   const getEntrySheetOrderRank = (entry: LearningEntry, originalIndex: number): number => {
@@ -568,9 +562,6 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
       'Tiêu đề',
       'Ý chính cốt lõi',
       'Nội dung',
-      'Mức độ nắm vững',
-      'Độ khó',
-      'Đánh giá',
       'Loại nguồn',
       'Tên nguồn',
       'Link nguồn',
@@ -585,9 +576,6 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
       `"${(e.title || '').replace(/"/g, '""')}"`,
       `"${(e.summary || '').replace(/"/g, '""')}"`,
       `"${stripMarkdown(e.content || '').replace(/"/g, '""')}"`,
-      e.masteryLevel,
-      e.difficulty,
-      e.rating,
       e.sourceType,
       `"${(e.sourceName || '').replace(/"/g, '""')}"`,
       `"${(e.sourceUrl || '').replace(/"/g, '""')}"`,
@@ -868,86 +856,6 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                     />
                   </div>
 
-                  {/* Filter: Mastery */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsMasteryOpen(!isMasteryOpen)}
-                      className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                        selectedMastery !== 'all'
-                          ? 'bg-primary/10 border-primary text-primary'
-                          : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-                      }`}
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>
-                        {selectedMastery === 'all'
-                          ? 'Mức độ'
-                          : MASTERY_LEVEL_MAP[selectedMastery as MasteryLevel]?.label || selectedMastery}
-                      </span>
-                      <ChevronDown className="w-3 h-3 ml-0.5 opacity-60" />
-                    </button>
-                    {isMasteryOpen && (
-                      <>
-                        <div className="fixed inset-0 z-30" onClick={() => setIsMasteryOpen(false)} />
-                        <div className="absolute left-0 top-full mt-1 w-44 rounded-xl border border-border bg-card shadow-lg z-40 p-1 space-y-0.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedMastery('all');
-                              setIsMasteryOpen(false);
-                            }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs ${
-                              selectedMastery === 'all' ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
-                            }`}
-                          >
-                            Tất cả mức độ
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedMastery('learning');
-                              setIsMasteryOpen(false);
-                            }}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-blue-600 hover:bg-muted"
-                          >
-                            📖 Đang học
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedMastery('practicing');
-                              setIsMasteryOpen(false);
-                            }}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-amber-600 hover:bg-muted"
-                          >
-                            🛠️ Đang thực hành
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedMastery('mastered');
-                              setIsMasteryOpen(false);
-                            }}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-emerald-600 hover:bg-muted"
-                          >
-                            ✅ Đã nắm vững
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedMastery('review_needed');
-                              setIsMasteryOpen(false);
-                            }}
-                            className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs text-rose-600 hover:bg-muted"
-                          >
-                            🔄 Cần ôn lại
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
                   {/* Filter: Pinned Only */}
                   <button
                     type="button"
@@ -1178,7 +1086,6 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
                     </div>
                   ) : (
                     paginatedEntries.map((entry) => {
-                      const masteryMeta = MASTERY_LEVEL_MAP[entry.masteryLevel] || MASTERY_LEVEL_MAP.learning;
                       return (
                         <div
                           key={entry.id}
@@ -1211,15 +1118,12 @@ export const LearningPage: React.FC<LearningPageProps> = ({ onBack }) => {
 
                           <div className="p-3.5 flex-1 flex flex-col space-y-2.5">
                             {/* Badges */}
-                            <div className="flex items-center justify-between gap-1 text-[11px]">
-                              {entry.tags && entry.tags[0] ? (
-                                <span className="px-2 py-0.5 rounded-full font-semibold bg-primary/10 text-primary border border-primary/20 truncate max-w-[130px]">
-                                  #{entry.tags[0]}
+                            <div className="flex items-center gap-1.5 text-[11px] flex-wrap">
+                              {(entry.tags || []).slice(0, 3).map((t) => (
+                                <span key={t} className="px-2 py-0.5 rounded-full font-semibold bg-primary/10 text-primary border border-primary/20 truncate max-w-[130px]">
+                                  #{t}
                                 </span>
-                              ) : <span />}
-                              <span className={`px-2 py-0.5 rounded-full font-semibold ${masteryMeta.bgClass} ${masteryMeta.colorClass} border ${masteryMeta.borderClass}`}>
-                                {masteryMeta.label}
-                              </span>
+                              ))}
                             </div>
 
                             {/* Title */}

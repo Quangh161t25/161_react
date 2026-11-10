@@ -333,7 +333,7 @@ export const NoteCalendarView: React.FC<NoteCalendarViewProps> = ({
   }, [filteredNotes]);
 
   // Category Color Map
-  const getCategoryColor = (cat: string) => {
+  const getCategoryColor = (cat?: string) => {
     const lower = (cat || '').toLowerCase();
     if (lower.includes('nhật ký') || lower.includes('hoạt động') || lower.includes('đi chơi')) {
       return 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20';

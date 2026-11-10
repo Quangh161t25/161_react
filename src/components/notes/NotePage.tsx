@@ -122,7 +122,6 @@ const getNoteColumnValue = (note: Note, colId: string): RowGroupValue => {
 export const DEFAULT_NOTE_COLUMNS: ColumnItem[] = [
   { id: 'title', label: 'Tiêu đề', visible: true, pinned: true, width: 260, align: 'left', wrap: 'truncate' },
   { id: 'content', label: 'Nội dung bài viết', visible: true, pinned: false, width: 360, align: 'left', wrap: 'truncate' },
-  { id: 'category', label: 'Chuyên mục', visible: true, pinned: false, width: 160, align: 'center', wrap: 'truncate' },
   { id: 'activity', label: 'Hoạt động (Nhật ký)', visible: true, width: 160, align: 'left', wrap: 'truncate' },
   { id: 'participants', label: 'Đi cùng ai / Tham gia', visible: true, width: 200, align: 'left', wrap: 'truncate' },
   { id: 'tags', label: 'Thẻ (Tags)', visible: true, width: 180, align: 'left', wrap: 'truncate' },
@@ -740,7 +739,6 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       'Mã',
       'Tiêu đề',
       'Nội dung',
-      'Chuyên mục',
       'Hoạt động',
       'Đi cùng ai / Đối tượng',
       'Trạng thái',
@@ -757,7 +755,6 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
       n.code || n.id,
       `"${(n.title || '').replace(/"/g, '""')}"`,
       `"${stripMarkdown(n.content || '').replace(/"/g, '""')}"`,
-      `"${n.category}"`,
       `"${(n.activity || '').replace(/"/g, '""')}"`,
       `"${(n.participants || []).map((p) => p.name).join('; ')}"`,
       `"${n.status}"`,
@@ -988,13 +985,6 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
             ) : (
               <span className="text-muted-foreground text-xs">—</span>
             )}
-          </td>
-        );
-
-      case 'category':
-        return (
-          <td key={colId} style={tdStyle} className={tdBaseClass}>
-            {renderCategoryBadge(note.category)}
           </td>
         );
 
@@ -1937,8 +1927,7 @@ export const NotePage: React.FC<NotePageProps> = ({ onBack }) => {
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                             <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 flex-wrap">
-                              {renderCategoryBadge(note.category)}
-                              {note.icons && note.icons.length > 0 && (
+                                                            {note.icons && note.icons.length > 0 && (
                                 <span className="px-1.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-xs flex items-center gap-0.5 text-white">
                                   {note.icons.map((ic, i) => (
                                     <span key={i} className="text-xs leading-none" title={getNoteIconLabel(ic)}>{ic}</span>

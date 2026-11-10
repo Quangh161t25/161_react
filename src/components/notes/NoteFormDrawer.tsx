@@ -41,7 +41,6 @@ import { catboxService } from '../../services/catboxService';
 import { Note, NoteCategory, NoteStatus, NoteAttachment, NoteParticipant } from '../../types/note';
 import { LocationPickerModal } from './LocationPickerModal';
 import {
-  NOTE_CATEGORIES,
   PRESET_TAGS,
   ALL_NOTE_ICONS,
   getNoteIconLabel,
@@ -924,26 +923,8 @@ export const NoteFormDrawer: React.FC<NoteFormDrawerProps> = ({
                   />
                 </div>
 
-                {/* 2. Hàng thuộc tính nhanh (Chuyên mục, Ngày, Giờ, Trạng thái, Tác giả, Ghim) */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 p-3 rounded-xl bg-muted/20 border border-border">
-                  {/* Chuyên mục */}
-                  <div className="col-span-1">
-                    <label className="block text-[11px] font-semibold text-muted-foreground mb-1">
-                      Chuyên mục
-                    </label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value as NoteCategory)}
-                      className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs font-medium text-foreground focus:border-primary focus:outline-none"
-                    >
-                      <option value="">Chưa phân loại</option>
-                      {NOTE_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* 2. Hàng thuộc tính nhanh (Ngày, Giờ, Trạng thái, Tác giả, Ghim) */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 p-3 rounded-xl bg-muted/20 border border-border">
 
                   {/* Ngày thực hiện */}
                   <div className="col-span-1">

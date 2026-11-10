@@ -45,7 +45,7 @@ export interface Note {
   link?: string; // Web URL / link đính kèm
   coverUrl?: string;
   images?: string[];
-  category: NoteCategory;
+  category?: NoteCategory;
   tags: string[];
   location?: string;
   coordinates?: string;

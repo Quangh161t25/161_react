@@ -1061,7 +1061,6 @@ export const NOTES_HEADERS = [
   'Tiêu đề',
   'Nội dung',
   'Tóm tắt',
-  'Chuyên mục',
   'Thẻ phân loại',
   'Trạng thái',
   'Ghim',
@@ -1096,7 +1095,6 @@ export function noteToRow(n) {
     n.title || '',
     n.content || '',
     n.summary || '',
-    n.category || 'Biên bản cuộc họp',
     tagsText,
     n.status || 'published',
     isPinnedText,
@@ -1123,31 +1121,31 @@ export function rowToNote(r, idx) {
   const id = formatModuleId('note', code, undefined, idx);
 
   let tags = [];
-  if (r[5]) {
+  if (r[4]) {
     try {
-      if (r[5].startsWith('[')) {
-        tags = JSON.parse(r[5]);
+      if (r[4].startsWith('[')) {
+        tags = JSON.parse(r[4]);
       } else {
-        tags = r[5].split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean);
+        tags = r[4].split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean);
       }
     } catch {
-      tags = r[5].split(',').map((t) => t.trim()).filter(Boolean);
+      tags = r[4].split(',').map((t) => t.trim()).filter(Boolean);
     }
   }
 
   let images = [];
-  if (r[14]) {
+  if (r[13]) {
     try {
-      images = JSON.parse(r[14]);
+      images = JSON.parse(r[13]);
     } catch {
-      images = [r[14]];
+      images = [r[13]];
     }
   }
 
   let attachments = [];
-  if (r[15]) {
+  if (r[14]) {
     try {
-      attachments = JSON.parse(r[15]);
+      attachments = JSON.parse(r[14]);
       if (Array.isArray(attachments)) {
         attachments = attachments.map((att, aIdx) => {
           if (!att) return att;
@@ -1163,30 +1161,30 @@ export function rowToNote(r, idx) {
   }
 
   let participants = [];
-  if (r[20]) {
+  if (r[19]) {
     try {
-      participants = typeof r[20] === 'string' ? JSON.parse(r[20]) : r[20];
+      participants = typeof r[19] === 'string' ? JSON.parse(r[19]) : r[19];
     } catch {
       participants = [];
     }
   }
 
   let icons = [];
-  if (r[8]) {
+  if (r[7]) {
     try {
-      if (r[8].startsWith('[')) {
-        icons = JSON.parse(r[8]);
-      } else if (r[8] !== 'blue' && r[8] !== 'emerald' && r[8] !== 'amber' && r[8] !== 'purple' && r[8] !== 'rose' && r[8] !== 'indigo' && r[8] !== 'slate') {
-        icons = r[8].split(/[\s,]+/).filter(Boolean);
+      if (r[7].startsWith('[')) {
+        icons = JSON.parse(r[7]);
+      } else if (r[7] !== 'blue' && r[7] !== 'emerald' && r[7] !== 'amber' && r[7] !== 'purple' && r[7] !== 'rose' && r[7] !== 'indigo' && r[7] !== 'slate') {
+        icons = r[7].split(/[\s,]+/).filter(Boolean);
       }
     } catch {
       icons = [];
     }
   }
 
-  const activity = r[21] || undefined;
-  const link = r[22] || undefined;
-  const isPinned = r[7] === 'Có' || r[7] === 'true' || r[7] === true || r[7] === '1';
+  const activity = r[20] || undefined;
+  const link = r[21] || undefined;
+  const isPinned = r[6] === 'Có' || r[6] === 'true' || r[6] === true || r[6] === '1';
 
   return {
     id,
@@ -1194,23 +1192,23 @@ export function rowToNote(r, idx) {
     title: r[1] || 'Ghi chú không tên',
     content: r[2] || '',
     summary: r[3] || undefined,
-    category: r[4] || 'Biên bản cuộc họp',
+    category: '',
     tags,
-    status: r[6] === 'draft' ? 'draft' : r[6] === 'archived' ? 'archived' : 'published',
+    status: r[5] === 'draft' ? 'draft' : r[5] === 'archived' ? 'archived' : 'published',
     isPinned,
-    color: r[8] || 'blue',
+    color: r[7] || 'blue',
     icons: Array.isArray(icons) ? icons : [],
-    noteDate: r[9] || '',
-    noteTime: r[10] || '',
-    location: r[11] || '',
-    coordinates: r[12] || '',
-    coverUrl: r[13] || undefined,
+    noteDate: r[8] || '',
+    noteTime: r[9] || '',
+    location: r[10] || '',
+    coordinates: r[11] || '',
+    coverUrl: r[12] || undefined,
     images: Array.isArray(images) ? images : [],
     attachments: Array.isArray(attachments) ? attachments : [],
-    author: r[16] || 'Lê Minh Công',
-    authorAvatar: r[17] || undefined,
-    createdAt: r[18] || '',
-    updatedAt: r[19] || '',
+    author: r[15] || 'Lê Minh Công',
+    authorAvatar: r[16] || undefined,
+    createdAt: r[17] || '',
+    updatedAt: r[18] || '',
     participants: Array.isArray(participants) ? participants : [],
     activity,
     link,
@@ -1243,7 +1241,7 @@ export async function ensureGhiChuTabExists() {
 
     // Write header
     await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:W1?valueInputOption=USER_ENTERED`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:V1?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {
@@ -1296,7 +1294,7 @@ export async function fetchNotesFromSheet() {
   await ensureGhiChuTabExists();
   const token = await getAccessToken();
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A2:W`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A2:V`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
 
@@ -1326,7 +1324,7 @@ export async function saveAllNotesToSheet(notes) {
   const values = [NOTES_HEADERS, ...rows];
 
   await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:W${values.length + 50}:clear`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:V${values.length + 50}:clear`,
     {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -1334,7 +1332,7 @@ export async function saveAllNotesToSheet(notes) {
   );
 
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:W${values.length}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:V${values.length}?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: {
@@ -1360,7 +1358,7 @@ export async function appendNoteToSheet(note) {
   const row = noteToRow(note);
 
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A:W:append?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A:V:append?valueInputOption=USER_ENTERED`,
     {
       method: 'POST',
       headers: {
@@ -1384,7 +1382,7 @@ export async function updateNoteInSheet(note) {
   await ensureGhiChuTabExists();
   const token = await getAccessToken();
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:W`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A1:V`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const data = await res.json();
@@ -1427,7 +1425,7 @@ export async function updateNoteInSheet(note) {
 
   const row = noteToRow(note);
   const updateRes = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A${rowIndex}:W${rowIndex}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/GhiChu!A${rowIndex}:V${rowIndex}?valueInputOption=USER_ENTERED`,
     {
       method: 'PUT',
       headers: {

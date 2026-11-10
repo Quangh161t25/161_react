@@ -6,7 +6,6 @@ import {
   Pin,
   ExternalLink,
   Calendar,
-  Star,
   Copy,
   Check,
   ChevronLeft,
@@ -17,7 +16,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { LearningEntry } from '../../types/learning';
-import { MASTERY_LEVEL_MAP } from '../../data/learning';
 import { MarkdownRenderer } from '../notes/MarkdownRenderer';
 import { getLearningEntryImages } from './LearningPage';
 
@@ -48,8 +46,6 @@ export const LearningDetailDrawer: React.FC<LearningDetailDrawerProps> = ({
   const [activeImageModal, setActiveImageModal] = useState<string | null>(null);
 
   if (!entry) return null;
-
-  const masteryMeta = MASTERY_LEVEL_MAP[entry.masteryLevel] || MASTERY_LEVEL_MAP.learning;
 
   const handleCopyContent = () => {
     const textToCopy = `# ${entry.title}\n\n${entry.summary ? `> ${entry.summary}\n\n` : ''}${entry.content}`;
@@ -178,25 +174,13 @@ export const LearningDetailDrawer: React.FC<LearningDetailDrawerProps> = ({
               </div>
             )}
 
-            {/* Badges & Meta */}
+            {/* Tags & Meta */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Mastery Level */}
-              <span
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${masteryMeta.bgClass} ${masteryMeta.colorClass} border ${masteryMeta.borderClass}`}
-              >
-                <span>{masteryMeta.label}</span>
-              </span>
-
-              {/* Difficulty */}
-              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted text-muted-foreground border border-border">
-                Độ khó: {entry.difficulty === 'beginner' ? 'Cơ bản' : entry.difficulty === 'advanced' ? 'Nâng cao' : 'Trung bình'}
-              </span>
-
-              {/* Rating */}
-              <div className="flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-600 text-[11px] font-semibold">
-                <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
-                <span>{entry.rating}/5</span>
-              </div>
+              {(entry.tags || []).map((t) => (
+                <span key={t} className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                  #{t}
+                </span>
+              ))}
 
               {/* Date */}
               {entry.entryDate && (
