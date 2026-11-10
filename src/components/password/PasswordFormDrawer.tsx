@@ -266,7 +266,7 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-foreground leading-tight">
-                    {mode === 'create' ? 'Thêm Tài khoản & Mật khẩu mới' : `Cập nhật Tài khoản: ${code}`}
+                    {mode === 'create' ? 'Thêm Tài khoản & Mật khẩu mới' : `Cập nhật Tài khoản${title ? `: ${title}` : ''}`}
                   </h2>
                   <p className="text-[11px] text-muted-foreground">
                     Lưu trữ an toàn, mã hóa và tự động đồng bộ tiện ích trình duyệt
@@ -339,36 +339,6 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
               <div className="sr-only" style={{ display: 'none' }} aria-hidden="true">
                 <input type="text" name="fakeusernameremembered" tabIndex={-1} autoComplete="off" />
                 <input type="password" name="fakepasswordremembered" tabIndex={-1} autoComplete="off" />
-              </div>
-
-              {/* Code & Favorite */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    Mã tài khoản:
-                  </label>
-                  <input
-                    type="text"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    className="w-full h-8 px-3 rounded-xl border border-border bg-background text-xs font-mono font-bold text-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                </div>
-
-                <div className="sm:col-span-2 flex items-center justify-between pt-5">
-                  <button
-                    type="button"
-                    onClick={() => setIsFavorite(!isFavorite)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
-                      isFavorite
-                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-600'
-                        : 'border-border bg-muted/40 text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    <Star className={`w-4 h-4 ${isFavorite ? 'fill-amber-500 text-amber-500' : ''}`} />
-                    <span>{isFavorite ? 'Đã ghim Yêu thích' : 'Đánh dấu Yêu thích'}</span>
-                  </button>
-                </div>
               </div>
 
               {/* Title */}
@@ -623,6 +593,44 @@ export const PasswordFormDrawer: React.FC<PasswordFormDrawerProps> = ({
                   placeholder="Ghi chú quy trình đăng nhập, cổng kết nối, người nắm giữ..."
                   className="w-full p-2.5 rounded-xl border border-border bg-background text-xs focus:outline-none focus:ring-1 focus:ring-primary custom-scrollbar resize-none"
                 />
+              </div>
+
+              {/* Đánh dấu Yêu thích */}
+              <div
+                onClick={() => setIsFavorite(!isFavorite)}
+                className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                  isFavorite
+                    ? 'border-amber-500/40 bg-amber-500/10 dark:bg-amber-950/20 shadow-2xs'
+                    : 'border-border bg-muted/20 hover:bg-muted/40'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Star className={`w-4 h-4 ${isFavorite ? 'fill-amber-500 text-amber-500' : 'text-muted-foreground'}`} />
+                  <div>
+                    <span className={`text-xs font-semibold block ${isFavorite ? 'text-amber-700 dark:text-amber-300' : 'text-foreground'}`}>
+                      Đánh dấu Yêu thích
+                    </span>
+                    <span className="text-[11px] text-muted-foreground block">
+                      Ưu tiên hiển thị lên đầu danh sách và tìm kiếm nhanh
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsFavorite(!isFavorite);
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${
+                    isFavorite
+                      ? 'border-amber-500/40 bg-amber-500/20 text-amber-700 dark:text-amber-300'
+                      : 'border-border bg-background text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}
+                >
+                  <Star className={`w-3.5 h-3.5 ${isFavorite ? 'fill-amber-500 text-amber-500' : ''}`} />
+                  <span>{isFavorite ? 'Đã yêu thích' : 'Đánh dấu yêu thích'}</span>
+                </button>
               </div>
             </form>
 
