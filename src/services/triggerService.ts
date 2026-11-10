@@ -1,7 +1,7 @@
 import { Note } from '../types/note';
 import { Trigger } from '../types/trigger';
 import { generateId } from '../utils/idGenerator';
-import { toLocalDateStr, toLocalTimeStr } from '../utils/dateUtils';
+import { toLocalDateStr, toLocalTimeStr, formatDate } from '../utils/dateUtils';
 import { noteService } from './noteService';
 import { notificationService } from './notificationService';
 
@@ -34,10 +34,10 @@ const addNoteFromTrigger = async (trigger: Trigger): Promise<string> => {
     status: 'published',
     isPinned: false,
     color: 'blue',
-    noteDate,
-    noteTime,
-    tags: ['Trigger'],
-    author: 'Trigger tự động',
+    noteDate: formatDate(noteDate),
+    noteTime: noteTime || '09:00',
+    tags: ['Trigger', ...(trigger.tags || [])],
+    author: trigger.createdBy || 'Trigger tự động',
     createdAt: now,
     updatedAt: now,
   };
@@ -63,6 +63,30 @@ const notifyFromTrigger = async (trigger: Trigger): Promise<string> => {
   return sent ? 'Đã gửi thông báo tới thiết bị' : 'Chỉ hiện trong web vì thiết bị không nhận thông báo';
 };
 
+// Tính thời điểm lần chạy kế tiếp nếu có cấu hình lặp lại
+const calculateNextRunAt = (currentRunAt: string, repeat?: string): string | null => {
+  if (!repeat || repeat === 'none') return null;
+  const d = new Date(currentRunAt);
+  if (isNaN(d.getTime())) return null;
+
+  if (repeat === 'daily') {
+    d.setDate(d.getDate() + 1);
+  } else if (repeat === 'weekly') {
+    d.setDate(d.getDate() + 7);
+  } else if (repeat === 'monthly') {
+    d.setMonth(d.getMonth() + 1);
+  } else {
+    return null;
+  }
+
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};
+
 // Trên nhiều tab, chỉ một tab được chạy tại một thời điểm để trigger không chạy trùng
 const withExclusiveLock = async (run: () => Promise<void>): Promise<void> => {
   if (typeof navigator !== 'undefined' && navigator.locks) {
@@ -73,6 +97,7 @@ const withExclusiveLock = async (run: () => Promise<void>): Promise<void> => {
 };
 
 export const triggerService = {
+  // Lấy dữ liệu từ bộ nhớ đệm LocalStorage
   getAll(): Trigger[] {
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -83,6 +108,7 @@ export const triggerService = {
     }
   },
 
+  // Lưu toàn bộ vào LocalStorage và phát event cập nhật UI
   saveAll(triggers: Trigger[]): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(triggers));
@@ -92,25 +118,143 @@ export const triggerService = {
     window.dispatchEvent(new Event(TRIGGERS_CHANGED_EVENT));
   },
 
+  // Thêm mới hoặc cập nhật 1 trigger trong cache
   upsert(trigger: Trigger): void {
-    const others = this.getAll().filter((t) => t.id !== trigger.id);
+    const others = this.getAll().filter((t) => t.id !== trigger.id && t.code !== trigger.code);
     this.saveAll([trigger, ...others]);
   },
 
+  // Xóa trigger theo ID trong cache
   remove(id: string): void {
     this.saveAll(this.getAll().filter((t) => t.id !== id));
   },
 
+  // Xóa nhiều trigger theo danh sách IDs trong cache
+  removeMany(ids: string[]): void {
+    const set = new Set(ids);
+    this.saveAll(this.getAll().filter((t) => !set.has(t.id)));
+  },
+
+  // ==========================================
+  // GOOGLE SHEETS API INTEGRATION
+  // ==========================================
+
+  // Tải danh sách triggers từ Google Sheet
+  async fetchFromSheet(): Promise<Trigger[]> {
+    try {
+      const res = await fetch('/api/sheets/triggers');
+      if (!res.ok) {
+        throw new Error(`Fetch triggers failed: ${await res.text()}`);
+      }
+      const json = await res.json();
+      if (json && json.success && Array.isArray(json.data)) {
+        const triggers: Trigger[] = json.data;
+        this.saveAll(triggers);
+        return triggers;
+      }
+    } catch (err) {
+      console.warn('Error fetching triggers from Google Sheet, falling back to cache:', err);
+    }
+    return this.getAll();
+  },
+
+  // Thêm 1 trigger vào Google Sheet
+  async appendToSheet(trigger: Trigger): Promise<boolean> {
+    try {
+      const res = await fetch('/api/sheets/append-trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trigger }),
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('Error appending trigger to Google Sheet:', err);
+      return false;
+    }
+  },
+
+  // Cập nhật 1 trigger trên Google Sheet
+  async updateInSheet(trigger: Trigger): Promise<boolean> {
+    try {
+      const res = await fetch('/api/sheets/update-trigger', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trigger }),
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('Error updating trigger in Google Sheet:', err);
+      return false;
+    }
+  },
+
+  // Xóa 1 hoặc nhiều trigger khỏi Google Sheet
+  async deleteFromSheet(identifiers: string | string[]): Promise<boolean> {
+    try {
+      const ids = Array.isArray(identifiers) ? identifiers : [identifiers];
+      const res = await fetch('/api/sheets/delete-triggers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('Error deleting triggers from Google Sheet:', err);
+      return false;
+    }
+  },
+
+  // Lưu đồng bộ toàn bộ danh sách lên Google Sheet
+  async saveAllToSheet(triggers: Trigger[]): Promise<boolean> {
+    try {
+      const res = await fetch('/api/sheets/save-all-triggers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ triggers }),
+      });
+      return res.ok;
+    } catch (err) {
+      console.warn('Error saving all triggers to Google Sheet:', err);
+      return false;
+    }
+  },
+
+  // Kích hoạt chạy trigger ngay lập tức (Manual run now)
+  async runTriggerNow(triggerId: string): Promise<string> {
+    const list = this.getAll();
+    const trigger = list.find((t) => t.id === triggerId);
+    if (!trigger) return 'Không tìm thấy trigger';
+
+    let result = '';
+    try {
+      result = trigger.action === 'notify' ? await notifyFromTrigger(trigger) : await addNoteFromTrigger(trigger);
+    } catch (err: any) {
+      console.error('Run trigger now error:', err);
+      result = `Lỗi: ${err?.message || 'Không thể thực thi'}`;
+    }
+
+    const nextRunAt = calculateNextRunAt(trigger.runAt, trigger.repeat);
+    const updated: Trigger = {
+      ...trigger,
+      status: nextRunAt ? 'pending' : 'done',
+      runAt: nextRunAt || trigger.runAt,
+      firedAt: new Date().toISOString(),
+      result: `[Chạy thủ công] ${result}`,
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.upsert(updated);
+    this.updateInSheet(updated).catch(() => {});
+    return result;
+  },
+
+  // Chạy các trigger đã đến giờ hẹn
   async runDueTriggers(): Promise<void> {
     await withExclusiveLock(async () => {
       const nowStr = `${toLocalDateStr()}T${toLocalTimeStr()}`;
       const due = this.getAll().filter((t) => t.status === 'pending' && t.runAt <= nowStr);
 
       for (const trigger of due) {
-        // Đánh dấu trước khi chạy: thà báo lỗi còn hơn thêm trùng ghi chú nếu trang bị đóng giữa chừng
-        const started: Trigger = { ...trigger, status: 'done', firedAt: new Date().toISOString() };
-        this.upsert(started);
-
         let result: string;
         try {
           result = trigger.action === 'notify' ? await notifyFromTrigger(trigger) : await addNoteFromTrigger(trigger);
@@ -118,7 +262,19 @@ export const triggerService = {
           console.error('Trigger failed:', err);
           result = 'Lỗi khi chạy trigger';
         }
-        this.upsert({ ...started, result });
+
+        const nextRunAt = calculateNextRunAt(trigger.runAt, trigger.repeat);
+        const updated: Trigger = {
+          ...trigger,
+          status: nextRunAt ? 'pending' : 'done',
+          runAt: nextRunAt || trigger.runAt,
+          firedAt: new Date().toISOString(),
+          result,
+          updatedAt: new Date().toISOString(),
+        };
+
+        this.upsert(updated);
+        this.updateInSheet(updated).catch(() => {});
       }
     });
   },

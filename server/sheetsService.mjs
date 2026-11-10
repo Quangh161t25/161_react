@@ -4476,5 +4476,317 @@ export async function deletePasswordsFromSheet(identifiers) {
   return { success: true, count: indicesToDelete.length };
 }
 
+// ==========================================
+// TRIGGER / HẸN GIỜ (Sheet: Trigger)
+// ==========================================
+export const TRIGGER_HEADERS = [
+  'Mã trigger',              // Col A (r[0]): code
+  'Tiêu đề / Tên trigger',   // Col B (r[1]): title
+  'Loại hành động',          // Col C (r[2]): action
+  'Thời điểm hẹn (runAt)',   // Col D (r[3]): runAt
+  'Ngày hẹn',                // Col E (r[4]): runDate
+  'Giờ hẹn (24h)',           // Col F (r[5]): runTime
+  'Trạng thái',              // Col G (r[6]): status
+  'Chi tiết / Nội dung',     // Col H (r[7]): content
+  'Mức ưu tiên',             // Col I (r[8]): priority
+  'Tần suất lặp',            // Col J (r[9]): repeat
+  'Thẻ (Tags)',              // Col K (r[10]): tags
+  'Ghim',                    // Col L (r[11]): isPinned
+  'Kết quả chạy',            // Col M (r[12]): result
+  'Thời điểm chạy thực tế',  // Col N (r[13]): firedAt
+  'Ghi chú thêm',            // Col O (r[14]): note
+  'Người tạo',               // Col P (r[15]): createdBy
+  'Ngày tạo',                // Col Q (r[16]): createdAt
+  'Cập nhật',                // Col R (r[17]): updatedAt
+  'ID duy nhất',             // Col S (r[18]): id
+];
+
+export function triggerToRow(t) {
+  const code = t.code || 'TG-001';
+  const id = formatModuleId('trig', code, t.id);
+  const tagsText = Array.isArray(t.tags) ? t.tags.join(', ') : t.tags || '';
+
+  return [
+    code,
+    t.title || '',
+    t.action || 'notify',
+    t.runAt || '',
+    formatSheetDate(t.runDate || (t.runAt ? t.runAt.split('T')[0] : '')) || '',
+    t.runTime || (t.runAt ? t.runAt.split('T')[1] : '') || '',
+    t.status || 'pending',
+    t.content || '',
+    t.priority || 'medium',
+    t.repeat || 'none',
+    tagsText,
+    t.isPinned ? 'true' : 'false',
+    t.result || '',
+    t.firedAt || '',
+    t.note || '',
+    t.createdBy || '',
+    t.createdAt || new Date().toISOString(),
+    t.updatedAt || new Date().toISOString(),
+    id,
+  ];
+}
+
+export function rowToTrigger(r, idx) {
+  const code = String(r[0] || '').trim() || `TG-${String(idx + 1).padStart(3, '0')}`;
+  const rawTags = String(r[10] || '').trim();
+  let tags = [];
+  if (rawTags) {
+    if (rawTags.startsWith('[') && rawTags.endsWith(']')) {
+      try {
+        tags = JSON.parse(rawTags);
+      } catch {
+        tags = rawTags.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    } else {
+      tags = rawTags.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+  }
+
+  const runDate = formatSheetDate(r[4]) || '';
+  const runTime = String(r[5] || '').trim();
+  let runAt = String(r[3] || '').trim();
+  if (!runAt && runDate && runTime) {
+    const parts = runDate.split('/');
+    if (parts.length === 3) {
+      runAt = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}T${runTime}`;
+    }
+  }
+
+  const id = formatModuleId('trig', code, r[18], idx);
+
+  return {
+    id,
+    code,
+    title: String(r[1] || '').trim() || 'Trigger không tên',
+    action: String(r[2] || 'notify').trim(),
+    runAt: runAt || `${new Date().toISOString().split('T')[0]}T09:00`,
+    runDate: runDate || undefined,
+    runTime: runTime || undefined,
+    status: String(r[6] || 'pending').trim(),
+    content: String(r[7] || '').trim(),
+    priority: String(r[8] || 'medium').trim(),
+    repeat: String(r[9] || 'none').trim(),
+    tags,
+    isPinned: String(r[11] || '').toLowerCase() === 'true',
+    result: String(r[12] || '').trim() || undefined,
+    firedAt: String(r[13] || '').trim() || undefined,
+    note: String(r[14] || '').trim() || undefined,
+    createdBy: String(r[15] || '').trim() || undefined,
+    createdAt: String(r[16] || '').trim() || new Date().toISOString(),
+    updatedAt: String(r[17] || '').trim() || new Date().toISOString(),
+  };
+}
+
+export async function ensureTriggerTabExists() {
+  const token = await getAccessToken();
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!metaRes.ok) throw new Error(`Fetch metadata failed: ${await metaRes.text()}`);
+  const meta = await metaRes.json();
+  const existingSheets = (meta.sheets || []).map((s) => s.properties.title);
+
+  if (!existingSheets.includes('Trigger')) {
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [{ addSheet: { properties: { title: 'Trigger' } } }],
+        }),
+      }
+    );
+
+    // Write header
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Trigger!A1:S1?valueInputOption=USER_ENTERED`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: [TRIGGER_HEADERS] }),
+      }
+    );
+  }
+}
+
+export async function fetchTriggersFromSheet() {
+  const cached = getCachedSheetData('triggers');
+  if (cached) return cached;
+  await ensureTriggerTabExists();
+  const token = await getAccessToken();
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Trigger!A2:S`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`Fetch triggers failed: ${await res.text()}`);
+  const data = await res.json();
+  const rows = data.values || [];
+  const result = rows.filter((r) => r && (r[0] || r[1])).map((r, idx) => rowToTrigger(r, idx));
+  setCachedSheetData('triggers', result);
+  return result;
+}
+
+export async function saveAllTriggersToSheet(triggers) {
+  await ensureTriggerTabExists();
+  const token = await getAccessToken();
+  const rows = triggers.map((t, idx) => triggerToRow(t));
+  const values = [TRIGGER_HEADERS, ...rows];
+
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Trigger!A1:S1000:clear`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    }
+  );
+
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Trigger!A1:S${values.length}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ values }),
+    }
+  );
+  if (!res.ok) throw new Error(`Save triggers failed: ${await res.text()}`);
+  setCachedSheetData('triggers', triggers);
+  return { success: true, count: triggers.length };
+}
+
+export async function appendTriggerToSheet(trigger) {
+  await ensureTriggerTabExists();
+  const token = await getAccessToken();
+  const row = triggerToRow(trigger);
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Trigger!A:S:append?valueInputOption=USER_ENTERED`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ values: [row] }),
+    }
+  );
+  if (!res.ok) throw new Error(`Append trigger failed: ${await res.text()}`);
+  invalidateSheetCache('triggers');
+  return { success: true };
+}
+
+export async function updateTriggerInSheet(trigger) {
+  await ensureTriggerTabExists();
+  const token = await getAccessToken();
+  const res = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Trigger!A1:S`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) throw new Error(`Fetch trigger rows failed: ${await res.text()}`);
+  const data = await res.json();
+  const rows = data.values || [];
+  const targetCode = String(trigger.code || '').trim().toLowerCase();
+  const targetId = String(trigger.id || '').trim().toLowerCase();
+
+  let targetRowIndex = -1;
+  for (let i = 1; i < rows.length; i++) {
+    const rowCode = String(rows[i][0] || '').trim().toLowerCase();
+    const rowId = String(rows[i][18] || '').trim().toLowerCase();
+    if ((targetCode && rowCode === targetCode) || (targetId && rowId === targetId)) {
+      targetRowIndex = i + 1; // 1-based index
+      break;
+    }
+  }
+
+  if (targetRowIndex === -1) {
+    return appendTriggerToSheet(trigger);
+  }
+
+  const row = triggerToRow(trigger);
+  const updateRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Trigger!A${targetRowIndex}:S${targetRowIndex}?valueInputOption=USER_ENTERED`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ values: [row] }),
+    }
+  );
+  if (!updateRes.ok) throw new Error(`Update trigger failed: ${await updateRes.text()}`);
+  invalidateSheetCache('triggers');
+  return { success: true };
+}
+
+export async function deleteTriggersFromSheet(identifiers) {
+  const token = await getAccessToken();
+  const metaRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!metaRes.ok) throw new Error(`Fetch metadata failed: ${await metaRes.text()}`);
+  const meta = await metaRes.json();
+  const sheet = (meta.sheets || []).find((s) => s.properties.title === 'Trigger');
+  if (!sheet) return { success: true, count: 0 };
+
+  const dataRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/Trigger!A1:S`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await dataRes.json();
+  const rows = data.values || [];
+  const idList = Array.isArray(identifiers) ? identifiers : [identifiers];
+  const cleanIdList = idList.map((id) => String(id || '').trim().toLowerCase()).filter(Boolean);
+
+  const indicesToDelete = [];
+  rows.forEach((r, idx) => {
+    if (idx === 0) return;
+    const code = String(r[0] || '').trim().toLowerCase();
+    const rowId = String(r[18] || '').trim().toLowerCase();
+    if (cleanIdList.includes(code) || cleanIdList.includes(rowId)) {
+      indicesToDelete.push(idx);
+    }
+  });
+
+  if (indicesToDelete.length === 0) return { success: true, count: 0 };
+  indicesToDelete.sort((a, b) => b - a);
+
+  const requests = indicesToDelete.map((rowIdx) => ({
+    deleteDimension: {
+      range: {
+        sheetId: sheet.properties.sheetId,
+        dimension: 'ROWS',
+        startIndex: rowIdx,
+        endIndex: rowIdx + 1,
+      },
+    },
+  }));
+
+  const batchRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}:batchUpdate`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requests }),
+    }
+  );
+  if (!batchRes.ok) throw new Error(`Delete triggers failed: ${await batchRes.text()}`);
+  invalidateSheetCache('triggers');
+  return { success: true, count: indicesToDelete.length };
+}
+
 
 

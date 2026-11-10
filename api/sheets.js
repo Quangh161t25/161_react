@@ -65,6 +65,11 @@ import {
   appendPasswordToSheet,
   updatePasswordInSheet,
   deletePasswordsFromSheet,
+  fetchTriggersFromSheet,
+  saveAllTriggersToSheet,
+  appendTriggerToSheet,
+  updateTriggerInSheet,
+  deleteTriggersFromSheet,
 } from '../server/sheetsService.mjs';
 import { uploadToCatbox } from '../server/catboxService.mjs';
 
@@ -717,6 +722,53 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
       const passwords = body.passwords || [];
       const result = await saveAllPasswordsToSheet(passwords);
+      return res.status(200).json({ success: true, count: result.count });
+    }
+
+    // --- TRIGGERS ---
+    if (action === 'triggers' && req.method === 'GET') {
+      const triggers = await fetchTriggersFromSheet();
+      return res.status(200).json({ success: true, data: triggers });
+    }
+
+    if ((action === 'triggers' || action === 'append-trigger') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const { trigger } = body;
+      if (!trigger) {
+        return res.status(400).json({ success: false, error: 'Missing trigger data' });
+      }
+      await appendTriggerToSheet(trigger);
+      return res.status(200).json({ success: true });
+    }
+
+    if ((action === 'update-trigger' || action === 'triggers/update') && (req.method === 'POST' || req.method === 'PUT')) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const { trigger } = body;
+      if (!trigger) {
+        return res.status(400).json({ success: false, error: 'Missing trigger data' });
+      }
+      await updateTriggerInSheet(trigger);
+      return res.status(200).json({ success: true });
+    }
+
+    if ((action === 'delete-triggers' || action === 'delete-trigger' || action === 'triggers/delete') && (req.method === 'POST' || req.method === 'DELETE')) {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const { ids, id } = body;
+      const idList = ids || (id ? [id] : []);
+      if (!idList || idList.length === 0) {
+        return res.status(400).json({ success: false, error: 'Missing IDs to delete' });
+      }
+      const result = await deleteTriggersFromSheet(idList);
+      return res.status(200).json({ success: true, count: result.count });
+    }
+
+    if ((action === 'save-all-triggers' || action === 'triggers/all') && req.method === 'POST') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
+      const { triggers } = body;
+      if (!Array.isArray(triggers)) {
+        return res.status(400).json({ success: false, error: 'Missing triggers array' });
+      }
+      const result = await saveAllTriggersToSheet(triggers);
       return res.status(200).json({ success: true, count: result.count });
     }
 
