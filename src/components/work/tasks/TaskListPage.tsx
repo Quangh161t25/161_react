@@ -46,18 +46,20 @@ interface TaskListPageProps {
 
 export const DEFAULT_TASK_COLUMNS: ColumnItem[] = [
   { id: 'code', label: 'Mã công việc', visible: true, pinned: true, width: 130, align: 'left', wrap: 'truncate' },
-  { id: 'title', label: 'Tiêu đề công việc', visible: true, pinned: true, width: 280, align: 'left', wrap: 'truncate' },
-  { id: 'status', label: 'Trạng thái', visible: true, width: 150, align: 'center', wrap: 'truncate' },
-  { id: 'priority', label: 'Mức ưu tiên', visible: true, width: 130, align: 'center', wrap: 'truncate' },
-  { id: 'progress', label: 'Tiến độ', visible: true, width: 150, align: 'left', wrap: 'truncate' },
-  { id: 'assigneeName', label: 'Người thực hiện', visible: true, width: 190, align: 'left', wrap: 'truncate' },
-  { id: 'projectName', label: 'Dự án', visible: true, width: 200, align: 'left', wrap: 'truncate' },
-  { id: 'dueDate', label: 'Hạn chót', visible: true, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'title', label: 'Tiêu đề công việc', visible: true, pinned: true, width: 260, align: 'left', wrap: 'truncate' },
+  { id: 'description', label: 'Mô tả nội dung', visible: true, width: 280, align: 'left', wrap: 'truncate' },
+  { id: 'status', label: 'Trạng thái', visible: true, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'priority', label: 'Mức ưu tiên', visible: true, width: 120, align: 'center', wrap: 'truncate' },
+  { id: 'progress', label: 'Tiến độ', visible: true, width: 140, align: 'left', wrap: 'truncate' },
+  { id: 'assigneeName', label: 'Người thực hiện', visible: true, width: 180, align: 'left', wrap: 'truncate' },
+  { id: 'projectName', label: 'Dự án', visible: true, width: 180, align: 'left', wrap: 'truncate' },
+  { id: 'dueDate', label: 'Hạn chót', visible: true, width: 130, align: 'center', wrap: 'truncate' },
   { id: 'subtasksCount', label: 'Nhiệm vụ con', visible: true, width: 120, align: 'center', wrap: 'truncate' },
-  { id: 'department', label: 'Phòng ban', visible: false, width: 160, align: 'left', wrap: 'truncate' },
+  { id: 'tags', label: 'Thẻ (Tags)', visible: false, width: 160, align: 'left', wrap: 'truncate' },
+  { id: 'department', label: 'Phòng ban', visible: false, width: 150, align: 'left', wrap: 'truncate' },
   { id: 'assignerName', label: 'Người giao việc', visible: false, width: 160, align: 'left', wrap: 'truncate' },
   { id: 'estimatedHours', label: 'Giờ ước tính', visible: false, width: 120, align: 'right', wrap: 'truncate' },
-  { id: 'createdAt', label: 'Ngày tạo', visible: false, width: 140, align: 'center', wrap: 'truncate' },
+  { id: 'createdAt', label: 'Ngày tạo', visible: false, width: 130, align: 'center', wrap: 'truncate' },
 ];
 
 export const TaskListPage: React.FC<TaskListPageProps> = ({
@@ -138,7 +140,18 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       const saved = localStorage.getItem('erp_task_list_columns');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((c: any) => c.id));
+          const missing = DEFAULT_TASK_COLUMNS.filter((c) => !existingIds.has(c.id));
+          if (missing.length > 0) {
+            // Reconstruct array preserving DEFAULT_TASK_COLUMNS canonical order while retaining user's settings
+            return DEFAULT_TASK_COLUMNS.map((defaultCol) => {
+              const userCol = parsed.find((p: any) => p.id === defaultCol.id);
+              return userCol ? { ...defaultCol, ...userCol } : defaultCol;
+            });
+          }
+          return parsed;
+        }
       }
     } catch {}
     return DEFAULT_TASK_COLUMNS;
@@ -291,12 +304,14 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
     const headers = [
       'Mã công việc',
       'Tiêu đề',
+      'Mô tả nội dung',
       'Trạng thái',
       'Mức ưu tiên',
       'Tiến độ (%)',
       'Người thực hiện',
       'Dự án',
       'Hạn chót',
+      'Thẻ (Tags)',
       'Phòng ban',
       'Người giao việc',
       'Giờ ước tính',
@@ -306,12 +321,14 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
     const rows = filteredTasks.map((t) => [
       `"${t.code}"`,
       `"${t.title.replace(/"/g, '""')}"`,
+      `"${(t.description || '').replace(/"/g, '""')}"`,
       `"${t.status}"`,
       `"${t.priority}"`,
       t.progress,
       `"${(t.assigneeName || '').replace(/"/g, '""')}"`,
       `"${(t.projectName || '').replace(/"/g, '""')}"`,
       t.dueDate || '',
+      `"${(Array.isArray(t.tags) ? t.tags.join(', ') : '').replace(/"/g, '""')}"`,
       `"${(t.department || '').replace(/"/g, '""')}"`,
       `"${(t.assignerName || '').replace(/"/g, '""')}"`,
       t.estimatedHours || 0,
@@ -341,10 +358,12 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       if (q) {
         const matchCode = t.code.toLowerCase().includes(q);
         const matchTitle = t.title.toLowerCase().includes(q);
+        const matchDesc = (t.description || '').toLowerCase().includes(q);
         const matchAssignee = t.assigneeName.toLowerCase().includes(q);
         const matchProj = (t.projectName || '').toLowerCase().includes(q);
         const matchDept = (t.department || '').toLowerCase().includes(q);
-        if (!matchCode && !matchTitle && !matchAssignee && !matchProj && !matchDept) return false;
+        const matchTags = (t.tags || []).some((tg) => tg.toLowerCase().includes(q));
+        if (!matchCode && !matchTitle && !matchDesc && !matchAssignee && !matchProj && !matchDept && !matchTags) return false;
       }
 
       if (selectedStatus !== 'all' && t.status !== selectedStatus) return false;
@@ -947,9 +966,25 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                               if (col.id === 'title') {
                                 return (
                                   <td key={col.id} className={`${densityPadding}`}>
-                                    <div className="font-semibold text-foreground truncate max-w-[260px]">
+                                    <div className="font-semibold text-foreground truncate max-w-[260px]" title={item.title}>
                                       {item.title}
                                     </div>
+                                  </td>
+                                );
+                              }
+                              if (col.id === 'description') {
+                                return (
+                                  <td key={col.id} className={`${densityPadding}`}>
+                                    {item.description ? (
+                                      <div
+                                        className="text-xs text-muted-foreground line-clamp-2 max-w-[280px] break-words whitespace-pre-line"
+                                        title={item.description}
+                                      >
+                                        {item.description}
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground/30 text-xs italic">—</span>
+                                    )}
                                   </td>
                                 );
                               }
@@ -1068,6 +1103,41 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                                 return (
                                   <td key={col.id} className={`${densityPadding} text-center tabular-nums`}>
                                     {subtasksTotal > 0 ? `${subtasksDone}/${subtasksTotal}` : '—'}
+                                  </td>
+                                );
+                              }
+                              if (col.id === 'tags') {
+                                const tagsList = Array.isArray(item.tags) ? item.tags : [];
+                                return (
+                                  <td key={col.id} className={`${densityPadding}`}>
+                                    {tagsList.length > 0 ? (
+                                      <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                        {tagsList.slice(0, 2).map((tg, idx) => (
+                                          <span
+                                            key={idx}
+                                            className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20"
+                                          >
+                                            #{tg}
+                                          </span>
+                                        ))}
+                                        {tagsList.length > 2 && (
+                                          <span className="text-[10px] text-muted-foreground font-medium">
+                                            +{tagsList.length - 2}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-muted-foreground/30 text-xs italic">—</span>
+                                    )}
+                                  </td>
+                                );
+                              }
+                              if (col.id === 'createdAt') {
+                                return (
+                                  <td key={col.id} className={`${densityPadding} text-center`}>
+                                    <span className="tabular-nums text-[11px] text-muted-foreground">
+                                      {item.createdAt ? formatDate(item.createdAt) : '—'}
+                                    </span>
                                   </td>
                                 );
                               }

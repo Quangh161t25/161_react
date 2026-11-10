@@ -245,6 +245,13 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
                           {task.title}
                         </h4>
 
+                        {/* Description snippet if any */}
+                        {task.description && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed whitespace-pre-line bg-muted/40 p-1.5 rounded-lg border border-border/40">
+                            {task.description}
+                          </p>
+                        )}
+
                         {/* Project badge if any */}
                         {task.projectName && (
                           <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-md truncate">
