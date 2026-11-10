@@ -163,7 +163,6 @@ Mã: ${task.code}
 Người thực hiện: ${task.assigneeName} (${task.assigneeCode || '—'})
 Phòng ban: ${task.department}
 Hạn chót: ${formatDate(task.dueDate)}
-Tiến độ: ${task.progress}%
 Trạng thái: ${task.status}
 Nội dung: ${task.description || '—'}`;
     navigator.clipboard.writeText(text);
@@ -387,28 +386,8 @@ Nội dung: ${task.description || '—'}`;
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div className="space-y-1.5 pt-2 border-t border-border/50">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Tiến độ thực hiện:</span>
-                      <span className="font-bold text-primary tabular-nums">{task.progress}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          task.progress === 100
-                            ? 'bg-emerald-500'
-                            : task.progress > 50
-                            ? 'bg-primary'
-                            : 'bg-amber-500'
-                        }`}
-                        style={{ width: `${task.progress}%` }}
-                      />
-                    </div>
-                  </div>
-
                   {/* Quick Change Status Buttons */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/50">
                     <span className="text-xs text-muted-foreground mr-1">Chuyển trạng thái:</span>
                     {(['todo', 'in_progress', 'review', 'completed'] as TaskStatus[]).map((st) => (
                       <button

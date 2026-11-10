@@ -37,6 +37,7 @@ import {
 import { useAutoSync } from '../../../hooks/useAutoSync';
 import { RealtimeSyncBadge } from '../../common/RealtimeSyncBadge';
 import { useSettings } from '../../../context/SettingsContext';
+import { useAuth } from '../../../context/AuthContext';
 import { TablePagination } from '../../common/TablePagination';
 
 interface TaskListPageProps {
@@ -50,7 +51,6 @@ export const DEFAULT_TASK_COLUMNS: ColumnItem[] = [
   { id: 'description', label: 'Mô tả nội dung', visible: true, width: 280, align: 'left', wrap: 'truncate' },
   { id: 'status', label: 'Trạng thái', visible: true, width: 140, align: 'center', wrap: 'truncate' },
   { id: 'priority', label: 'Mức ưu tiên', visible: true, width: 120, align: 'center', wrap: 'truncate' },
-  { id: 'progress', label: 'Tiến độ', visible: true, width: 140, align: 'left', wrap: 'truncate' },
   { id: 'assigneeName', label: 'Người thực hiện', visible: true, width: 180, align: 'left', wrap: 'truncate' },
   { id: 'projectName', label: 'Dự án', visible: true, width: 180, align: 'left', wrap: 'truncate' },
   { id: 'dueDate', label: 'Hạn chót', visible: true, width: 130, align: 'center', wrap: 'truncate' },
@@ -58,7 +58,6 @@ export const DEFAULT_TASK_COLUMNS: ColumnItem[] = [
   { id: 'tags', label: 'Thẻ (Tags)', visible: false, width: 160, align: 'left', wrap: 'truncate' },
   { id: 'department', label: 'Phòng ban', visible: false, width: 150, align: 'left', wrap: 'truncate' },
   { id: 'assignerName', label: 'Người giao việc', visible: false, width: 160, align: 'left', wrap: 'truncate' },
-  { id: 'estimatedHours', label: 'Giờ ước tính', visible: false, width: 120, align: 'right', wrap: 'truncate' },
   { id: 'createdAt', label: 'Ngày tạo', visible: false, width: 130, align: 'center', wrap: 'truncate' },
 ];
 
@@ -87,6 +86,7 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
 
   // User global settings
   const { settings, formatDate } = useSettings();
+  const { currentUser } = useAuth();
 
   // Table Selection & Pagination
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -141,16 +141,20 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((c: any) => c.id));
+          // Remove obsolete columns ('progress', 'estimatedHours')
+          const filtered = parsed.filter(
+            (c: any) => c.id !== 'progress' && c.id !== 'estimatedHours'
+          );
+          const existingIds = new Set(filtered.map((c: any) => c.id));
           const missing = DEFAULT_TASK_COLUMNS.filter((c) => !existingIds.has(c.id));
           if (missing.length > 0) {
             // Reconstruct array preserving DEFAULT_TASK_COLUMNS canonical order while retaining user's settings
             return DEFAULT_TASK_COLUMNS.map((defaultCol) => {
-              const userCol = parsed.find((p: any) => p.id === defaultCol.id);
+              const userCol = filtered.find((p: any) => p.id === defaultCol.id);
               return userCol ? { ...defaultCol, ...userCol } : defaultCol;
             });
           }
-          return parsed;
+          return filtered;
         }
       }
     } catch {}
@@ -307,14 +311,12 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       'Mô tả nội dung',
       'Trạng thái',
       'Mức ưu tiên',
-      'Tiến độ (%)',
       'Người thực hiện',
       'Dự án',
       'Hạn chót',
       'Thẻ (Tags)',
       'Phòng ban',
       'Người giao việc',
-      'Giờ ước tính',
       'Ngày tạo',
     ];
 
@@ -324,14 +326,12 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       `"${(t.description || '').replace(/"/g, '""')}"`,
       `"${t.status}"`,
       `"${t.priority}"`,
-      t.progress,
       `"${(t.assigneeName || '').replace(/"/g, '""')}"`,
       `"${(t.projectName || '').replace(/"/g, '""')}"`,
       t.dueDate || '',
       `"${(Array.isArray(t.tags) ? t.tags.join(', ') : '').replace(/"/g, '""')}"`,
       `"${(t.department || '').replace(/"/g, '""')}"`,
       `"${(t.assignerName || '').replace(/"/g, '""')}"`,
-      t.estimatedHours || 0,
       t.createdAt || '',
     ]);
 
@@ -369,11 +369,27 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       if (selectedStatus !== 'all' && t.status !== selectedStatus) return false;
       if (selectedPriority !== 'all' && t.priority !== selectedPriority) return false;
       if (selectedProjectId !== 'all' && t.projectId !== selectedProjectId) return false;
-      if (selectedAssigneeId !== 'all' && t.assigneeId !== selectedAssigneeId && t.assigneeName !== selectedAssigneeId) return false;
+
+      if (selectedAssigneeId === 'unassigned') {
+        if (t.assigneeId || (t.assigneeName && t.assigneeName.trim() !== '')) return false;
+      } else if (selectedAssigneeId === 'me') {
+        const myName = (currentUser?.name || '').toLowerCase();
+        const myId = currentUser?.id;
+        const myCode = currentUser?.code;
+        const isAssignee = (myId && t.assigneeId === myId) ||
+          (myCode && t.assigneeCode === myCode) ||
+          (myName && t.assigneeName && t.assigneeName.toLowerCase() === myName);
+        const isAssigner = (myId && t.assignerId === myId) ||
+          (myCode && t.assignerCode === myCode) ||
+          (myName && t.assignerName && t.assignerName.toLowerCase() === myName);
+        if (!isAssignee && !isAssigner) return false;
+      } else if (selectedAssigneeId !== 'all') {
+        if (t.assigneeId !== selectedAssigneeId && t.assigneeName !== selectedAssigneeId) return false;
+      }
 
       return true;
     });
-  }, [tasks, searchQuery, selectedStatus, selectedPriority, selectedProjectId, selectedAssigneeId]);
+  }, [tasks, searchQuery, selectedStatus, selectedPriority, selectedProjectId, selectedAssigneeId, currentUser]);
 
   // Paginated Table data
   const paginatedTasks = useMemo(() => {
@@ -700,6 +716,10 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                       <span className="truncate max-w-[130px]">
                         {selectedAssigneeId === 'all'
                           ? 'Người thực hiện'
+                          : selectedAssigneeId === 'unassigned'
+                          ? 'Chưa giao'
+                          : selectedAssigneeId === 'me'
+                          ? 'Việc của tôi'
                           : (() => {
                               const emp = employees.find((e) => e.id === selectedAssigneeId || e.code === selectedAssigneeId || e.name === selectedAssigneeId);
                               return emp ? `${emp.name} (${emp.code || emp.id})` : 'Người thực hiện';
@@ -718,6 +738,23 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                           >
                             Tất cả người thực hiện
                           </button>
+                          {currentUser && (
+                            <button
+                              type="button"
+                              onClick={() => { setSelectedAssigneeId('me'); setIsAssigneeOpen(false); setCurrentPage(1); }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${selectedAssigneeId === 'me' ? 'bg-primary text-primary-foreground font-semibold' : 'hover:bg-muted text-foreground'}`}
+                            >
+                              Việc của tôi ({currentUser.name})
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => { setSelectedAssigneeId('unassigned'); setIsAssigneeOpen(false); setCurrentPage(1); }}
+                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${selectedAssigneeId === 'unassigned' ? 'bg-primary text-primary-foreground font-semibold' : 'hover:bg-muted text-foreground'}`}
+                          >
+                            Chưa giao (chưa có người làm)
+                          </button>
+                          <div className="h-px bg-border/60 my-1" />
                           {employees.map((e) => (
                             <button
                               key={e.id}
@@ -1035,29 +1072,6 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                                         ? 'Trung bình'
                                         : 'Thấp'}
                                     </span>
-                                  </td>
-                                );
-                              }
-                              if (col.id === 'progress') {
-                                return (
-                                  <td key={col.id} className={`${densityPadding}`}>
-                                    <div className="flex items-center gap-2">
-                                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                          className={`h-full rounded-full ${
-                                            item.progress === 100
-                                              ? 'bg-emerald-500'
-                                              : item.progress > 50
-                                              ? 'bg-primary'
-                                              : 'bg-amber-500'
-                                          }`}
-                                          style={{ width: `${item.progress}%` }}
-                                        />
-                                      </div>
-                                      <span className="text-[11px] font-semibold tabular-nums text-foreground w-8 text-right">
-                                        {item.progress}%
-                                      </span>
-                                    </div>
                                   </td>
                                 );
                               }

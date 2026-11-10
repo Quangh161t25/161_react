@@ -260,26 +260,6 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
                           </div>
                         )}
 
-                        {/* Progress Bar */}
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                            <span>Tiến độ</span>
-                            <span className="font-semibold tabular-nums text-foreground">{task.progress}%</span>
-                          </div>
-                          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-300 ${
-                                task.progress === 100
-                                  ? 'bg-emerald-500'
-                                  : task.progress > 50
-                                  ? 'bg-primary'
-                                  : 'bg-amber-500'
-                              }`}
-                              style={{ width: `${task.progress}%` }}
-                            />
-                          </div>
-                        </div>
-
                         {/* Bottom Meta */}
                         <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[11px] text-muted-foreground">
                           {/* Assignee */}
