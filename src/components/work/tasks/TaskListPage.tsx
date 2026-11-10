@@ -15,11 +15,10 @@ import {
   ChevronDown,
   Tag,
   Briefcase,
-  AlertCircle,
   CircleCheck,
   User,
 } from 'lucide-react';
-import { Task, TaskStatus, TaskPriority, Project } from '../../../types/task';
+import { Task, TaskStatus, Project } from '../../../types/task';
 import { Employee } from '../../../types/employee';
 import { taskService, projectService } from '../../../services/taskService';
 import { employeeService } from '../../../services/employeeService';
@@ -39,6 +38,7 @@ import { RealtimeSyncBadge } from '../../common/RealtimeSyncBadge';
 import { useSettings } from '../../../context/SettingsContext';
 import { useAuth } from '../../../context/AuthContext';
 import { TablePagination } from '../../common/TablePagination';
+import { toDateSortKey, toLocalDateStr } from '../../../utils/dateUtils';
 
 interface TaskListPageProps {
   onBack: () => void;
@@ -50,7 +50,6 @@ export const DEFAULT_TASK_COLUMNS: ColumnItem[] = [
   { id: 'title', label: 'Tiêu đề công việc', visible: true, pinned: true, width: 260, align: 'left', wrap: 'truncate' },
   { id: 'description', label: 'Mô tả nội dung', visible: true, width: 280, align: 'left', wrap: 'truncate' },
   { id: 'status', label: 'Trạng thái', visible: true, width: 140, align: 'center', wrap: 'truncate' },
-  { id: 'priority', label: 'Mức ưu tiên', visible: true, width: 120, align: 'center', wrap: 'truncate' },
   { id: 'assigneeName', label: 'Người thực hiện', visible: true, width: 180, align: 'left', wrap: 'truncate' },
   { id: 'projectName', label: 'Dự án', visible: true, width: 180, align: 'left', wrap: 'truncate' },
   { id: 'dueDate', label: 'Hạn chót', visible: true, width: 130, align: 'center', wrap: 'truncate' },
@@ -74,13 +73,20 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
   const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'calendar' | 'stats'>(initialViewMode);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<'all' | TaskStatus>('all');
-  const [selectedPriority, setSelectedPriority] = useState<'all' | TaskPriority>('all');
   const [selectedProjectId, setSelectedProjectId] = useState<'all' | string>('all');
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<'all' | string>('all');
 
+  // Date Filter states
+  const [dateFilterType, setDateFilterType] = useState<
+    'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_month' | 'custom'
+  >('all');
+  const [dateFilterField, setDateFilterField] = useState<'createdAt' | 'dueDate'>('createdAt');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+
   // Dropdown popover open states
   const [isStatusOpen, setIsStatusOpen] = useState(false);
-  const [isPriorityOpen, setIsPriorityOpen] = useState(false);
+  const [isDateOpen, setIsDateOpen] = useState(false);
   const [isProjectOpen, setIsProjectOpen] = useState(false);
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
 
@@ -141,9 +147,9 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Remove obsolete columns ('progress', 'estimatedHours')
+          // Remove obsolete columns ('progress', 'estimatedHours', 'priority')
           const filtered = parsed.filter(
-            (c: any) => c.id !== 'progress' && c.id !== 'estimatedHours'
+            (c: any) => c.id !== 'progress' && c.id !== 'estimatedHours' && c.id !== 'priority'
           );
           const existingIds = new Set(filtered.map((c: any) => c.id));
           const missing = DEFAULT_TASK_COLUMNS.filter((c) => !existingIds.has(c.id));
@@ -310,7 +316,6 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       'Tiêu đề',
       'Mô tả nội dung',
       'Trạng thái',
-      'Mức ưu tiên',
       'Người thực hiện',
       'Dự án',
       'Hạn chót',
@@ -325,7 +330,6 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       `"${t.title.replace(/"/g, '""')}"`,
       `"${(t.description || '').replace(/"/g, '""')}"`,
       `"${t.status}"`,
-      `"${t.priority}"`,
       `"${(t.assigneeName || '').replace(/"/g, '""')}"`,
       `"${(t.projectName || '').replace(/"/g, '""')}"`,
       t.dueDate || '',
@@ -351,6 +355,82 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
     showToast('Đã xuất file CSV thành công!');
   };
 
+  // Date filter matching logic
+  const matchDateFilter = (task: Task): boolean => {
+    if (dateFilterType === 'all') return true;
+
+    const rawTargetDate = dateFilterField === 'createdAt' ? task.createdAt : task.dueDate;
+    if (!rawTargetDate) return false;
+
+    const targetKey = toDateSortKey(rawTargetDate).slice(0, 10);
+    if (!targetKey) return false;
+
+    const now = new Date();
+    const todayStr = toLocalDateStr(now);
+
+    if (dateFilterType === 'today') {
+      return targetKey === todayStr;
+    }
+
+    if (dateFilterType === 'yesterday') {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return targetKey === toLocalDateStr(yesterday);
+    }
+
+    if (dateFilterType === 'this_week') {
+      const currentDay = now.getDay();
+      const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1;
+      const monday = new Date(now);
+      monday.setDate(monday.getDate() - distanceToMonday);
+      const sunday = new Date(monday);
+      sunday.setDate(sunday.getDate() + 6);
+      return targetKey >= toLocalDateStr(monday) && targetKey <= toLocalDateStr(sunday);
+    }
+
+    if (dateFilterType === 'this_month') {
+      const startMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const endMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+      return targetKey >= startMonth && targetKey <= endMonth;
+    }
+
+    if (dateFilterType === 'last_month') {
+      const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const startMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDayOfMonth = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0).getDate();
+      const endMonth = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+      return targetKey >= startMonth && targetKey <= endMonth;
+    }
+
+    if (dateFilterType === 'custom') {
+      if (customStartDate && targetKey < customStartDate) return false;
+      if (customEndDate && targetKey > customEndDate) return false;
+      return true;
+    }
+
+    return true;
+  };
+
+  const getDateFilterButtonLabel = () => {
+    const fieldLabel = dateFilterField === 'createdAt' ? 'Ngày tạo' : 'Hạn chót';
+    if (dateFilterType === 'all') return 'Lọc ngày';
+    if (dateFilterType === 'today') return `Hôm nay (${fieldLabel})`;
+    if (dateFilterType === 'yesterday') return `Hôm qua (${fieldLabel})`;
+    if (dateFilterType === 'this_week') return `Tuần này (${fieldLabel})`;
+    if (dateFilterType === 'this_month') return `Tháng này (${fieldLabel})`;
+    if (dateFilterType === 'last_month') return `Tháng trước (${fieldLabel})`;
+    if (dateFilterType === 'custom') {
+      if (customStartDate && customEndDate) {
+        return `${formatDate(customStartDate)} - ${formatDate(customEndDate)}`;
+      }
+      if (customStartDate) return `Từ ${formatDate(customStartDate)}`;
+      if (customEndDate) return `Đến ${formatDate(customEndDate)}`;
+      return `Tùy chọn (${fieldLabel})`;
+    }
+    return 'Lọc ngày';
+  };
+
   // Filtered Tasks
   const filteredTasks = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
@@ -367,8 +447,9 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       }
 
       if (selectedStatus !== 'all' && t.status !== selectedStatus) return false;
-      if (selectedPriority !== 'all' && t.priority !== selectedPriority) return false;
       if (selectedProjectId !== 'all' && t.projectId !== selectedProjectId) return false;
+
+      if (!matchDateFilter(t)) return false;
 
       if (selectedAssigneeId === 'unassigned') {
         if (t.assigneeId || (t.assigneeName && t.assigneeName.trim() !== '')) return false;
@@ -389,7 +470,18 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
 
       return true;
     });
-  }, [tasks, searchQuery, selectedStatus, selectedPriority, selectedProjectId, selectedAssigneeId, currentUser]);
+  }, [
+    tasks,
+    searchQuery,
+    selectedStatus,
+    selectedProjectId,
+    selectedAssigneeId,
+    dateFilterType,
+    dateFilterField,
+    customStartDate,
+    customEndDate,
+    currentUser,
+  ]);
 
   // Paginated Table data
   const paginatedTasks = useMemo(() => {
@@ -427,16 +519,6 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
       case 'completed': return 'Đã xong';
       case 'cancelled': return 'Đã hủy';
       default: return 'Trạng thái';
-    }
-  };
-
-  const getPriorityLabel = (p: TaskPriority | 'all') => {
-    switch (p) {
-      case 'urgent': return 'Khẩn cấp';
-      case 'high': return 'Ưu tiên cao';
-      case 'medium': return 'Trung bình';
-      case 'low': return 'Thấp';
-      default: return 'Mức ưu tiên';
     }
   };
 
@@ -597,60 +679,174 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                     )}
                   </div>
 
-                  {/* Filter: Priority */}
+                  {/* Filter: Date */}
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={() => setIsPriorityOpen(!isPriorityOpen)}
+                      onClick={() => setIsDateOpen(!isDateOpen)}
                       className={`h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors ${
-                        selectedPriority !== 'all'
-                          ? 'bg-primary/10 border-primary text-primary'
+                        dateFilterType !== 'all'
+                          ? 'bg-primary/10 border-primary text-primary font-semibold'
                           : 'bg-background border-border text-muted-foreground hover:text-foreground hover:bg-muted'
                       }`}
                     >
-                      <AlertCircle className="w-3.5 h-3.5" />
-                      <span>{getPriorityLabel(selectedPriority)}</span>
+                      <CalendarIcon className="w-3.5 h-3.5" />
+                      <span>{getDateFilterButtonLabel()}</span>
                       <ChevronDown className="w-3 h-3 ml-0.5 opacity-60" />
                     </button>
-                    {isPriorityOpen && (
+                    {isDateOpen && (
                       <>
-                        <div className="fixed inset-0 z-40" onClick={() => setIsPriorityOpen(false)} />
-                        <div className="absolute left-0 top-full mt-1.5 w-44 bg-card border border-border rounded-xl shadow-xl z-50 p-1 space-y-0.5">
-                          <button
-                            type="button"
-                            onClick={() => { setSelectedPriority('all'); setIsPriorityOpen(false); setCurrentPage(1); }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors ${selectedPriority === 'all' ? 'bg-primary text-primary-foreground font-semibold' : 'hover:bg-muted text-foreground'}`}
-                          >
-                            Tất cả mức ưu tiên
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setSelectedPriority('urgent'); setIsPriorityOpen(false); setCurrentPage(1); }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors text-rose-600 ${selectedPriority === 'urgent' ? 'bg-rose-500/10 font-semibold' : 'hover:bg-muted'}`}
-                          >
-                            🔴 Khẩn cấp
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setSelectedPriority('high'); setIsPriorityOpen(false); setCurrentPage(1); }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors text-amber-600 ${selectedPriority === 'high' ? 'bg-amber-500/10 font-semibold' : 'hover:bg-muted'}`}
-                          >
-                            🟠 Ưu tiên cao
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setSelectedPriority('medium'); setIsPriorityOpen(false); setCurrentPage(1); }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors text-blue-600 ${selectedPriority === 'medium' ? 'bg-blue-500/10 font-semibold' : 'hover:bg-muted'}`}
-                          >
-                            🔵 Trung bình
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setSelectedPriority('low'); setIsPriorityOpen(false); setCurrentPage(1); }}
-                            className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors text-slate-600 ${selectedPriority === 'low' ? 'bg-slate-500/10 font-semibold' : 'hover:bg-muted'}`}
-                          >
-                            ⚪ Thấp
-                          </button>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsDateOpen(false)} />
+                        <div className="absolute left-0 top-full mt-1.5 w-72 bg-card border border-border rounded-xl shadow-xl z-50 p-2.5 space-y-2.5">
+                          {/* Segmented control: Filter by createdAt or dueDate */}
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-semibold text-muted-foreground">Lọc theo:</span>
+                            <div className="grid grid-cols-2 gap-1 bg-muted/60 p-0.5 rounded-lg">
+                              <button
+                                type="button"
+                                onClick={() => { setDateFilterField('createdAt'); setCurrentPage(1); }}
+                                className={`py-1 text-xs font-medium rounded-md transition-colors ${
+                                  dateFilterField === 'createdAt'
+                                    ? 'bg-background text-foreground shadow-sm font-semibold'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                              >
+                                Ngày tạo
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setDateFilterField('dueDate'); setCurrentPage(1); }}
+                                className={`py-1 text-xs font-medium rounded-md transition-colors ${
+                                  dateFilterField === 'dueDate'
+                                    ? 'bg-background text-foreground shadow-sm font-semibold'
+                                    : 'text-muted-foreground hover:text-foreground'
+                                }`}
+                              >
+                                Hạn chót
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Quick presets */}
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-semibold text-muted-foreground">Mốc thời gian:</span>
+                            <div className="grid grid-cols-2 gap-1">
+                              <button
+                                type="button"
+                                onClick={() => { setDateFilterType('all'); setIsDateOpen(false); setCurrentPage(1); }}
+                                className={`text-left px-2 py-1.5 rounded-md text-xs transition-colors ${
+                                  dateFilterType === 'all'
+                                    ? 'bg-primary text-primary-foreground font-semibold'
+                                    : 'hover:bg-muted text-foreground'
+                                }`}
+                              >
+                                Tất cả thời gian
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setDateFilterType('today'); setIsDateOpen(false); setCurrentPage(1); }}
+                                className={`text-left px-2 py-1.5 rounded-md text-xs transition-colors ${
+                                  dateFilterType === 'today'
+                                    ? 'bg-primary text-primary-foreground font-semibold'
+                                    : 'hover:bg-muted text-foreground'
+                                }`}
+                              >
+                                Hôm nay
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setDateFilterType('yesterday'); setIsDateOpen(false); setCurrentPage(1); }}
+                                className={`text-left px-2 py-1.5 rounded-md text-xs transition-colors ${
+                                  dateFilterType === 'yesterday'
+                                    ? 'bg-primary text-primary-foreground font-semibold'
+                                    : 'hover:bg-muted text-foreground'
+                                }`}
+                              >
+                                Hôm qua
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setDateFilterType('this_week'); setIsDateOpen(false); setCurrentPage(1); }}
+                                className={`text-left px-2 py-1.5 rounded-md text-xs transition-colors ${
+                                  dateFilterType === 'this_week'
+                                    ? 'bg-primary text-primary-foreground font-semibold'
+                                    : 'hover:bg-muted text-foreground'
+                                }`}
+                              >
+                                Tuần này
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setDateFilterType('this_month'); setIsDateOpen(false); setCurrentPage(1); }}
+                                className={`text-left px-2 py-1.5 rounded-md text-xs transition-colors ${
+                                  dateFilterType === 'this_month'
+                                    ? 'bg-primary text-primary-foreground font-semibold'
+                                    : 'hover:bg-muted text-foreground'
+                                }`}
+                              >
+                                Tháng này
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { setDateFilterType('last_month'); setIsDateOpen(false); setCurrentPage(1); }}
+                                className={`text-left px-2 py-1.5 rounded-md text-xs transition-colors ${
+                                  dateFilterType === 'last_month'
+                                    ? 'bg-primary text-primary-foreground font-semibold'
+                                    : 'hover:bg-muted text-foreground'
+                                }`}
+                              >
+                                Tháng trước
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Custom Range */}
+                          <div className="pt-2 border-t border-border/60 space-y-2">
+                            <span className="text-[11px] font-semibold text-muted-foreground">Khoảng ngày tùy chọn:</span>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="text-[10px] text-muted-foreground block mb-0.5">Từ ngày</label>
+                                <input
+                                  type="date"
+                                  value={customStartDate}
+                                  onChange={(e) => {
+                                    setCustomStartDate(e.target.value);
+                                    setDateFilterType('custom');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="w-full px-2 py-1 rounded-md border border-input bg-background text-xs"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-muted-foreground block mb-0.5">Đến ngày</label>
+                                <input
+                                  type="date"
+                                  value={customEndDate}
+                                  onChange={(e) => {
+                                    setCustomEndDate(e.target.value);
+                                    setDateFilterType('custom');
+                                    setCurrentPage(1);
+                                  }}
+                                  className="w-full px-2 py-1 rounded-md border border-input bg-background text-xs"
+                                />
+                              </div>
+                            </div>
+                            {dateFilterType === 'custom' && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDateFilterType('all');
+                                  setCustomStartDate('');
+                                  setCustomEndDate('');
+                                  setIsDateOpen(false);
+                                  setCurrentPage(1);
+                                }}
+                                className="w-full text-center py-1 text-xs text-rose-600 hover:bg-rose-500/10 rounded-md transition-colors"
+                              >
+                                Xóa lọc ngày
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </>
                     )}
@@ -1046,31 +1242,6 @@ export const TaskListPage: React.FC<TaskListPageProps> = ({
                                         : item.status === 'review'
                                         ? 'Chờ duyệt'
                                         : 'Chưa làm'}
-                                    </span>
-                                  </td>
-                                );
-                              }
-                              if (col.id === 'priority') {
-                                return (
-                                  <td key={col.id} className={`${densityPadding} text-center`}>
-                                    <span
-                                      className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
-                                        item.priority === 'urgent'
-                                          ? 'bg-rose-500/10 text-rose-600'
-                                          : item.priority === 'high'
-                                          ? 'bg-amber-500/10 text-amber-600'
-                                          : item.priority === 'medium'
-                                          ? 'bg-blue-500/10 text-blue-600'
-                                          : 'bg-muted text-muted-foreground'
-                                      }`}
-                                    >
-                                      {item.priority === 'urgent'
-                                        ? 'Khẩn cấp'
-                                        : item.priority === 'high'
-                                        ? 'Cao'
-                                        : item.priority === 'medium'
-                                        ? 'Trung bình'
-                                        : 'Thấp'}
                                     </span>
                                   </td>
                                 );

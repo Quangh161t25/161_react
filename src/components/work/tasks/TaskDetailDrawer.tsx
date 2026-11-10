@@ -25,7 +25,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react';
-import { Task, TaskStatus, TaskPriority } from '../../../types/task';
+import { Task, TaskStatus } from '../../../types/task';
 import { formatDate } from '../../../utils/dateUtils';
 
 interface TaskDetailDrawerProps {
@@ -122,36 +122,6 @@ export const TaskDetailDrawer: React.FC<TaskDetailDrawerProps> = ({
         return (
           <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20">
             Chưa thực hiện
-          </span>
-        );
-    }
-  };
-
-  const getPriorityBadge = (priority: TaskPriority) => {
-    switch (priority) {
-      case 'urgent':
-        return (
-          <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
-            🔴 Khẩn cấp
-          </span>
-        );
-      case 'high':
-        return (
-          <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">
-            🟠 Ưu tiên cao
-          </span>
-        );
-      case 'medium':
-        return (
-          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20">
-            🔵 Trung bình
-          </span>
-        );
-      case 'low':
-      default:
-        return (
-          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-muted-foreground border border-border">
-            ⚪ Thấp
           </span>
         );
     }
@@ -363,7 +333,6 @@ Nội dung: ${task.description || '—'}`;
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-base font-bold text-foreground">{task.title}</span>
-                        {getPriorityBadge(task.priority)}
                         {getStatusBadge(task.status)}
                       </div>
                       {task.projectName && (

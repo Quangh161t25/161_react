@@ -623,22 +623,8 @@ export const TaskFormDrawer: React.FC<TaskFormDrawerProps> = ({
               </div>
             </div>
 
-            {/* 4. Priority, Status, Dates & Hours */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Mức độ ưu tiên</label>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                  className="w-full h-9 px-2 rounded-lg border border-border bg-card text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="urgent">🔴 Khẩn cấp</option>
-                  <option value="high">🟠 Ưu tiên cao</option>
-                  <option value="medium">🔵 Trung bình</option>
-                  <option value="low">⚪ Thấp</option>
-                </select>
-              </div>
-
+            {/* 4. Status, Dates */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-semibold text-foreground">Trạng thái</label>
                 <select

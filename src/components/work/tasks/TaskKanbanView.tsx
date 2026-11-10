@@ -7,7 +7,7 @@ import {
   CheckSquare,
   GripVertical,
 } from 'lucide-react';
-import { Task, TaskStatus, TaskPriority } from '../../../types/task';
+import { Task, TaskStatus } from '../../../types/task';
 import { formatDate } from '../../../utils/dateUtils';
 
 interface TaskKanbanViewProps {
@@ -110,36 +110,6 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
     setDragOverColId(null);
   };
 
-  const getPriorityBadge = (priority: TaskPriority) => {
-    switch (priority) {
-      case 'urgent':
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/10 text-rose-600 border border-rose-500/20">
-            Khẩn cấp
-          </span>
-        );
-      case 'high':
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-600 border border-amber-500/20">
-            Ưu tiên cao
-          </span>
-        );
-      case 'medium':
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20">
-            Trung bình
-          </span>
-        );
-      case 'low':
-      default:
-        return (
-          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
-            Thấp
-          </span>
-        );
-    }
-  };
-
   const isOverdue = (dueDate: string, status: TaskStatus) => {
     if (status === 'completed' || status === 'cancelled') return false;
     if (!dueDate) return false;
@@ -229,15 +199,12 @@ export const TaskKanbanView: React.FC<TaskKanbanViewProps> = ({
                             : 'border-border'
                         }`}
                       >
-                        {/* Top: Code & Priority */}
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1.5">
-                            <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0 -ml-0.5 cursor-grab" />
-                            <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
-                              {task.code}
-                            </span>
-                          </div>
-                          <div>{getPriorityBadge(task.priority)}</div>
+                        {/* Top: Code */}
+                        <div className="flex items-center gap-1.5">
+                          <GripVertical className="w-3.5 h-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0 -ml-0.5 cursor-grab" />
+                          <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded border border-primary/20">
+                            {task.code}
+                          </span>
                         </div>
 
                         {/* Title */}
