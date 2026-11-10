@@ -125,6 +125,14 @@ export default async function handler(req, res) {
     }
 
     // --- AUTHENTICATION (SECURE SERVER-SIDE) ---
+    function normPhone(p) {
+      if (!p) return '';
+      let s = String(p).replace(/[\s.\-+()]/g, '');
+      if (s.startsWith('84')) s = '0' + s.slice(2);
+      if (s.length >= 9 && !s.startsWith('0')) s = '0' + s;
+      return s;
+    }
+
     if ((action === 'login' || action === 'auth/login') && req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
       const usernameInput = (body.username || '').trim().toLowerCase();
@@ -135,19 +143,28 @@ export default async function handler(req, res) {
       }
 
       const employees = await fetchEmployeesFromSheet();
-      const cleanPhoneInput = usernameInput.replace(/[\s.-]/g, '');
+      const normInputPhone = normPhone(usernameInput);
 
       const matchedEmp = (employees || []).find((emp) => {
         const u = (emp.username || '').toLowerCase().trim();
         const code = (emp.code || '').toLowerCase().trim();
         const email = (emp.email || '').toLowerCase().trim();
-        const phone = (emp.phone || '').toLowerCase().trim().replace(/[\s.-]/g, '');
-        return (
-          u === usernameInput ||
-          code === usernameInput ||
-          email === usernameInput ||
-          (phone && phone === cleanPhoneInput)
-        );
+        const rawPhone = (emp.phone || '').toLowerCase().trim();
+        const normEmpPhone = normPhone(rawPhone);
+        const name = (emp.name || '').toLowerCase().trim();
+
+        // 1. Exact match by username
+        if (u && u === usernameInput) return true;
+        // 2. Exact match by employee code (e.g. emp-001)
+        if (code && code === usernameInput) return true;
+        // 3. Exact match by email
+        if (email && email === usernameInput) return true;
+        // 4. Exact match by normalized phone (must be at least 8 digits)
+        if (normInputPhone && normInputPhone.length >= 8 && normEmpPhone && normEmpPhone === normInputPhone) return true;
+        // 5. Exact match by full name
+        if (name && name === usernameInput) return true;
+
+        return false;
       });
 
       if (!matchedEmp) {
@@ -199,34 +216,24 @@ export default async function handler(req, res) {
       }
 
       const employees = await fetchEmployeesFromSheet();
-      const currentId = (userId || '').trim();
-      const currentCode = (userCode || '').toLowerCase().trim();
-      const currentUsername = (username || '').toLowerCase().trim();
-
       const empIndex = (employees || []).findIndex((e) => {
-        return (
-          (currentId && e.id === currentId) ||
-          (currentCode && (e.code || '').toLowerCase().trim() === currentCode) ||
-          (currentUsername && (e.username || '').toLowerCase().trim() === currentUsername)
-        );
+        if (userId && e.id === userId) return true;
+        if (userCode && e.code && e.code.toLowerCase() === userCode.toLowerCase()) return true;
+        if (username && e.username && e.username.toLowerCase() === username.toLowerCase()) return true;
+        return false;
       });
 
       if (empIndex === -1) {
-        return res.status(404).json({ success: false, error: 'Không tìm thấy thông tin tài khoản trên hệ thống!' });
+        return res.status(404).json({ success: false, error: 'Không tìm thấy tài khoản nhân viên!' });
       }
 
       const emp = employees[empIndex];
       const expectedPassword = (emp.password || '123456').trim();
-      if ((currentPassword || '').trim() !== expectedPassword) {
-        return res.status(401).json({ success: false, error: 'Mật khẩu hiện tại không chính xác!' });
+      if (currentPassword && currentPassword.trim() !== expectedPassword) {
+        return res.status(400).json({ success: false, error: 'Mật khẩu hiện tại không đúng!' });
       }
 
-      const updatedEmp = {
-        ...emp,
-        password: newPassword.trim(),
-        updatedAt: new Date().toLocaleDateString('vi-VN'),
-      };
-
+      const updatedEmp = { ...emp, password: newPassword.trim(), updatedAt: new Date().toISOString() };
       await updateEmployeeInSheet(updatedEmp);
       return res.status(200).json({ success: true, message: 'Đổi mật khẩu thành công!' });
     }
@@ -238,9 +245,10 @@ export default async function handler(req, res) {
       const targetUsername = (body.username || '').trim().toLowerCase();
       const targetName = (body.name || '').trim().toLowerCase();
       const targetEmail = (body.email || '').trim().toLowerCase();
-      const targetPhone = (body.phone || '').trim().replace(/[\s.-]/g, '');
+      const targetPhone = normPhone(body.phone || body.username);
+      const targetId = (body.id || '').trim();
 
-      if (!targetCode && !targetUsername && !targetEmail && !targetPhone) {
+      if (!targetCode && !targetUsername && !targetEmail && !targetPhone && !targetId && !targetName) {
         return res.status(400).json({ success: false, error: 'Thiếu thông tin tài khoản để đối soát DSNV!' });
       }
 
@@ -250,34 +258,20 @@ export default async function handler(req, res) {
         const c = (emp.code || '').toLowerCase().trim();
         const n = (emp.name || '').toLowerCase().trim();
         const em = (emp.email || '').toLowerCase().trim();
-        const ph = (emp.phone || '').toLowerCase().trim().replace(/[\s.-]/g, '');
+        const ph = normPhone(emp.phone);
 
-        // 1. If username was provided, check if username matches
-        if (targetUsername) {
-          if (u && u === targetUsername) {
-            if (targetName && n && n !== targetName) return false;
-            return true;
-          }
-        }
-
-        // 2. If code was provided, verify code AND identity consistency
-        if (targetCode && c === targetCode) {
-          if (targetUsername && u && u !== targetUsername) return false;
-          if (targetName && n && n !== targetName) return false;
-          return true;
-        }
-
-        // 3. If email was provided
-        if (targetEmail && em && em === targetEmail) {
-          if (targetName && n && n !== targetName) return false;
-          return true;
-        }
-
-        // 4. If phone was provided
-        if (targetPhone && ph && ph === targetPhone) {
-          if (targetName && n && n !== targetName) return false;
-          return true;
-        }
+        // 1. Match by ID
+        if (targetId && emp.id && emp.id === targetId) return true;
+        // 2. Match by code
+        if (targetCode && c && c === targetCode) return true;
+        // 3. Match by username
+        if (targetUsername && u && u === targetUsername) return true;
+        // 4. Match by email
+        if (targetEmail && em && em === targetEmail) return true;
+        // 5. Match by phone (must be at least 8 digits)
+        if (targetPhone && targetPhone.length >= 8 && ph && ph === targetPhone) return true;
+        // 6. Match by exact name
+        if (targetName && n && n === targetName) return true;
 
         return false;
       });

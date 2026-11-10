@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getSafeAvatarUrl } from '../utils/avatarUtils';
-import { employeeService } from '../services/employeeService';
+
 
 export interface AuthUser {
   id?: string;
@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const verifySessionWithDSNV = useCallback(
     async (candidateUser?: AuthUser | null): Promise<boolean> => {
       const userToVerify = candidateUser || currentUser;
-      if (!userToVerify || (!userToVerify.username && !userToVerify.code && !userToVerify.email && !userToVerify.id)) {
+      if (!userToVerify || (!userToVerify.username && !userToVerify.code && !userToVerify.email && !userToVerify.id && !userToVerify.name)) {
         logout();
         return false;
       }
@@ -122,47 +122,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch {}
 
           return true;
-        } else {
+        } else if (res.status === 401 || res.status === 403 || res.status === 404) {
           console.warn('DSNV verification failed:', data.error);
           logout();
           setAuthError(data.error || 'Tài khoản không tồn tại trong Danh sách nhân viên (DSNV) hoặc đã nghỉ việc.');
           return false;
+        } else {
+          // Temporary server issue (500, rate limit) - keep existing valid session
+          console.warn('Temporary verification issue, keeping current session:', data?.error);
+          return true;
         }
       } catch (networkErr) {
-        console.warn('Network error while verifying session, fallback to local DSNV cache:', networkErr);
-        // Fallback: Check local DSNV cache
-        const cachedEmployees = employeeService.getInitialEmployees();
-        if (cachedEmployees.length > 0) {
-          const targetCode = (userToVerify.code || '').toLowerCase().trim();
-          const targetUsername = (userToVerify.username || '').toLowerCase().trim();
-          const targetEmail = (userToVerify.email || '').toLowerCase().trim();
-          const targetPhone = (userToVerify.phone || '').trim().replace(/[\s.-]/g, '');
-
-          const match = cachedEmployees.find((e) => {
-            const c = (e.code || '').toLowerCase().trim();
-            const u = (e.username || '').toLowerCase().trim();
-            const em = (e.email || '').toLowerCase().trim();
-            const ph = (e.phone || '').trim().replace(/[\s.-]/g, '');
-            return (
-              (targetCode && c === targetCode) ||
-              (targetUsername && u === targetUsername) ||
-              (targetEmail && em === targetEmail) ||
-              (targetPhone && ph === targetPhone)
-            );
-          });
-
-          if (match && match.status !== 'resigned' && (match as any).isActiveAccount !== false) {
-            setIsAuthenticated(true);
-            setCurrentUser(userToVerify);
-            setAuthError(null);
-            return true;
-          }
-        }
-
-        // Could not verify with DSNV
-        logout();
-        setAuthError('Không thể xác thực thông tin tài khoản với Danh sách nhân viên.');
-        return false;
+        console.warn('Network error while verifying session, keeping local session:', networkErr);
+        // Do NOT log out on network glitch/offline
+        return true;
       }
     },
     [currentUser, logout]
@@ -194,7 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           parsed = null;
         }
 
-        if (!parsed || (!parsed.username && !parsed.code && !parsed.email && !parsed.id)) {
+        if (!parsed || (!parsed.username && !parsed.code && !parsed.email && !parsed.id && !parsed.name)) {
           if (isMounted) {
             logout();
             setIsCheckingAuth(false);
@@ -202,7 +175,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
 
-        // Verify with DSNV before granting access
+        // Optimistically restore session so user is not logged out during network delays
+        if (isMounted) {
+          setCurrentUser(parsed);
+          setIsAuthenticated(true);
+          setIsCheckingAuth(false);
+        }
+
+        // Verify with DSNV in background
         await verifySessionWithDSNV(parsed);
       } finally {
         if (isMounted) {
